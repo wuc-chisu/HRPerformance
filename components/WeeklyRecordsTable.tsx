@@ -4,9 +4,17 @@ import { Employee, WeeklyRecord } from "@/lib/employees";
 
 interface WeeklyRecordsTableProps {
   employee: Employee;
+  onEditRecord?: (record: WeeklyRecord, index: number) => void;
+  onDeleteRecord?: (index: number) => void;
+  onAddRecord?: () => void;
 }
 
-export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps) {
+export default function WeeklyRecordsTable({
+  employee,
+  onEditRecord,
+  onDeleteRecord,
+  onAddRecord,
+}: WeeklyRecordsTableProps) {
   const getPerformanceStatus = (record: WeeklyRecord) => {
     const hoursStatus =
       record.actualWorkHours >= record.plannedWorkHours ? "good" : "poor";
@@ -20,11 +28,21 @@ export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4">
-        <h3 className="text-xl font-bold text-white">Weekly Performance Records</h3>
-        <p className="text-blue-100 text-sm mt-1">
-          {employee.name} • {employee.id}
-        </p>
+      <div className="bg-gradient-to-r from-purple-300 to-pink-300 px-6 py-4 flex justify-between items-center">
+        <div>
+          <h3 className="text-xl font-bold text-white">Weekly Performance Records</h3>
+          <p className="text-blue-100 text-sm mt-1">
+            {employee.name} • {employee.id}
+          </p>
+        </div>
+        {onAddRecord && (
+          <button
+            onClick={onAddRecord}
+            className="bg-green-300 text-white px-4 py-2 rounded-lg hover:bg-green-400 transition-colors font-semibold"
+          >
+            + Add Record
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto">
@@ -32,10 +50,10 @@ export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps
           <thead className="bg-gray-100 border-b">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Week
+                Week Start
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Date
+                Week End
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Planned Hours
@@ -49,6 +67,11 @@ export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Weekly Overdue
               </th>
+              {(onEditRecord || onDeleteRecord) && (
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -60,10 +83,14 @@ export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps
                   className="hover:bg-gray-50 transition-colors"
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    Week {record.week}
+                    {new Date(record.startDate).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {new Date(record.date).toLocaleDateString("en-US", {
+                    {new Date(record.endDate).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
@@ -93,6 +120,26 @@ export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps
                   >
                     {record.weeklyOverdueTasks}
                   </td>
+                  {(onEditRecord || onDeleteRecord) && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2 flex">
+                      {onEditRecord && (
+                        <button
+                          onClick={() => onEditRecord(record, index)}
+                          className="bg-blue-300 text-white px-3 py-1 rounded hover:bg-blue-400 transition-colors text-xs font-semibold"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {onDeleteRecord && (
+                        <button
+                          onClick={() => onDeleteRecord(index)}
+                          className="bg-red-300 text-white px-3 py-1 rounded hover:bg-red-400 transition-colors text-xs font-semibold"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -100,7 +147,7 @@ export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps
         </table>
       </div>
 
-      <div className="bg-gray-50 px-6 py-4 border-t">
+      <div className="bg-blue-50 px-6 py-4 border-t">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-gray-600">Overall Overdue Tasks</p>

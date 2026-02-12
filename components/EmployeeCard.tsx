@@ -13,13 +13,13 @@ export default function EmployeeCard({
 }: EmployeeCardProps) {
   const latestWeek = employee.weeklyRecords[0];
   const hoursStatus =
-    latestWeek.actualWorkHours >= latestWeek.plannedWorkHours
+    latestWeek && latestWeek.actualWorkHours >= latestWeek.plannedWorkHours
       ? "text-green-600"
       : "text-red-600";
 
   return (
     <div
-      className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500 hover:shadow-lg transition-shadow cursor-pointer"
+      className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-300 hover:shadow-lg transition-shadow cursor-pointer"
       onClick={() => onSelect(employee.id)}
     >
       <div className="flex justify-between items-start mb-4">
@@ -27,7 +27,7 @@ export default function EmployeeCard({
           <h3 className="text-lg font-semibold text-gray-900">{employee.name}</h3>
           <p className="text-sm text-gray-600">{employee.id}</p>
         </div>
-        <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded">
+        <span className="bg-blue-200 text-blue-700 text-xs font-semibold px-3 py-1 rounded">
           {employee.position}
         </span>
       </div>
@@ -50,9 +50,23 @@ export default function EmployeeCard({
           <p className="text-xs text-gray-600 mb-3">Latest Week Performance</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
+              <p className="text-xs text-gray-600">Week Range</p>
+              <p className="text-xs font-medium text-gray-900">
+                {new Date(latestWeek.startDate).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}{" "}
+                -{" "}
+                {new Date(latestWeek.endDate).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </p>
+            </div>
+            <div>
               <p className="text-xs text-gray-600">Actual Hours</p>
               <p className={`text-lg font-bold ${hoursStatus}`}>
-                {latestWeek.actualWorkHours}h / {latestWeek.plannedWorkHours}h
+                {latestWeek.actualWorkHours}h
               </p>
             </div>
             <div>
@@ -62,7 +76,7 @@ export default function EmployeeCard({
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-600">Overdue This Week</p>
+              <p className="text-xs text-gray-600">Overdue</p>
               <p
                 className={`text-lg font-bold ${
                   latestWeek.weeklyOverdueTasks > 0
@@ -71,18 +85,6 @@ export default function EmployeeCard({
                 }`}
               >
                 {latestWeek.weeklyOverdueTasks}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600">Total Overdue</p>
-              <p
-                className={`text-lg font-bold ${
-                  employee.overallOverdueTasks > 0
-                    ? "text-red-600"
-                    : "text-green-600"
-                }`}
-              >
-                {employee.overallOverdueTasks}
               </p>
             </div>
           </div>

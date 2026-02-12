@@ -7,12 +7,22 @@ interface AddEditEmployeeProps {
   employee?: Employee;
   onSave: (employee: Employee) => void;
   onCancel: () => void;
+  departments?: string[];
 }
 
 export default function AddEditEmployee({
   employee,
   onSave,
   onCancel,
+  departments = [
+    "Engineering",
+    "Product",
+    "Design",
+    "Marketing",
+    "HR",
+    "Finance",
+    "Operations",
+  ],
 }: AddEditEmployeeProps) {
   const [formData, setFormData] = useState({
     id: employee?.id || "",
@@ -24,16 +34,6 @@ export default function AddEditEmployee({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const departments = [
-    "Engineering",
-    "Product",
-    "Design",
-    "Marketing",
-    "HR",
-    "Finance",
-    "Operations",
-  ];
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -90,7 +90,7 @@ export default function AddEditEmployee({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 sticky top-0">
+        <div className="bg-gradient-to-r from-blue-300 to-blue-400 px-6 py-4 sticky top-0">
           <h2 className="text-2xl font-bold text-white">
             {employee ? "Edit Employee" : "Add New Employee"}
           </h2>
@@ -238,14 +238,14 @@ export default function AddEditEmployee({
           <div className="flex gap-4 pt-4 border-t">
             <button
               type="submit"
-              className="flex-1 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex-1 bg-blue-300 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-400 transition-colors"
             >
               {employee ? "Update Employee" : "Add Employee"}
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+              className="flex-1 bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
             >
               Cancel
             </button>

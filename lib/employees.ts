@@ -1,7 +1,7 @@
 // Employee and performance data
 export interface WeeklyRecord {
-  week: number; // Week number
-  date: string; // ISO date format YYYY-MM-DD
+  startDate: string; // ISO date format YYYY-MM-DD
+  endDate: string; // ISO date format YYYY-MM-DD
   plannedWorkHours: number;
   actualWorkHours: number;
   assignedTasks: number;
@@ -29,24 +29,24 @@ export const employees: Employee[] = [
     overallOverdueTasks: 2,
     weeklyRecords: [
       {
-        week: 1,
-        date: "2025-02-10",
+        startDate: "2025-02-10",
+        endDate: "2025-02-16",
         plannedWorkHours: 40,
         actualWorkHours: 42,
         assignedTasks: 8,
         weeklyOverdueTasks: 0,
       },
       {
-        week: 2,
-        date: "2025-02-03",
+        startDate: "2025-02-03",
+        endDate: "2025-02-09",
         plannedWorkHours: 40,
         actualWorkHours: 39,
         assignedTasks: 7,
         weeklyOverdueTasks: 1,
       },
       {
-        week: 3,
-        date: "2025-01-27",
+        startDate: "2025-01-27",
+        endDate: "2025-02-02",
         plannedWorkHours: 40,
         actualWorkHours: 40,
         assignedTasks: 9,
@@ -63,24 +63,24 @@ export const employees: Employee[] = [
     overallOverdueTasks: 0,
     weeklyRecords: [
       {
-        week: 1,
-        date: "2025-02-10",
+        startDate: "2025-02-10",
+        endDate: "2025-02-16",
         plannedWorkHours: 40,
         actualWorkHours: 44,
         assignedTasks: 12,
         weeklyOverdueTasks: 0,
       },
       {
-        week: 2,
-        date: "2025-02-03",
+        startDate: "2025-02-03",
+        endDate: "2025-02-09",
         plannedWorkHours: 40,
         actualWorkHours: 41,
         assignedTasks: 11,
         weeklyOverdueTasks: 0,
       },
       {
-        week: 3,
-        date: "2025-01-27",
+        startDate: "2025-01-27",
+        endDate: "2025-02-02",
         plannedWorkHours: 40,
         actualWorkHours: 40,
         assignedTasks: 10,
@@ -97,24 +97,24 @@ export const employees: Employee[] = [
     overallOverdueTasks: 5,
     weeklyRecords: [
       {
-        week: 1,
-        date: "2025-02-10",
+        startDate: "2025-02-10",
+        endDate: "2025-02-16",
         plannedWorkHours: 40,
         actualWorkHours: 38,
         assignedTasks: 6,
         weeklyOverdueTasks: 2,
       },
       {
-        week: 2,
-        date: "2025-02-03",
+        startDate: "2025-02-03",
+        endDate: "2025-02-09",
         plannedWorkHours: 40,
         actualWorkHours: 37,
         assignedTasks: 5,
         weeklyOverdueTasks: 2,
       },
       {
-        week: 3,
-        date: "2025-01-27",
+        startDate: "2025-01-27",
+        endDate: "2025-02-02",
         plannedWorkHours: 40,
         actualWorkHours: 39,
         assignedTasks: 7,
@@ -131,24 +131,24 @@ export const employees: Employee[] = [
     overallOverdueTasks: 3,
     weeklyRecords: [
       {
-        week: 1,
-        date: "2025-02-10",
+        startDate: "2025-02-10",
+        endDate: "2025-02-16",
         plannedWorkHours: 40,
         actualWorkHours: 41,
         assignedTasks: 10,
         weeklyOverdueTasks: 0,
       },
       {
-        week: 2,
-        date: "2025-02-03",
+        startDate: "2025-02-03",
+        endDate: "2025-02-09",
         plannedWorkHours: 40,
         actualWorkHours: 42,
         assignedTasks: 9,
         weeklyOverdueTasks: 1,
       },
       {
-        week: 3,
-        date: "2025-01-27",
+        startDate: "2025-01-27",
+        endDate: "2025-02-02",
         plannedWorkHours: 40,
         actualWorkHours: 40,
         assignedTasks: 11,

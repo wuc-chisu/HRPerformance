@@ -1,0 +1,39 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Employee {
+  id                    String   @id @default(cuid())
+  employeeId            String   @unique
+  name                  String
+  department            String
+  position              String
+  joinDate              DateTime
+  overallOverdueTasks   Int      @default(0)
+  weeklyRecords         WeeklyRecord[]
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model WeeklyRecord {
+  id                    String   @id @default(cuid())
+  employeeId            String
+  employee              Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  startDate             DateTime
+  endDate               DateTime
+  plannedWorkHours      Int
+  actualWorkHours       Int
+  assignedTasks         Int
+  weeklyOverdueTasks    Int
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([employeeId])
+}

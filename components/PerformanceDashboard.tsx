@@ -46,38 +46,38 @@ export default function PerformanceDashboard({
     <div className="space-y-6">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-500">
+        <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-300">
           <p className="text-gray-600 text-sm font-semibold uppercase">
             Total Employees
           </p>
-          <p className="text-3xl font-bold text-blue-600 mt-2">
+          <p className="text-3xl font-bold text-blue-400 mt-2">
             {stats.totalEmployees}
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-green-500">
+        <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-green-300">
           <p className="text-gray-600 text-sm font-semibold uppercase">
             On Time This Week
           </p>
-          <p className="text-3xl font-bold text-green-600 mt-2">
+          <p className="text-3xl font-bold text-green-400 mt-2">
             {stats.perfectAttendance}
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-red-500">
+        <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-red-300">
           <p className="text-gray-600 text-sm font-semibold uppercase">
             With Overdue Tasks
           </p>
-          <p className="text-3xl font-bold text-red-600 mt-2">
+          <p className="text-3xl font-bold text-red-400 mt-2">
             {stats.withOverdueTasks}
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-orange-500">
+        <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-yellow-300">
           <p className="text-gray-600 text-sm font-semibold uppercase">
             Total Overdue Tasks
           </p>
-          <p className="text-3xl font-bold text-orange-600 mt-2">
+          <p className="text-3xl font-bold text-yellow-500 mt-2">
             {stats.totalOverdueTasks}
           </p>
         </div>
@@ -93,7 +93,7 @@ export default function PerformanceDashboard({
             ([deptName, deptStats]) => (
               <div
                 key={deptName}
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200"
+                className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200"
               >
                 <div>
                   <p className="font-semibold text-gray-900">{deptName}</p>
