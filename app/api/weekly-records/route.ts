@@ -47,6 +47,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
+      recordId: record.id,
       startDate: record.startDate.toISOString().split("T")[0],
       endDate: record.endDate.toISOString().split("T")[0],
       plannedWorkHours: record.plannedWorkHours,

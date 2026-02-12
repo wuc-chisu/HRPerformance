@@ -1,5 +1,6 @@
 // Employee and performance data
 export interface WeeklyRecord {
+  recordId?: string; // Database ID for the record
   startDate: string; // ISO date format YYYY-MM-DD
   endDate: string; // ISO date format YYYY-MM-DD
   plannedWorkHours: number;

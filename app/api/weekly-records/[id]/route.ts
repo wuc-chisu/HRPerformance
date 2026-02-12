@@ -32,6 +32,7 @@ export async function PUT(
     });
 
     return NextResponse.json({
+      recordId: record.id,
       startDate: record.startDate.toISOString().split("T")[0],
       endDate: record.endDate.toISOString().split("T")[0],
       plannedWorkHours: record.plannedWorkHours,

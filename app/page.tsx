@@ -100,11 +100,19 @@ export default function Home() {
           throw new Error(errorData.details || "Failed to update employee");
         }
       } else {
-        // Add new employee
+        // Add new employee - transform id to employeeId for API
+        const employeeData = {
+          employeeId: employee.id,
+          name: employee.name,
+          department: employee.department,
+          position: employee.position,
+          joinDate: employee.joinDate,
+          overallOverdueTasks: employee.overallOverdueTasks,
+        };
         const response = await fetch("/api/employees", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(employee),
+          body: JSON.stringify(employeeData),
         });
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -148,23 +156,29 @@ export default function Home() {
   const handleDeleteWeeklyRecord = async (index: number) => {
     if (confirm("Are you sure you want to delete this weekly record?")) {
       if (selectedEmployee && selectedEmployee.weeklyRecords[index]) {
-        // We need to find the record ID from the database
-        // For now, we'll refetch after a local delete and mark for server sync
-        const updatedRecords = selectedEmployee.weeklyRecords.filter(
-          (_, i) => i !== index
-        );
-        setEmployees((prev) =>
-          prev.map((e) => {
-            if (e.id === selectedEmployee.id) {
-              return {
-                ...e,
-                weeklyRecords: updatedRecords,
-              };
-            }
-            return e;
-          })
-        );
-        // Note: In a real implementation, you'd track the record ID and delete it via API
+        const record = selectedEmployee.weeklyRecords[index];
+        const recordId = record.recordId;
+
+        if (!recordId) {
+          alert("Unable to delete record: Record ID not found");
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/weekly-records/${recordId}`, {
+            method: "DELETE",
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to delete record");
+          }
+
+          // Refetch employees to get the updated data - stay on same employee
+          await fetchEmployees();
+        } catch (error) {
+          console.error("Error deleting weekly record:", error);
+          alert("Failed to delete record");
+        }
       }
     }
   };

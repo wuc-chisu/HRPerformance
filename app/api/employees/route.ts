@@ -23,6 +23,7 @@ export async function GET() {
       joinDate: emp.joinDate.toISOString().split("T")[0],
       overallOverdueTasks: emp.overallOverdueTasks,
       weeklyRecords: emp.weeklyRecords.map((record) => ({
+        recordId: record.id,
         startDate: record.startDate.toISOString().split("T")[0],
         endDate: record.endDate.toISOString().split("T")[0],
         plannedWorkHours: record.plannedWorkHours,
