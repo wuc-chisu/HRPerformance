@@ -515,177 +515,15 @@ export default function Home() {
                 All Employees
               </h2>
               <p className="text-gray-600 mb-4">
-                Select a year, month, and week to view all employee reports
+                Click on any card to view detailed performance records or view weekly reports in the Manage Performance tab
               </p>
-
-              {/* Year and Month Selectors */}
-              <div className="mb-4 flex gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Year
-                  </label>
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                    className="px-4 py-2 border border-blue-300 rounded-lg bg-blue-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  >
-                    {availableYears.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Month
-                  </label>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                    className="px-4 py-2 border border-blue-300 rounded-lg bg-blue-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  >
-                    {[
-                      "January",
-                      "February",
-                      "March",
-                      "April",
-                      "May",
-                      "June",
-                      "July",
-                      "August",
-                      "September",
-                      "October",
-                      "November",
-                      "December",
-                    ].map((month, idx) => (
-                      <option key={idx} value={idx}>
-                        {month}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Week Selector */}
-              <div className="mb-6 overflow-x-auto pb-2">
-                <div className="flex gap-2">
-                  {filteredWeekRanges.map((week, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedWeekFilter(week.range)}
-                      className={`whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition-all ${
-                        selectedWeekFilter === week.range
-                          ? "bg-blue-300 text-white shadow-md"
-                          : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
-                      }`}
-                    >
-                      {new Date(week.start).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}{" "}
-                      -{" "}
-                      {new Date(week.end).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
-
-            {/* Weekly Report Table if week selected */}
-            {selectedWeekFilter && (
-              <div className="mb-10 bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-300 to-pink-300 px-6 py-4">
-                  <h3 className="text-xl font-bold text-white">
-                    Weekly Performance Report
-                  </h3>
-                  <p className="text-purple-100 text-sm mt-1">
-                    {new Date(selectedWeekFilter.split("|")[0]).toLocaleDateString()}{" "}
-                    to{" "}
-                    {new Date(selectedWeekFilter.split("|")[1]).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-100 border-b">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Employee
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Department
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Planned Hrs
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Actual Hrs
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Tasks
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Overdue
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {employees.map((emp) => {
-                        const weekData = getEmployeeWeekData(emp, selectedWeekFilter);
-                        if (!weekData) return null;
-                        return (
-                          <tr key={emp.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {emp.name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {emp.department}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {weekData.plannedWorkHours}h
-                            </td>
-                            <td
-                              className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${
-                                weekData.actualWorkHours >=
-                                weekData.plannedWorkHours
-                                  ? "text-green-600"
-                                  : "text-red-600"
-                              }`}
-                            >
-                              {weekData.actualWorkHours}h
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {weekData.assignedTasks}
-                            </td>
-                            <td
-                              className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${
-                                weekData.weeklyOverdueTasks === 0
-                                  ? "text-green-600"
-                                  : "text-red-600"
-                              }`}
-                            >
-                              {weekData.weeklyOverdueTasks}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
 
             {/* Employee Cards */}
             <div className="mb-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">
                 Employee Profiles
               </h3>
-              <p className="text-gray-600 mb-4">
-                Click on any card to view detailed performance records
-              </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {employees.map((employee) => (
@@ -693,6 +531,10 @@ export default function Home() {
                   key={employee.id}
                   employee={employee}
                   onSelect={setSelectedEmployeeId}
+                  onViewPerformance={(employeeId: string) => {
+                    setSelectedEmployeeForPerformance(employeeId);
+                    setActiveView("manage-performance");
+                  }}
                 />
               ))}
             </div>
@@ -823,6 +665,90 @@ export default function Home() {
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Manage Employee Performance
               </h2>
+
+              {/* Year and Month Selectors */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  Select Year, Month, and Week
+                </h3>
+                <div className="flex gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Year
+                    </label>
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                      className="px-4 py-2 border border-blue-300 rounded-lg bg-blue-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    >
+                      {availableYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Month
+                    </label>
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                      className="px-4 py-2 border border-blue-300 rounded-lg bg-blue-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    >
+                      {[
+                        "January",
+                        "February",
+                        "March",
+                        "April",
+                        "May",
+                        "June",
+                        "July",
+                        "August",
+                        "September",
+                        "October",
+                        "November",
+                        "December",
+                      ].map((month, idx) => (
+                        <option key={idx} value={idx}>
+                          {month}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Week Selector */}
+                <div className="mb-6 overflow-x-auto pb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Week
+                  </label>
+                  <div className="flex gap-2">
+                    {filteredWeekRanges.map((week, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedWeekFilter(week.range)}
+                        className={`whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition-all ${
+                          selectedWeekFilter === week.range
+                            ? "bg-purple-300 text-white shadow-md"
+                            : "bg-purple-100 text-gray-700 border border-purple-200 hover:bg-purple-50"
+                        }`}
+                      >
+                        {new Date(week.start).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}{" "}
+                        -{" "}
+                        {new Date(week.end).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
               {/* Employee Selector */}
               <div className="mb-6">

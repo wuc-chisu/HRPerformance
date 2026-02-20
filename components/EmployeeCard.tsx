@@ -5,11 +5,13 @@ import { Employee } from "@/lib/employees";
 interface EmployeeCardProps {
   employee: Employee;
   onSelect: (employeeId: string) => void;
+  onViewPerformance?: (employeeId: string) => void;
 }
 
 export default function EmployeeCard({
   employee,
   onSelect,
+  onViewPerformance,
 }: EmployeeCardProps) {
   const latestWeek = employee.weeklyRecords[0];
   const hoursStatus =
@@ -18,10 +20,7 @@ export default function EmployeeCard({
       : "text-red-600";
 
   return (
-    <div
-      className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-300 hover:shadow-lg transition-shadow cursor-pointer"
-      onClick={() => onSelect(employee.id)}
-    >
+    <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-300 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">{employee.name}</h3>
@@ -98,6 +97,30 @@ export default function EmployeeCard({
           </div>
         </div>
       )}
+
+      {/* Action Buttons */}
+      <div className="mt-4 pt-4 border-t flex gap-2">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(employee.id);
+          }}
+          className="flex-1 px-3 py-2 bg-blue-300 text-white text-sm font-semibold rounded-lg hover:bg-blue-400 transition-colors"
+        >
+          View Details
+        </button>
+        {onViewPerformance && latestWeek && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewPerformance(employee.id);
+            }}
+            className="flex-1 px-3 py-2 bg-purple-300 text-white text-sm font-semibold rounded-lg hover:bg-purple-400 transition-colors"
+          >
+            Latest Week
+          </button>
+        )}
+      </div>
     </div>
   );
 }
