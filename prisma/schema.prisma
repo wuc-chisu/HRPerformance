@@ -34,6 +34,7 @@ model WeeklyRecord {
   assignedTasksDetails  Json     @default("[]")  // JSON array storing assigned task priority breakdown
   weeklyOverdueTasks    Int
   overdueTasksDetails   Json     @default("[]")  // JSON array storing priority breakdown
+  allOverdueTasks       Int      @default(0)    // Total overdue tasks from all previous weeks
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

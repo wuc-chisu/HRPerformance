@@ -19,6 +19,7 @@ export async function PUT(
       assignedTasksDetails,
       weeklyOverdueTasks,
       overdueTasksDetails,
+      allOverdueTasks,
     } = body;
 
     const safeAssignedTasksDetails = Array.isArray(assignedTasksDetails)
@@ -49,6 +50,7 @@ export async function PUT(
             )
           : weeklyOverdueTasks,
         overdueTasksDetails: overdueTasksDetails || [],
+        allOverdueTasks: allOverdueTasks || 0,
       },
     });
 
@@ -62,6 +64,7 @@ export async function PUT(
       assignedTasksDetails: record.assignedTasksDetails || [],
       weeklyOverdueTasks: record.weeklyOverdueTasks,
       overdueTasksDetails: record.overdueTasksDetails || [],
+      allOverdueTasks: record.allOverdueTasks || 0,
     });
   } catch (error) {
     console.error("Error updating weekly record:", error);

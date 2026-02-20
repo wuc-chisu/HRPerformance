@@ -15,16 +15,9 @@ export async function POST(request: Request) {
       assignedTasksDetails,
       weeklyOverdueTasks,
       overdueTasksDetails,
+      allOverdueTasks,
     } = body;
 
-    if (!employeeId || !startDate || !endDate) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    // Find employee by employeeId
     const employee = await prisma.employee.findUnique({
       where: { employeeId },
     });
@@ -64,6 +57,7 @@ export async function POST(request: Request) {
             )
           : weeklyOverdueTasks,
         overdueTasksDetails: overdueTasksDetails || [],
+        allOverdueTasks: allOverdueTasks || 0,
       },
     });
 
@@ -77,6 +71,7 @@ export async function POST(request: Request) {
       assignedTasksDetails: record.assignedTasksDetails || [],
       weeklyOverdueTasks: record.weeklyOverdueTasks,
       overdueTasksDetails: record.overdueTasksDetails || [],
+      allOverdueTasks: record.allOverdueTasks || 0,
     });
   } catch (error) {
     console.error("Error creating weekly record:", error);

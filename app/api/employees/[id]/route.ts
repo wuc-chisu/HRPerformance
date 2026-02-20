@@ -61,6 +61,8 @@ export async function PUT(
         assignedTasks: record.assignedTasks,
         assignedTasksDetails: record.assignedTasksDetails || [],
         weeklyOverdueTasks: record.weeklyOverdueTasks,
+        overdueTasksDetails: record.overdueTasksDetails || [],
+        allOverdueTasks: record.allOverdueTasks || 0,
       })),
     });
   } catch (error) {

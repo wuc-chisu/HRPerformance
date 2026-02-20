@@ -19,6 +19,7 @@ export interface WeeklyRecord {
   assignedTasksDetails?: AssignedTaskDetail[]; // Breakdown by priority
   weeklyOverdueTasks: number;
   overdueTasksDetails?: OverdueTaskDetail[]; // Breakdown by priority
+  allOverdueTasks?: number; // Total overdue tasks from all weeks
 }
 
 export interface Employee {

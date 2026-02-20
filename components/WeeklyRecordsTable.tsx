@@ -12,6 +12,7 @@ interface WeeklyRecordsTableProps {
   onAddRecord?: () => void;
   onUpdateOverdueTasks?: (recordId: string, details: any[]) => void;
   onUpdateAssignedTasks?: (recordId: string, details: any[]) => void;
+  onUpdateAllOverdueTasks?: (recordId: string, details: any[]) => void;
 }
 
 export default function WeeklyRecordsTable({
@@ -21,11 +22,15 @@ export default function WeeklyRecordsTable({
   onAddRecord,
   onUpdateOverdueTasks,
   onUpdateAssignedTasks,
+  onUpdateAllOverdueTasks,
 }: WeeklyRecordsTableProps) {
   const [showOverdueManager, setShowOverdueManager] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<WeeklyRecord | null>(null);
   const [showAssignedManager, setShowAssignedManager] = useState(false);
   const [selectedAssignedRecord, setSelectedAssignedRecord] =
+    useState<WeeklyRecord | null>(null);
+  const [showAllOverdueManager, setShowAllOverdueManager] = useState(false);
+  const [selectedAllOverdueRecord, setSelectedAllOverdueRecord] =
     useState<WeeklyRecord | null>(null);
 
   const getPerformanceStatus = (record: WeeklyRecord) => {
@@ -62,6 +67,21 @@ export default function WeeklyRecordsTable({
       onUpdateAssignedTasks
     ) {
       onUpdateAssignedTasks(selectedAssignedRecord.recordId, details);
+    }
+  };
+
+  const handleViewAllOverdue = (record: WeeklyRecord) => {
+    setSelectedAllOverdueRecord(record);
+    setShowAllOverdueManager(true);
+  };
+
+  const handleUpdateAllOverdue = (details: any[]) => {
+    if (
+      selectedAllOverdueRecord &&
+      selectedAllOverdueRecord.recordId &&
+      onUpdateAllOverdueTasks
+    ) {
+      onUpdateAllOverdueTasks(selectedAllOverdueRecord.recordId, details);
     }
   };
 
@@ -102,6 +122,9 @@ export default function WeeklyRecordsTable({
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Weekly Overdue
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                All Overdue
               </th>
               {(onEditRecord || onDeleteRecord) && (
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -181,6 +204,17 @@ export default function WeeklyRecordsTable({
                       <button
                         onClick={() => handleViewOverdue(record)}
                         className="bg-red-300 text-white px-3 py-1 rounded hover:bg-red-400 transition-colors text-xs font-semibold"
+                      >
+                        Edit Details
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                    <div className="flex items-center gap-3">
+                      <span>{record.allOverdueTasks || 0}</span>
+                      <button
+                        onClick={() => handleViewAllOverdue(record)}
+                        className="bg-orange-300 text-white px-3 py-1 rounded hover:bg-orange-400 transition-colors text-xs font-semibold"
                       >
                         Edit Details
                       </button>
@@ -269,6 +303,23 @@ export default function WeeklyRecordsTable({
           onClose={() => {
             setShowAssignedManager(false);
             setSelectedAssignedRecord(null);
+          }}
+        />
+      )}
+
+      {/* All Overdue Task Manager Modal */}
+      {showAllOverdueManager && selectedAllOverdueRecord && (
+        <OverdueTaskManager
+          overdueTasksDetails={
+            selectedAllOverdueRecord.allOverdueTasks
+              ? [{ count: selectedAllOverdueRecord.allOverdueTasks, priority: "normal" }]
+              : []
+          }
+          weeklyOverdueTasks={selectedAllOverdueRecord.allOverdueTasks || 0}
+          onUpdate={handleUpdateAllOverdue}
+          onClose={() => {
+            setShowAllOverdueManager(false);
+            setSelectedAllOverdueRecord(null);
           }}
         />
       )}

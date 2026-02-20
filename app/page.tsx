@@ -263,7 +263,48 @@ export default function Home() {
       );
     }
   };
+  const handleUpdateAllOverdueTasks = async (recordId: string, details: any[]) => {
+    try {
+      const record = selectedEmployee?.weeklyRecords.find(
+        (r) => r.recordId === recordId
+      );
 
+      if (!record) {
+        alert("Unable to update all overdue tasks: Record not found");
+        return;
+      }
+
+      const totalAllOverdue = (details || []).reduce(
+        (sum: number, detail: any) => sum + (detail?.count || 0),
+        0
+      );
+
+      const response = await fetch(`/api/weekly-records/${recordId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...record,
+          allOverdueTasks: totalAllOverdue,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const message = errorData.details
+          ? `${errorData.error || "Failed to update all overdue tasks"}: ${errorData.details}`
+          : errorData.error || "Failed to update all overdue tasks";
+        throw new Error(message);
+      }
+
+      await fetchEmployees();
+    } catch (error) {
+      console.error("Error updating all overdue tasks:", error);
+      console.error(
+        "All overdue tasks update failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
   const handleSaveWeeklyRecord = async (record: any) => {
     try {
       if (selectedEmployee) {
@@ -933,6 +974,7 @@ export default function Home() {
               onDeleteRecord={handleDeleteWeeklyRecord}
               onUpdateOverdueTasks={handleUpdateOverdueTasks}
               onUpdateAssignedTasks={handleUpdateAssignedTasks}
+              onUpdateAllOverdueTasks={handleUpdateAllOverdueTasks}
             />
           </div>
         )}

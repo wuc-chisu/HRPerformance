@@ -32,6 +32,7 @@ export async function GET() {
         assignedTasksDetails: record.assignedTasksDetails || [],
         weeklyOverdueTasks: record.weeklyOverdueTasks,
         overdueTasksDetails: record.overdueTasksDetails || [],
+        allOverdueTasks: record.allOverdueTasks || 0,
       })),
     }));
 
