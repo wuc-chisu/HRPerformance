@@ -63,23 +63,23 @@ export async function POST(request: Request) {
     const promptBase = `You are a professional HR performance evaluation assistant.
 
 Goal:
-Write a detailed, objective, and data-driven weekly performance comment based ONLY on the metrics provided.
+Write a focused and practical weekly performance comment based ONLY on the metrics provided.
 
-Hard requirements:
-- Length must be between 500 and 1000 characters (including spaces).
+Requirements:
+- Length must be between 600 and 1000 characters (including spaces).
+- Use 3 paragraphs separated by a single blank line. Do not add line breaks within a paragraph.
 - Address the employee directly using "You" / "Your".
 - Do NOT include the employee ID.
 - Do NOT invent facts.
-- Do NOT infer personality traits or intent.
-- Do NOT add generic praise.
-- Maintain a professional, neutral, job-related tone.
-- Reference at least 4 specific numeric metrics from the data below.
-- Provide clear explanation of how the scores affected the total result.
-- Include actionable improvement guidance tied directly to weak scoring areas.
-- If total score is below 70, emphasize urgency and provide EXACTLY 3 specific improvement actions written as imperative sentences (start with a verb).
-- End with a complete sentence and a period.
+- Maintain a professional and concise tone.
+- Highlight the 1–2 strongest areas.
+- Clearly identify the 1–2 most critical performance issues.
+- Provide practical improvement guidance (2–3 clear actions).
+- Avoid excessive breakdown of every metric.
+- Do NOT list all numbers repeatedly — reference only the most impactful ones.
+- End with a complete sentence.
 
-Write the comment as a cohesive evaluation narrative (no headings, no bullet points).
+Focus on clarity, priority, and improvement — not full statistical explanation.
 
 Weekly performance metrics:
 - Total score: ${score.totalScore} (${rating})
@@ -108,7 +108,7 @@ Return the full evaluation comment only.`;
       return (
         promptBase +
         "\n\nIf the output is truncated, regenerate it with complete sentences and a full ending." +
-        " Keep it between 500 and 1000 characters."
+        " Keep it between 600 and 1000 characters."
       );
     };
 
@@ -162,14 +162,14 @@ Return the full evaluation comment only.`;
           ],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 1400,
+            maxOutputTokens: 2400,
           },
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        return { error: errorText };
+        return { error: errorText, status: response.status };
       }
 
       const data = await response.json();
@@ -187,14 +187,21 @@ Return the full evaluation comment only.`;
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       const result = await generateOnce(attempt);
       if (result.error) {
+        const statusCode = result.status === 429 ? 429 : 500;
+        const isQuotaError =
+          typeof result.error === "string" &&
+          result.error.includes("RESOURCE_EXHAUSTED");
         return NextResponse.json(
-          { error: "Gemini request failed", details: result.error },
-          { status: 500 }
+          {
+            error: isQuotaError ? "GEMINI_QUOTA_EXCEEDED" : "Gemini request failed",
+            details: result.error,
+          },
+          { status: statusCode }
         );
       }
 
       const content = result.content || "";
-      const isLengthOk = content.length >= 500 && content.length <= 1000;
+      const isLengthOk = content.length >= 600 && content.length <= 1000;
       const endsWithSentence = /[.!?]$/.test(content);
 
       if (isLengthOk && endsWithSentence) {
