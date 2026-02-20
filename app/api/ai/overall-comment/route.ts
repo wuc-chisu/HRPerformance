@@ -83,7 +83,7 @@ If Total Score is below 70:
 - Provide exactly 3 specific improvement actions.
 - Avoid overly positive tone.
 
-Employee ID: ${employeeId || "UNKNOWN"}
+Address the employee directly using "You" or "Your". Do not include the employee ID.
 
 Weekly performance metrics:
 - Total score: ${score.totalScore} (${rating})
