@@ -59,6 +59,7 @@ export async function PUT(
         plannedWorkHours: record.plannedWorkHours,
         actualWorkHours: record.actualWorkHours,
         assignedTasks: record.assignedTasks,
+        assignedTasksDetails: record.assignedTasksDetails || [],
         weeklyOverdueTasks: record.weeklyOverdueTasks,
       })),
     });

@@ -12,7 +12,9 @@ export async function POST(request: Request) {
       plannedWorkHours,
       actualWorkHours,
       assignedTasks,
+      assignedTasksDetails,
       weeklyOverdueTasks,
+      overdueTasksDetails,
     } = body;
 
     if (!employeeId || !startDate || !endDate) {
@@ -34,6 +36,18 @@ export async function POST(request: Request) {
       );
     }
 
+    const safeAssignedTasksDetails = Array.isArray(assignedTasksDetails)
+      ? assignedTasksDetails
+      : [];
+    const assignedTasksTotal = safeAssignedTasksDetails.reduce(
+      (sum, detail) => sum + (detail?.count || 0),
+      0
+    );
+    const assignedTasksValue =
+      safeAssignedTasksDetails.length > 0
+        ? assignedTasksTotal
+        : assignedTasks ?? 0;
+
     const record = await prisma.weeklyRecord.create({
       data: {
         employeeId: employee.id,
@@ -41,8 +55,15 @@ export async function POST(request: Request) {
         endDate: new Date(endDate),
         plannedWorkHours,
         actualWorkHours,
-        assignedTasks,
-        weeklyOverdueTasks,
+        assignedTasks: assignedTasksValue,
+        assignedTasksDetails: safeAssignedTasksDetails,
+        weeklyOverdueTasks: Array.isArray(overdueTasksDetails)
+          ? overdueTasksDetails.reduce(
+              (sum, detail) => sum + (detail?.count || 0),
+              0
+            )
+          : weeklyOverdueTasks,
+        overdueTasksDetails: overdueTasksDetails || [],
       },
     });
 
@@ -53,12 +74,14 @@ export async function POST(request: Request) {
       plannedWorkHours: record.plannedWorkHours,
       actualWorkHours: record.actualWorkHours,
       assignedTasks: record.assignedTasks,
+      assignedTasksDetails: record.assignedTasksDetails || [],
       weeklyOverdueTasks: record.weeklyOverdueTasks,
+      overdueTasksDetails: record.overdueTasksDetails || [],
     });
   } catch (error) {
     console.error("Error creating weekly record:", error);
     return NextResponse.json(
-      { error: "Failed to create weekly record" },
+      { error: "Failed to create weekly record", details: String(error) },
       { status: 500 }
     );
   }

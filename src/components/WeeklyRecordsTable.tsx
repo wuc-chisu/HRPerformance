@@ -38,10 +38,7 @@ export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps
                 Date
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Planned Hours
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Actual Hours
+                Hours (Actual/Planned)
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Assigned Tasks
@@ -69,9 +66,6 @@ export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps
                       year: "numeric",
                     })}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                    {record.plannedWorkHours}h
-                  </td>
                   <td
                     className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${
                       status.hours === "good"
@@ -79,7 +73,7 @@ export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps
                         : "text-red-600"
                     }`}
                   >
-                    {record.actualWorkHours}h
+                    {record.actualWorkHours}/{record.plannedWorkHours}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                     {record.assignedTasks}

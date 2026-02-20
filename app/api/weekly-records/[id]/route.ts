@@ -16,8 +16,22 @@ export async function PUT(
       plannedWorkHours,
       actualWorkHours,
       assignedTasks,
+      assignedTasksDetails,
       weeklyOverdueTasks,
+      overdueTasksDetails,
     } = body;
+
+    const safeAssignedTasksDetails = Array.isArray(assignedTasksDetails)
+      ? assignedTasksDetails
+      : [];
+    const assignedTasksTotal = safeAssignedTasksDetails.reduce(
+      (sum, detail) => sum + (detail?.count || 0),
+      0
+    );
+    const assignedTasksValue =
+      safeAssignedTasksDetails.length > 0
+        ? assignedTasksTotal
+        : assignedTasks ?? 0;
 
     const record = await prisma.weeklyRecord.update({
       where: { id: recordId },
@@ -26,8 +40,15 @@ export async function PUT(
         endDate: new Date(endDate),
         plannedWorkHours,
         actualWorkHours,
-        assignedTasks,
-        weeklyOverdueTasks,
+        assignedTasks: assignedTasksValue,
+        assignedTasksDetails: safeAssignedTasksDetails,
+        weeklyOverdueTasks: Array.isArray(overdueTasksDetails)
+          ? overdueTasksDetails.reduce(
+              (sum, detail) => sum + (detail?.count || 0),
+              0
+            )
+          : weeklyOverdueTasks,
+        overdueTasksDetails: overdueTasksDetails || [],
       },
     });
 
@@ -38,12 +59,14 @@ export async function PUT(
       plannedWorkHours: record.plannedWorkHours,
       actualWorkHours: record.actualWorkHours,
       assignedTasks: record.assignedTasks,
+      assignedTasksDetails: record.assignedTasksDetails || [],
       weeklyOverdueTasks: record.weeklyOverdueTasks,
+      overdueTasksDetails: record.overdueTasksDetails || [],
     });
   } catch (error) {
     console.error("Error updating weekly record:", error);
     return NextResponse.json(
-      { error: "Failed to update weekly record" },
+      { error: "Failed to update weekly record", details: String(error) },
       { status: 500 }
     );
   }

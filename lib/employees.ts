@@ -1,4 +1,14 @@
 // Employee and performance data
+export type TaskPriority = "urgent" | "high" | "normal" | "low" | "no priority";
+
+export interface TaskDetail {
+  count: number;
+  priority: TaskPriority;
+}
+
+export type OverdueTaskDetail = TaskDetail;
+export type AssignedTaskDetail = TaskDetail;
+
 export interface WeeklyRecord {
   recordId?: string; // Database ID for the record
   startDate: string; // ISO date format YYYY-MM-DD
@@ -6,7 +16,9 @@ export interface WeeklyRecord {
   plannedWorkHours: number;
   actualWorkHours: number;
   assignedTasks: number;
+  assignedTasksDetails?: AssignedTaskDetail[]; // Breakdown by priority
   weeklyOverdueTasks: number;
+  overdueTasksDetails?: OverdueTaskDetail[]; // Breakdown by priority
 }
 
 export interface Employee {

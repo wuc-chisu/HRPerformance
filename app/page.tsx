@@ -183,29 +183,118 @@ export default function Home() {
     }
   };
 
+  const handleUpdateOverdueTasks = async (recordId: string, details: any[]) => {
+    try {
+      const record = selectedEmployee?.weeklyRecords.find(
+        (r) => r.recordId === recordId
+      );
+
+      if (!record) {
+        alert("Unable to update overdue tasks: Record not found");
+        return;
+      }
+
+      const totalOverdue = (details || []).reduce(
+        (sum: number, detail: any) => sum + (detail?.count || 0),
+        0
+      );
+
+      const response = await fetch(`/api/weekly-records/${recordId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...record,
+          overdueTasksDetails: details,
+          weeklyOverdueTasks: totalOverdue,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update overdue tasks");
+      }
+
+      await fetchEmployees();
+    } catch (error) {
+      console.error("Error updating overdue tasks:", error);
+      alert("Failed to update overdue tasks");
+    }
+  };
+
+  const handleUpdateAssignedTasks = async (recordId: string, details: any[]) => {
+    try {
+      const record = selectedEmployee?.weeklyRecords.find(
+        (r) => r.recordId === recordId
+      );
+
+      if (!record) {
+        alert("Unable to update assigned tasks: Record not found");
+        return;
+      }
+
+      const totalAssigned = (details || []).reduce(
+        (sum: number, detail: any) => sum + (detail?.count || 0),
+        0
+      );
+
+      const response = await fetch(`/api/weekly-records/${recordId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...record,
+          assignedTasksDetails: details,
+          assignedTasks: totalAssigned,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const message = errorData.details
+          ? `${errorData.error || "Failed to update assigned tasks"}: ${errorData.details}`
+          : errorData.error || "Failed to update assigned tasks";
+        throw new Error(message);
+      }
+
+      await fetchEmployees();
+    } catch (error) {
+      console.error("Error updating assigned tasks:", error);
+      console.error(
+        "Assigned tasks update failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  };
+
   const handleSaveWeeklyRecord = async (record: any) => {
     try {
       if (selectedEmployee) {
         if (editingWeeklyRecord) {
-          // Update existing record - would need record ID from DB
-          // For now, just update locally
-          const updatedRecords = [...selectedEmployee.weeklyRecords];
-          updatedRecords[editingWeeklyRecord.index] = record;
-          updatedRecords.sort(
-            (a, b) =>
-              new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-          );
-          setEmployees((prev) =>
-            prev.map((e) => {
-              if (e.id === selectedEmployee.id) {
-                return {
-                  ...e,
-                  weeklyRecords: updatedRecords,
-                };
-              }
-              return e;
-            })
-          );
+          const recordId =
+            selectedEmployee.weeklyRecords[editingWeeklyRecord.index]?.recordId ||
+            record.recordId;
+
+          if (!recordId) {
+            alert("Unable to update record: Record ID not found");
+            return;
+          }
+
+          const response = await fetch(`/api/weekly-records/${recordId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...record,
+              recordId,
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const message = errorData.details
+              ? `${errorData.error || "Failed to update weekly record"}: ${errorData.details}`
+              : errorData.error || "Failed to update weekly record";
+            throw new Error(message);
+          }
+
+          await fetchEmployees();
         } else {
           // Add new record
           const response = await fetch("/api/weekly-records", {
@@ -216,7 +305,13 @@ export default function Home() {
               ...record,
             }),
           });
-          if (!response.ok) throw new Error("Failed to create weekly record");
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const message = errorData.details
+              ? `${errorData.error || "Failed to create weekly record"}: ${errorData.details}`
+              : errorData.error || "Failed to create weekly record";
+            throw new Error(message);
+          }
           await fetchEmployees();
         }
       }
@@ -224,7 +319,10 @@ export default function Home() {
       setEditingWeeklyRecord(null);
     } catch (error) {
       console.error("Error saving weekly record:", error);
-      alert("Failed to save weekly record");
+      console.error(
+        "Weekly record save failed:",
+        error instanceof Error ? error.message : String(error)
+      );
     }
   };
 
@@ -833,6 +931,8 @@ export default function Home() {
               onAddRecord={handleAddWeeklyRecord}
               onEditRecord={handleEditWeeklyRecord}
               onDeleteRecord={handleDeleteWeeklyRecord}
+              onUpdateOverdueTasks={handleUpdateOverdueTasks}
+              onUpdateAssignedTasks={handleUpdateAssignedTasks}
             />
           </div>
         )}

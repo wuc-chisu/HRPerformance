@@ -29,7 +29,9 @@ export async function GET() {
         plannedWorkHours: record.plannedWorkHours,
         actualWorkHours: record.actualWorkHours,
         assignedTasks: record.assignedTasks,
+        assignedTasksDetails: record.assignedTasksDetails || [],
         weeklyOverdueTasks: record.weeklyOverdueTasks,
+        overdueTasksDetails: record.overdueTasksDetails || [],
       })),
     }));
 
