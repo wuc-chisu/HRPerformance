@@ -59,10 +59,11 @@ export async function PUT(
         plannedWorkHours: record.plannedWorkHours,
         actualWorkHours: record.actualWorkHours,
         assignedTasks: record.assignedTasks,
-        assignedTasksDetails: record.assignedTasksDetails || [],
+        assignedTasksDetails: (record as any).assignedTasksDetails || [],
         weeklyOverdueTasks: record.weeklyOverdueTasks,
-        overdueTasksDetails: record.overdueTasksDetails || [],
-        allOverdueTasks: record.allOverdueTasks || 0,
+        overdueTasksDetails: (record as any).overdueTasksDetails || [],
+        allOverdueTasks: (record as any).allOverdueTasks || 0,
+        allOverdueTasksDetails: (record as any).allOverdueTasksDetails || [],
       })),
     });
   } catch (error) {
@@ -83,15 +84,38 @@ export async function DELETE(
     const params = await context.params;
     const employeeId = params.id;
 
-    await prisma.employee.delete({
+    if (!employeeId) {
+      return NextResponse.json(
+        { error: "Employee ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const employee = await prisma.employee.findUnique({
       where: { employeeId },
     });
+
+    if (!employee) {
+      return NextResponse.json(
+        { error: "Employee not found" },
+        { status: 404 }
+      );
+    }
+
+    await prisma.$transaction([
+      prisma.weeklyRecord.deleteMany({
+        where: { employeeId: employee.id },
+      }),
+      prisma.employee.delete({
+        where: { id: employee.id },
+      }),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting employee:", error);
     return NextResponse.json(
-      { error: "Failed to delete employee" },
+      { error: "Failed to delete employee", details: String(error) },
       { status: 500 }
     );
   }

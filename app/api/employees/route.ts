@@ -29,10 +29,12 @@ export async function GET() {
         plannedWorkHours: record.plannedWorkHours,
         actualWorkHours: record.actualWorkHours,
         assignedTasks: record.assignedTasks,
-        assignedTasksDetails: record.assignedTasksDetails || [],
+        assignedTasksDetails: (record as any).assignedTasksDetails || [],
         weeklyOverdueTasks: record.weeklyOverdueTasks,
-        overdueTasksDetails: record.overdueTasksDetails || [],
-        allOverdueTasks: record.allOverdueTasks || 0,
+        overdueTasksDetails: (record as any).overdueTasksDetails || [],
+        allOverdueTasks: (record as any).allOverdueTasks || 0,
+        allOverdueTasksDetails: (record as any).allOverdueTasksDetails || [],
+        managerComment: (record as any).managerComment || "",
       })),
     }));
 

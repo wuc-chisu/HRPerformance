@@ -35,6 +35,8 @@ model WeeklyRecord {
   weeklyOverdueTasks    Int
   overdueTasksDetails   Json     @default("[]")  // JSON array storing priority breakdown
   allOverdueTasks       Int      @default(0)    // Total overdue tasks from all previous weeks
+  allOverdueTasksDetails Json    @default("[]")  // JSON array storing priority breakdown for all overdue tasks
+  managerComment        String?  @db.Text       // Optional manager comment for performance evaluation
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

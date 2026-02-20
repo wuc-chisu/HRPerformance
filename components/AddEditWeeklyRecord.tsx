@@ -14,6 +14,9 @@ export default function AddEditWeeklyRecord({
   onSave,
   onCancel,
 }: AddEditWeeklyRecordProps) {
+  const hasAssignedDetails = Boolean(record?.assignedTasksDetails?.length);
+  const hasOverdueDetails = Boolean(record?.overdueTasksDetails?.length);
+
   const [formData, setFormData] = useState({
     startDate: record?.startDate || new Date().toISOString().split("T")[0],
     endDate:
@@ -216,17 +219,26 @@ export default function AddEditWeeklyRecord({
                 name="assignedTasks"
                 value={formData.assignedTasks}
                 onChange={handleChange}
+                disabled={Boolean(record) && hasAssignedDetails}
                 min="0"
                 placeholder="e.g., 8"
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition ${
                   errors.assignedTasks
                     ? "border-red-500 bg-red-50"
-                    : "border-gray-300 hover:border-gray-400"
+                    : Boolean(record) && hasAssignedDetails
+                      ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : "border-gray-300 hover:border-gray-400"
                 }`}
               />
               {errors.assignedTasks && (
                 <p className="text-red-600 text-sm mt-1">
                   {errors.assignedTasks}
+                </p>
+              )}
+              {Boolean(record) && hasAssignedDetails && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Assigned task details are set. Edit them via the Assigned Task
+                  Manager.
                 </p>
               )}
             </div>
@@ -241,17 +253,26 @@ export default function AddEditWeeklyRecord({
                 name="weeklyOverdueTasks"
                 value={formData.weeklyOverdueTasks}
                 onChange={handleChange}
+                disabled={Boolean(record) && hasOverdueDetails}
                 min="0"
                 placeholder="e.g., 0"
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition ${
                   errors.weeklyOverdueTasks
                     ? "border-red-500 bg-red-50"
-                    : "border-gray-300 hover:border-gray-400"
+                    : Boolean(record) && hasOverdueDetails
+                      ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : "border-gray-300 hover:border-gray-400"
                 }`}
               />
               {errors.weeklyOverdueTasks && (
                 <p className="text-red-600 text-sm mt-1">
                   {errors.weeklyOverdueTasks}
+                </p>
+              )}
+              {Boolean(record) && hasOverdueDetails && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Overdue task details are set. Edit them via the Overdue Task
+                  Manager.
                 </p>
               )}
             </div>

@@ -2,11 +2,17 @@ import prisma from "../lib/prisma";
 import { employees as sampleEmployees } from "../lib/employees";
 
 async function main() {
-  console.log("Clearing existing data...");
-  await prisma.weeklyRecord.deleteMany();
-  await prisma.employee.deleteMany();
+  // Check if database already has data
+  const existingEmployees = await prisma.employee.count();
 
-  console.log("Seeding employees and weekly records...");
+  if (existingEmployees > 0) {
+    console.log(`✅ Database already has ${existingEmployees} employees. Skipping seed.`);
+    console.log("💡 If you want to refresh data, run: npx prisma migrate reset");
+    return;
+  }
+
+  console.log("🌱 Database is empty. Seeding employees and weekly records...");
+
   for (const emp of sampleEmployees) {
     const created = await prisma.employee.create({
       data: {
@@ -23,21 +29,26 @@ async function main() {
             plannedWorkHours: r.plannedWorkHours,
             actualWorkHours: r.actualWorkHours,
             assignedTasks: r.assignedTasks,
+            assignedTasksDetails: r.assignedTasksDetails || [],
             weeklyOverdueTasks: r.weeklyOverdueTasks,
+            overdueTasksDetails: r.overdueTasksDetails || [],
+            allOverdueTasks: r.allOverdueTasks || 0,
+            allOverdueTasksDetails: r.allOverdueTasksDetails || [],
+            managerComment: null,
           })),
         },
       },
     });
 
-    console.log(`Created employee ${created.employeeId}`);
+    console.log(`✅ Created employee: ${created.employeeId} - ${created.name}`);
   }
 
-  console.log("Seeding complete.");
+  console.log("🎉 Seeding complete!");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ Seeding failed:", e);
     process.exit(1);
   })
   .finally(async () => {

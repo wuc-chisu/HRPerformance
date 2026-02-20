@@ -1,6 +1,7 @@
 "use client";
 
 import { Employee, WeeklyRecord } from "@/lib/employees";
+import { calculateWeeklyPerformanceScore } from "@/lib/performanceScoring";
 import { useState } from "react";
 import AssignedTaskManager from "./AssignedTaskManager";
 import OverdueTaskManager from "./OverdueTaskManager";
@@ -85,6 +86,24 @@ export default function WeeklyRecordsTable({
     }
   };
 
+  const handleViewEvaluation = (record: WeeklyRecord) => {
+    // Store evaluation data in sessionStorage
+    const evaluationData = {
+      record,
+      employeeName: employee.name,
+      employeeId: employee.id,
+    };
+    sessionStorage.setItem("evaluationData", JSON.stringify(evaluationData));
+    
+    // Open evaluation in new window
+    window.open("/evaluation", "_blank");
+  };
+
+  const allOverdueTotal =
+    employee.weeklyRecords[0]?.allOverdueTasks ??
+    employee.overallOverdueTasks ??
+    0;
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <div className="bg-gradient-to-r from-purple-300 to-pink-300 px-6 py-4 flex justify-between items-center">
@@ -126,6 +145,9 @@ export default function WeeklyRecordsTable({
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 All Overdue
               </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Evaluation
+              </th>
               {(onEditRecord || onDeleteRecord) && (
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Actions
@@ -155,18 +177,26 @@ export default function WeeklyRecordsTable({
                   className="hover:bg-gray-50 transition-colors"
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {new Date(record.startDate).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {(() => {
+                      const [year, month, day] = record.startDate.split('-');
+                      const date = new Date(Number(year), Number(month) - 1, Number(day));
+                      return date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      });
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {new Date(record.endDate).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {(() => {
+                      const [year, month, day] = record.endDate.split('-');
+                      const date = new Date(Number(year), Number(month) - 1, Number(day));
+                      return date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      });
+                    })()}
                   </td>
                   <td
                     className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${
@@ -220,6 +250,14 @@ export default function WeeklyRecordsTable({
                       </button>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => handleViewEvaluation(record)}
+                      className="bg-purple-300 text-white px-3 py-1 rounded hover:bg-purple-400 transition-colors text-xs font-semibold"
+                    >
+                      View Evaluation
+                    </button>
+                  </td>
                   {(onEditRecord || onDeleteRecord) && (
                     <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2 flex">
                       {onEditRecord && (
@@ -253,12 +291,12 @@ export default function WeeklyRecordsTable({
             <p className="text-sm text-gray-600">Overall Overdue Tasks</p>
             <p
               className={`text-2xl font-bold ${
-                employee.overallOverdueTasks > 0
+                allOverdueTotal > 0
                   ? "text-red-600"
                   : "text-green-600"
               }`}
             >
-              {employee.overallOverdueTasks}
+              {allOverdueTotal}
             </p>
           </div>
           <div>
@@ -267,14 +305,14 @@ export default function WeeklyRecordsTable({
               {employee.weeklyRecords.map((record, idx) => (
                 <div
                   key={idx}
-                  className={`h-12 w-3 rounded ${
-                    record.weeklyOverdueTasks === 0
-                      ? "bg-green-500"
-                      : record.weeklyOverdueTasks <= 2
-                        ? "bg-yellow-500"
-                        : "bg-red-500"
-                  }`}
-                  title={`Week ${record.week}: ${record.weeklyOverdueTasks} overdue`}
+                  className={`h-12 w-3 rounded ${(() => {
+                    const score = calculateWeeklyPerformanceScore(record).totalScore;
+                    if (score >= 90) return "bg-green-500";
+                    if (score >= 80) return "bg-green-400";
+                    if (score >= 70) return "bg-blue-500";
+                    return "bg-red-500";
+                  })()}`}
+                  title={`Score: ${calculateWeeklyPerformanceScore(record).totalScore.toFixed(1)}`}
                 />
               ))}
             </div>
@@ -311,9 +349,7 @@ export default function WeeklyRecordsTable({
       {showAllOverdueManager && selectedAllOverdueRecord && (
         <OverdueTaskManager
           overdueTasksDetails={
-            selectedAllOverdueRecord.allOverdueTasks
-              ? [{ count: selectedAllOverdueRecord.allOverdueTasks, priority: "normal" }]
-              : []
+            selectedAllOverdueRecord.allOverdueTasksDetails || []
           }
           weeklyOverdueTasks={selectedAllOverdueRecord.allOverdueTasks || 0}
           onUpdate={handleUpdateAllOverdue}

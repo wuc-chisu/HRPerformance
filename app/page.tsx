@@ -285,6 +285,7 @@ export default function Home() {
         body: JSON.stringify({
           ...record,
           allOverdueTasks: totalAllOverdue,
+          allOverdueTasksDetails: details,
         }),
       });
 
@@ -309,20 +310,41 @@ export default function Home() {
     try {
       if (selectedEmployee) {
         if (editingWeeklyRecord) {
-          const recordId =
-            selectedEmployee.weeklyRecords[editingWeeklyRecord.index]?.recordId ||
-            record.recordId;
+          const existingRecord =
+            selectedEmployee.weeklyRecords[editingWeeklyRecord.index];
+          const recordId = existingRecord?.recordId || record.recordId;
 
           if (!recordId) {
             alert("Unable to update record: Record ID not found");
             return;
           }
 
+          const mergedRecord = {
+            ...existingRecord,
+            ...record,
+            assignedTasksDetails:
+              record.assignedTasksDetails ??
+              existingRecord?.assignedTasksDetails ??
+              [],
+            overdueTasksDetails:
+              record.overdueTasksDetails ??
+              existingRecord?.overdueTasksDetails ??
+              [],
+            allOverdueTasks:
+              record.allOverdueTasks ?? existingRecord?.allOverdueTasks ?? 0,
+            allOverdueTasksDetails:
+              record.allOverdueTasksDetails ??
+              existingRecord?.allOverdueTasksDetails ??
+              [],
+            managerComment:
+              record.managerComment ?? existingRecord?.managerComment ?? "",
+          };
+
           const response = await fetch(`/api/weekly-records/${recordId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              ...record,
+              ...mergedRecord,
               recordId,
             }),
           });
@@ -809,7 +831,10 @@ export default function Home() {
                 </label>
                 <select
                   value={selectedEmployeeForPerformance || ""}
-                  onChange={(e) => setSelectedEmployeeForPerformance(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedEmployeeForPerformance(e.target.value);
+                    setSelectedEmployeeId(e.target.value || null);
+                  }}
                   className="w-full px-4 py-2 border border-blue-300 rounded-lg bg-blue-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
                   <option value="">Choose an employee...</option>
@@ -839,118 +864,23 @@ export default function Home() {
                       </p>
                     </div>
 
-                    {/* Add Record Button */}
-                    <button
-                      onClick={() => {
-                        setSelectedEmployeeId(selectedEmployeeForPerformance);
-                        handleAddWeeklyRecord();
-                      }}
-                      className="px-6 py-2 bg-green-300 text-white rounded-lg hover:bg-green-400 transition-colors font-semibold"
-                    >
-                      + Add Weekly Record
-                    </button>
-
-                    {/* Weekly Records for Selected Employee */}
-                    {employees
-                      .find((e) => e.id === selectedEmployeeForPerformance)
-                      ?.weeklyRecords && (
-                      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                        <div className="bg-gradient-to-r from-purple-300 to-pink-300 px-6 py-4">
-                          <h4 className="text-lg font-bold text-white">
-                            Performance Records
-                          </h4>
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead className="bg-gray-100 border-b">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                                  Week Start
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                                  Week End
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                                  Planned Hours
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                                  Actual Hours
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                                  Tasks
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                                  Overdue
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                                  Actions
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                              {employees
-                                .find((e) => e.id === selectedEmployeeForPerformance)
-                                ?.weeklyRecords.map((record, idx) => (
-                                  <tr key={idx} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                      {new Date(
-                                        record.startDate
-                                      ).toLocaleDateString()}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                      {new Date(record.endDate).toLocaleDateString()}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                      {record.plannedWorkHours}h
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                      {record.actualWorkHours}h
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                      {record.assignedTasks}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                      {record.weeklyOverdueTasks}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm space-x-2">
-                                      <button
-                                        onClick={() => {
-                                          setSelectedEmployeeId(
-                                            selectedEmployeeForPerformance
-                                          );
-                                          handleEditWeeklyRecord(record, idx);
-                                        }}
-                                        className="px-3 py-1 bg-blue-300 text-white rounded hover:bg-blue-400 transition-colors"
-                                      >
-                                        Edit
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setSelectedEmployeeId(
-                                            selectedEmployeeForPerformance
-                                          );
-                                          handleDeleteWeeklyRecord(idx);
-                                        }}
-                                        className="px-3 py-1 bg-red-300 text-white rounded hover:bg-red-400 transition-colors"
-                                      >
-                                        Delete
-                                      </button>
-                                    </td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        <div className="bg-blue-50 px-6 py-4 border-t border-blue-200">
-                          <p className="text-sm text-gray-600">
-                            Total Records: {
-                              employees.find(
-                                (e) => e.id === selectedEmployeeForPerformance
-                              )?.weeklyRecords.length || 0
-                            }
-                          </p>
-                        </div>
-                      </div>
+                    {employees.find((e) => e.id === selectedEmployeeForPerformance) && (
+                      <WeeklyRecordsTable
+                        employee={
+                          employees.find(
+                            (e) => e.id === selectedEmployeeForPerformance
+                          )!
+                        }
+                        onAddRecord={() => {
+                          setSelectedEmployeeId(selectedEmployeeForPerformance);
+                          handleAddWeeklyRecord();
+                        }}
+                        onEditRecord={handleEditWeeklyRecord}
+                        onDeleteRecord={handleDeleteWeeklyRecord}
+                        onUpdateOverdueTasks={handleUpdateOverdueTasks}
+                        onUpdateAssignedTasks={handleUpdateAssignedTasks}
+                        onUpdateAllOverdueTasks={handleUpdateAllOverdueTasks}
+                      />
                     )}
                   </div>
                 )}
@@ -967,15 +897,21 @@ export default function Home() {
             >
               ← Back to List
             </button>
-            <WeeklyRecordsTable
-              employee={selectedEmployee}
-              onAddRecord={handleAddWeeklyRecord}
-              onEditRecord={handleEditWeeklyRecord}
-              onDeleteRecord={handleDeleteWeeklyRecord}
-              onUpdateOverdueTasks={handleUpdateOverdueTasks}
-              onUpdateAssignedTasks={handleUpdateAssignedTasks}
-              onUpdateAllOverdueTasks={handleUpdateAllOverdueTasks}
-            />
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <p className="text-gray-700">
+                Weekly performance records are now managed under the
+                <span className="font-semibold"> Manage Performance</span> tab.
+              </p>
+              <button
+                onClick={() => {
+                  setSelectedEmployeeForPerformance(selectedEmployee.id);
+                  setActiveView("manage-performance");
+                }}
+                className="mt-4 px-4 py-2 bg-purple-300 text-white rounded-lg hover:bg-purple-400 transition-colors"
+              >
+                Go to Manage Performance
+              </button>
+            </div>
           </div>
         )}
       </main>

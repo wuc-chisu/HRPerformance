@@ -16,6 +16,8 @@ export async function POST(request: Request) {
       weeklyOverdueTasks,
       overdueTasksDetails,
       allOverdueTasks,
+      allOverdueTasksDetails,
+      managerComment,
     } = body;
 
     const employee = await prisma.employee.findUnique({
@@ -58,6 +60,8 @@ export async function POST(request: Request) {
           : weeklyOverdueTasks,
         overdueTasksDetails: overdueTasksDetails || [],
         allOverdueTasks: allOverdueTasks || 0,
+        allOverdueTasksDetails: allOverdueTasksDetails || [],
+        managerComment: managerComment || null,
       },
     });
 
@@ -72,6 +76,8 @@ export async function POST(request: Request) {
       weeklyOverdueTasks: record.weeklyOverdueTasks,
       overdueTasksDetails: record.overdueTasksDetails || [],
       allOverdueTasks: record.allOverdueTasks || 0,
+      allOverdueTasksDetails: record.allOverdueTasksDetails || [],
+      managerComment: record.managerComment || "",
     });
   } catch (error) {
     console.error("Error creating weekly record:", error);

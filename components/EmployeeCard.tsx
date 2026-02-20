@@ -52,15 +52,23 @@ export default function EmployeeCard({
             <div>
               <p className="text-xs text-gray-600">Week Range</p>
               <p className="text-xs font-medium text-gray-900">
-                {new Date(latestWeek.startDate).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}{" "}
+                {(() => {
+                  const [year, month, day] = latestWeek.startDate.split('-');
+                  const date = new Date(Number(year), Number(month) - 1, Number(day));
+                  return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  });
+                })()}{" "}
                 -{" "}
-                {new Date(latestWeek.endDate).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
+                {(() => {
+                  const [year, month, day] = latestWeek.endDate.split('-');
+                  const date = new Date(Number(year), Number(month) - 1, Number(day));
+                  return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  });
+                })()}
               </p>
             </div>
             <div>
