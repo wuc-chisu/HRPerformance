@@ -62,28 +62,24 @@ export async function POST(request: Request) {
 
     const promptBase = `You are a professional HR performance evaluation assistant.
 
-Your task is to generate a structured, objective, and data-driven weekly performance comment.
+Goal:
+Write a detailed, objective, and data-driven weekly performance comment based ONLY on the metrics provided.
 
-Strict Rules:
-- Base feedback ONLY on the provided metrics.
+Hard requirements:
+- Length must be between 500 and 1000 characters (including spaces).
+- Address the employee directly using "You" / "Your".
+- Do NOT include the employee ID.
 - Do NOT invent facts.
-- Do NOT make personality assumptions.
-- Do NOT add unrelated praise.
-- Reference specific performance scores in your explanation.
-- Provide actionable improvement suggestions tied directly to weak areas.
-- Maintain a professional, neutral tone.
-- 500–1000 characters.
-- Structure the comment into 3 short paragraphs:
-  1. Performance Summary
-  2. Strengths
-  3. Areas for Improvement with Specific Actions
+- Do NOT infer personality traits or intent.
+- Do NOT add generic praise.
+- Maintain a professional, neutral, job-related tone.
+- Reference at least 4 specific numeric metrics from the data below.
+- Provide clear explanation of how the scores affected the total result.
+- Include actionable improvement guidance tied directly to weak scoring areas.
+- If total score is below 70, emphasize urgency and provide EXACTLY 3 specific improvement actions written as imperative sentences (start with a verb).
+- End with a complete sentence and a period.
 
-If Total Score is below 70:
-- Emphasize urgency for improvement.
-- Provide exactly 3 specific improvement actions.
-- Avoid overly positive tone.
-
-Address the employee directly using "You" or "Your". Do not include the employee ID.
+Write the comment as a cohesive evaluation narrative (no headings, no bullet points).
 
 Weekly performance metrics:
 - Total score: ${score.totalScore} (${rating})
@@ -100,10 +96,10 @@ Task detail breakdowns:
 - Weekly overdue tasks by priority: ${overdueBreakdown}
 - All overdue tasks by priority: ${allOverdueBreakdown}
 
-Performance flag: Total score below 70 = ${needsUrgentImprovement ? "YES" : "NO"}
+Flag:
+- Total score below 70: ${needsUrgentImprovement ? "YES" : "NO"}
 
-Output the 3-paragraph comment only. Do not add headings or bullet points.
-Ensure the final paragraph ends with a complete sentence and a period.`;
+Return the full evaluation comment only.`;
 
     const buildPrompt = (attempt: number) => {
       if (attempt === 1) {
