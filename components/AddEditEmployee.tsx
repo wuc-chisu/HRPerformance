@@ -30,7 +30,6 @@ export default function AddEditEmployee({
     department: employee?.department || "",
     position: employee?.position || "",
     joinDate: employee?.joinDate || "",
-    overallOverdueTasks: employee?.overallOverdueTasks || 0,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -75,7 +74,7 @@ export default function AddEditEmployee({
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "overallOverdueTasks" ? parseInt(value) || 0 : value,
+      [name]: value,
     }));
     // Clear error for this field
     if (errors[name]) {
@@ -214,24 +213,6 @@ export default function AddEditEmployee({
               <p className="text-red-600 text-sm mt-1">{errors.joinDate}</p>
             )}
             <p className="text-gray-500 text-xs mt-1">Format: YYYY-MM-DD</p>
-          </div>
-
-          {/* Overall Overdue Tasks */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Overall Overdue Tasks
-            </label>
-            <input
-              type="number"
-              name="overallOverdueTasks"
-              value={formData.overallOverdueTasks}
-              onChange={handleChange}
-              min="0"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-            />
-            <p className="text-gray-500 text-xs mt-1">
-              Number of overdue tasks across all weeks
-            </p>
           </div>
 
           {/* Form Actions */}

@@ -24,6 +24,13 @@ export default function EvaluationPage() {
     }
   }, []);
 
+  // Set document title when evaluation data loads
+  useEffect(() => {
+    if (evaluationData) {
+      document.title = `Weekly Performance Report_${evaluationData.employeeName}`;
+    }
+  }, [evaluationData]);
+
   if (!evaluationData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">

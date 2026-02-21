@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { WeeklyRecord } from "@/lib/employees";
+import { formatDateInPacific } from "@/lib/dateUtils";
 import {
   calculateWeeklyPerformanceScore,
   getPerformanceRating,
@@ -371,15 +372,11 @@ export default function WeeklyPerformanceEvaluation({
           </h3>
           <p className="text-sm text-gray-600">
             {employeeName} • Week of{" "}
-            {(() => {
-              const [year, month, day] = record.startDate.split('-');
-              const date = new Date(Number(year), Number(month) - 1, Number(day));
-              return date.toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              });
-            })()}
+            {formatDateInPacific(record.startDate, {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
           </p>
         </div>
         <button
@@ -710,7 +707,7 @@ export default function WeeklyPerformanceEvaluation({
                 disabled={isGenerating}
                 className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:text-blue-300"
               >
-                {isGenerating ? "Generating..." : "Regenerate"}
+                {isGenerating ? "Generating..." : (commentText ? "Regenerate" : "Generate Comment")}
               </button>
               <button
                 onClick={() => setEditingComment(true)}
@@ -742,7 +739,7 @@ export default function WeeklyPerformanceEvaluation({
             />
             <div className="flex gap-2">
               <button
-                onClick={handleSaveComment}
+                onClick={() => void handleSaveComment()}
                 disabled={isSaving}
                 className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
               >

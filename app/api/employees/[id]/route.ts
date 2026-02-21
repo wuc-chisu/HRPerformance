@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 
 // PUT update employee
@@ -34,7 +35,7 @@ export async function PUT(
         name,
         department,
         position,
-        joinDate: new Date(joinDate),
+        joinDate: parseDateForDatabase(joinDate),
         overallOverdueTasks: overallOverdueTasks || 0,
       },
       include: {

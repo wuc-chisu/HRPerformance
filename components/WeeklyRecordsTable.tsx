@@ -2,6 +2,7 @@
 
 import { Employee, WeeklyRecord } from "@/lib/employees";
 import { calculateWeeklyPerformanceScore } from "@/lib/performanceScoring";
+import { formatDateInPacific } from "@/lib/dateUtils";
 import { useState } from "react";
 import AssignedTaskManager from "./AssignedTaskManager";
 import OverdueTaskManager from "./OverdueTaskManager";
@@ -177,26 +178,18 @@ export default function WeeklyRecordsTable({
                   className="hover:bg-gray-50 transition-colors"
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {(() => {
-                      const [year, month, day] = record.startDate.split('-');
-                      const date = new Date(Number(year), Number(month) - 1, Number(day));
-                      return date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      });
-                    })()}
+                    {formatDateInPacific(record.startDate, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {(() => {
-                      const [year, month, day] = record.endDate.split('-');
-                      const date = new Date(Number(year), Number(month) - 1, Number(day));
-                      return date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      });
-                    })()}
+                    {formatDateInPacific(record.endDate, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </td>
                   <td
                     className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${
@@ -330,6 +323,7 @@ export default function WeeklyRecordsTable({
             setShowOverdueManager(false);
             setSelectedRecord(null);
           }}
+          title="Weekly Overdue Tasks Details"
         />
       )}
 
@@ -357,6 +351,7 @@ export default function WeeklyRecordsTable({
             setShowAllOverdueManager(false);
             setSelectedAllOverdueRecord(null);
           }}
+          title="All Overdue Tasks Details"
         />
       )}
     </div>

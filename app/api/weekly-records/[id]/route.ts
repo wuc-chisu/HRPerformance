@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 
 // PUT update weekly record
@@ -44,11 +45,9 @@ export async function PUT(
 
     console.log("✅ Record found, proceeding with update");
 
-    // Parse dates
-    const [sy, sm, sd] = startDate.split("-");
-    const [ey, em, ed] = endDate.split("-");
-    const psd = new Date(Number(sy), Number(sm) - 1, Number(sd));
-    const ped = new Date(Number(ey), Number(em) - 1, Number(ed));
+    // Parse dates for Pacific Time
+    const psd = parseDateForDatabase(startDate);
+    const ped = parseDateForDatabase(endDate);
 
     console.log("🗓️ Dates parsed");
 

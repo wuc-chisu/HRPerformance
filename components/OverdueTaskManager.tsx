@@ -8,6 +8,7 @@ interface OverdueTaskManagerProps {
   weeklyOverdueTasks: number;
   onUpdate: (details: OverdueTaskDetail[]) => void;
   onClose: () => void;
+  title?: string;
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -23,6 +24,7 @@ export default function OverdueTaskManager({
   weeklyOverdueTasks,
   onUpdate,
   onClose,
+  title = "Overdue Tasks Details",
 }: OverdueTaskManagerProps) {
   const [details, setDetails] = useState<OverdueTaskDetail[]>(overdueTasksDetails);
   const [taskCount, setTaskCount] = useState("");
@@ -68,7 +70,7 @@ export default function OverdueTaskManager({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="bg-gradient-to-r from-red-300 to-red-400 px-6 py-4 sticky top-0">
-          <h2 className="text-2xl font-bold text-white">Overdue Tasks Details</h2>
+          <h2 className="text-2xl font-bold text-white">{title}</h2>
           <p className="text-red-100 text-sm mt-1">
             Total: {currentTotal} tasks
           </p>

@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 
 // POST new weekly record
@@ -46,8 +47,8 @@ export async function POST(request: Request) {
     const record = await prisma.weeklyRecord.create({
       data: {
         employeeId: employee.id,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate: parseDateForDatabase(startDate),
+        endDate: parseDateForDatabase(endDate),
         plannedWorkHours,
         actualWorkHours,
         assignedTasks: assignedTasksValue,

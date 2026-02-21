@@ -30,7 +30,7 @@ export interface Employee {
   department: string;
   position: string;
   joinDate: string;
-  overallOverdueTasks: number;
+  overallOverdueTasks?: number;
   weeklyRecords: WeeklyRecord[];
 }
 

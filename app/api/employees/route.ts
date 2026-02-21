@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 
 // GET all employees with their weekly records
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
         name,
         department,
         position,
-        joinDate: new Date(joinDate),
+        joinDate: parseDateForDatabase(joinDate),
         overallOverdueTasks: overallOverdueTasks || 0,
       },
       include: {

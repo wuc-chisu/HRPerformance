@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { WeeklyRecord } from "@/lib/employees";
+import { parseDateInPacific } from "@/lib/dateUtils";
 
 interface AddEditWeeklyRecordProps {
   record?: WeeklyRecord;
@@ -39,8 +40,8 @@ export default function AddEditWeeklyRecord({
     if (!formData.endDate) newErrors.endDate = "End date is required";
 
     if (formData.startDate && formData.endDate) {
-      const startDate = new Date(formData.startDate);
-      const endDate = new Date(formData.endDate);
+      const startDate = parseDateInPacific(formData.startDate);
+      const endDate = parseDateInPacific(formData.endDate);
       if (startDate >= endDate) {
         newErrors.endDate = "End date must be after start date";
       }

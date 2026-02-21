@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Employee } from "@/lib/employees";
+import { formatCompactDate, formatShortDate } from "@/lib/dateUtils";
 import EmployeeCard from "@/components/EmployeeCard";
 import WeeklyRecordsTable from "@/components/WeeklyRecordsTable";
 import PerformanceDashboard from "@/components/PerformanceDashboard";
@@ -492,23 +493,15 @@ export default function Home() {
           >
             Manage Performance
           </button>
-          {selectedEmployee && (
-            <button
-              onClick={() => setSelectedEmployeeId(null)}
-              className="ml-auto px-4 py-2 bg-red-300 text-white rounded-lg hover:bg-red-400 transition-colors"
-            >
-              ✕ Close Details
-            </button>
-          )}
         </div>
 
         {/* Dashboard View */}
-        {activeView === "dashboard" && !selectedEmployee && (
+        {activeView === "dashboard" && (
           <PerformanceDashboard employees={employees} />
         )}
 
         {/* Employees View */}
-        {activeView === "employees" && !selectedEmployee && (
+        {activeView === "employees" && (
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
@@ -542,7 +535,7 @@ export default function Home() {
         )}
 
         {/* Manage Employees View */}
-        {activeView === "manage" && !selectedEmployee && (
+        {activeView === "manage" && (
           <div>
             <div className="mb-6 flex justify-between items-start">
               <div>
@@ -591,9 +584,6 @@ export default function Home() {
                         Hire Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Overdue Tasks
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -614,18 +604,7 @@ export default function Home() {
                           {employee.position}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {new Date(employee.joinDate).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              employee.overallOverdueTasks > 0
-                                ? "bg-red-100 text-red-800"
-                                : "bg-green-100 text-green-800"
-                            }`}
-                          >
-                            {employee.overallOverdueTasks}
-                          </span>
+                          {formatCompactDate(employee.joinDate)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2 flex">
                           <button
@@ -735,15 +714,7 @@ export default function Home() {
                             : "bg-purple-100 text-gray-700 border border-purple-200 hover:bg-purple-50"
                         }`}
                       >
-                        {new Date(week.start).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}{" "}
-                        -{" "}
-                        {new Date(week.end).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
+                        {formatShortDate(week.start)} - {formatShortDate(week.end)}
                       </button>
                     ))}
                   </div>
@@ -810,33 +781,6 @@ export default function Home() {
                     )}
                   </div>
                 )}
-            </div>
-          </div>
-        )}
-
-        {/* Selected Employee Details */}
-        {selectedEmployee && activeView === "employees" && (
-          <div className="space-y-6">
-            <button
-              onClick={() => setSelectedEmployeeId(null)}
-              className="px-4 py-2 bg-purple-200 text-gray-700 rounded-lg hover:bg-purple-300 transition-colors"
-            >
-              ← Back to List
-            </button>
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <p className="text-gray-700">
-                Weekly performance records are now managed under the
-                <span className="font-semibold"> Manage Performance</span> tab.
-              </p>
-              <button
-                onClick={() => {
-                  setSelectedEmployeeForPerformance(selectedEmployee.id);
-                  setActiveView("manage-performance");
-                }}
-                className="mt-4 px-4 py-2 bg-purple-300 text-white rounded-lg hover:bg-purple-400 transition-colors"
-              >
-                Go to Manage Performance
-              </button>
             </div>
           </div>
         )}
