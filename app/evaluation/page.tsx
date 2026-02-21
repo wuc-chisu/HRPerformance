@@ -11,6 +11,11 @@ export default function EvaluationPage() {
     employeeId?: string;
   } | null>(null);
 
+  // Set initial title immediately to override root layout
+  useEffect(() => {
+    document.title = "Weekly Performance Report";
+  }, []);
+
   useEffect(() => {
     // Get data from sessionStorage
     const dataStr = sessionStorage.getItem("evaluationData");
@@ -27,7 +32,11 @@ export default function EvaluationPage() {
   // Set document title when evaluation data loads
   useEffect(() => {
     if (evaluationData) {
-      document.title = `Weekly Performance Report_${evaluationData.employeeName}`;
+      // Format date as YYYYMMDD (8 digits)
+      const startDate = evaluationData.record.startDate.replace(/-/g, '');
+      const newTitle = `Weekly Performance Report_${evaluationData.employeeName}_${startDate}`;
+      console.log('Setting document title to:', newTitle);
+      document.title = newTitle;
     }
   }, [evaluationData]);
 
