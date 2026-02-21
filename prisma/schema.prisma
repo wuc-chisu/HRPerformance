@@ -28,8 +28,8 @@ model WeeklyRecord {
   employee              Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   startDate             DateTime
   endDate               DateTime
-  plannedWorkHours      Int
-  actualWorkHours       Int
+  plannedWorkHours      Float
+  actualWorkHours       Float
   assignedTasks         Int
   assignedTasksDetails  Json     @default("[]")  // JSON array storing assigned task priority breakdown
   weeklyOverdueTasks    Int

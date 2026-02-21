@@ -96,8 +96,10 @@ export default function WeeklyRecordsTable({
     };
     sessionStorage.setItem("evaluationData", JSON.stringify(evaluationData));
     
-    // Open evaluation in new window
-    window.open("/evaluation", "_blank");
+    // Open evaluation in new window with a small delay to ensure sessionStorage is written
+    setTimeout(() => {
+      window.open("/evaluation", "_blank");
+    }, 50);
   };
 
   const allOverdueTotal =

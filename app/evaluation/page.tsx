@@ -23,22 +23,19 @@ export default function EvaluationPage() {
       try {
         const data = JSON.parse(dataStr);
         setEvaluationData(data);
+        
+        // Set title immediately with available data
+        const startDate = data.record.startDate.replace(/-/g, '');
+        const newTitle = `Weekly Performance Report_${data.employeeName}_${startDate}`;
+        document.title = newTitle;
+        console.log('Setting document title to:', newTitle);
       } catch (error) {
         console.error("Failed to parse evaluation data:", error);
       }
+    } else {
+      console.log("No evaluation data found in sessionStorage");
     }
   }, []);
-
-  // Set document title when evaluation data loads
-  useEffect(() => {
-    if (evaluationData) {
-      // Format date as YYYYMMDD (8 digits)
-      const startDate = evaluationData.record.startDate.replace(/-/g, '');
-      const newTitle = `Weekly Performance Report_${evaluationData.employeeName}_${startDate}`;
-      console.log('Setting document title to:', newTitle);
-      document.title = newTitle;
-    }
-  }, [evaluationData]);
 
   if (!evaluationData) {
     return (

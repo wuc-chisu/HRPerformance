@@ -79,7 +79,7 @@ export default function AddEditWeeklyRecord({
       ...prev,
       [name]: ["startDate", "endDate"].includes(name)
         ? value
-        : Math.max(0, parseInt(value) || 0),
+        : Math.max(0, parseFloat(value) || 0),
     }));
     // Clear error for this field
     if (errors[name]) {
