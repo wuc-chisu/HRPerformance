@@ -11,14 +11,17 @@ export default function PerformanceDashboard({
 }: PerformanceDashboardProps) {
   const stats = {
     totalEmployees: employees.length,
-    withOverdueTasks: employees.filter((e) => e.overallOverdueTasks > 0).length,
+    withOverdueTasks: employees.filter((e) => {
+      const allOverdueCount = e.weeklyRecords[0]?.allOverdueTasks ?? e.overallOverdueTasks ?? 0;
+      return allOverdueCount > 0;
+    }).length,
     perfectAttendance: employees.filter(
       (e) =>
         e.weeklyRecords[0] &&
         e.weeklyRecords[0].actualWorkHours >= e.weeklyRecords[0].plannedWorkHours
     ).length,
     totalOverdueTasks: employees.reduce(
-      (sum, e) => sum + e.overallOverdueTasks,
+      (sum, e) => sum + (e.weeklyRecords[0]?.allOverdueTasks ?? e.overallOverdueTasks ?? 0),
       0
     ),
   };
@@ -31,9 +34,10 @@ export default function PerformanceDashboard({
         count: 0,
         overdue: 0,
       };
+      const overdueCount = emp.weeklyRecords[0]?.allOverdueTasks ?? emp.overallOverdueTasks ?? 0;
       departments.set(emp.department, {
         count: existing.count + 1,
-        overdue: existing.overdue + emp.overallOverdueTasks,
+        overdue: existing.overdue + overdueCount,
       });
     });
 

@@ -11,9 +11,21 @@ export default function EvaluationPage() {
     employeeId?: string;
   } | null>(null);
 
-  // Set initial title immediately to override root layout
-  useEffect(() => {
+  const applyTitle = (data?: {
+    record: WeeklyRecord;
+    employeeName: string;
+  }) => {
+    if (data) {
+      const startDate = data.record.startDate.replace(/-/g, "");
+      document.title = `Weekly Performance Report_${data.employeeName}_${startDate}`;
+      return;
+    }
+
     document.title = "Weekly Performance Report";
+  };
+
+  useEffect(() => {
+    applyTitle();
   }, []);
 
   useEffect(() => {
@@ -23,12 +35,12 @@ export default function EvaluationPage() {
       try {
         const data = JSON.parse(dataStr);
         setEvaluationData(data);
-        
-        // Set title immediately with available data
-        const startDate = data.record.startDate.replace(/-/g, '');
-        const newTitle = `Weekly Performance Report_${data.employeeName}_${startDate}`;
-        document.title = newTitle;
-        console.log('Setting document title to:', newTitle);
+        applyTitle(data);
+
+        // Re-apply after a short delay to avoid HMR/layout overrides
+        setTimeout(() => {
+          applyTitle(data);
+        }, 100);
       } catch (error) {
         console.error("Failed to parse evaluation data:", error);
       }
@@ -36,6 +48,24 @@ export default function EvaluationPage() {
       console.log("No evaluation data found in sessionStorage");
     }
   }, []);
+
+  useEffect(() => {
+    if (!evaluationData) {
+      return;
+    }
+
+    const handleReapplyTitle = () => {
+      applyTitle(evaluationData);
+    };
+
+    document.addEventListener("visibilitychange", handleReapplyTitle);
+    window.addEventListener("focus", handleReapplyTitle);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleReapplyTitle);
+      window.removeEventListener("focus", handleReapplyTitle);
+    };
+  }, [evaluationData]);
 
   if (!evaluationData) {
     return (

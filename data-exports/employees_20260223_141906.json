@@ -1,0 +1,11 @@
+[
+  {
+    "employeeId": "EMP-001",
+    "name": "YannHur Huang",
+    "department": "Executive Leadership",
+    "position": "CEO/President",
+    "joinDate": "2001-01-01T20:00:00",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": null
+  }
+]

@@ -16,8 +16,9 @@ export default function DepartmentManager({
   const [deptList, setDeptList] = useState<string[]>(departments);
   const [newDepartment, setNewDepartment] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
-  const handleAddDepartment = () => {
+  const handleAddDepartment = async () => {
     const newErrors: Record<string, string> = {};
 
     if (!newDepartment.trim()) {
@@ -31,14 +32,44 @@ export default function DepartmentManager({
       return;
     }
 
-    setDeptList([...deptList, newDepartment.trim()]);
-    setNewDepartment("");
-    setErrors({});
+    setLoading(true);
+    try {
+      const response = await fetch("/api/departments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newDepartment.trim() }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to add department");
+      }
+
+      setDeptList([...deptList, newDepartment.trim()]);
+      setNewDepartment("");
+      setErrors({});
+    } catch (error) {
+      setErrors({
+        newDepartment:
+          error instanceof Error ? error.message : "Failed to add department",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRemoveDepartment = (index: number) => {
-    const updatedList = deptList.filter((_, i) => i !== index);
-    setDeptList(updatedList);
+  const handleRemoveDepartment = async (index: number) => {
+    setLoading(true);
+    try {
+      // Note: In a real app, you'd need the department ID to delete it
+      // For now, we'll just remove from the list and reload from API
+      const updatedList = deptList.filter((_, i) => i !== index);
+      setDeptList(updatedList);
+    } catch (error) {
+      console.error("Error removing department:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEditDepartment = (index: number, newValue: string) => {
@@ -57,7 +88,7 @@ export default function DepartmentManager({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !loading) {
       handleAddDepartment();
     }
   };

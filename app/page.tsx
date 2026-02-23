@@ -55,9 +55,10 @@ export default function Home() {
     (_, i) => currentYear - 5 + i
   );
 
-  // Load employees from API on mount
+  // Load employees and departments from API on mount
   useEffect(() => {
     fetchEmployees();
+    fetchDepartments();
   }, []);
 
   const fetchEmployees = async () => {
@@ -72,6 +73,18 @@ export default function Home() {
       alert("Failed to load employees");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await fetch("/api/departments");
+      if (!response.ok) throw new Error("Failed to fetch departments");
+      const data = await response.json();
+      setDepartments(data.map((dept: any) => dept.name));
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      // Keep the default departments if fetch fails
     }
   };
 

@@ -95,7 +95,7 @@ export default function WeeklyRecordsTable({
       employeeId: employee.id,
     };
     sessionStorage.setItem("evaluationData", JSON.stringify(evaluationData));
-    
+
     // Open evaluation in new window with a small delay to ensure sessionStorage is written
     setTimeout(() => {
       window.open("/evaluation", "_blank");

@@ -78,6 +78,9 @@ Requirements:
 - Avoid excessive breakdown of every metric.
 - Do NOT list all numbers repeatedly — reference only the most impactful ones.
 - End with a complete sentence.
+${needsUrgentImprovement ?
+  "- Because the total score is below 70, append a final paragraph with this exact warning text: This week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately." :
+  ""}
 
 Focus on clarity, priority, and improvement — not full statistical explanation.
 

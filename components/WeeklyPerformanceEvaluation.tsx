@@ -146,6 +146,23 @@ export default function WeeklyPerformanceEvaluation({
   const rating = getPerformanceRating(score.totalScore);
   const textColor = getPerformanceColor(score.totalScore);
   const bgColor = getPerformanceBgColor(score.totalScore);
+  const warningAdvisory =
+    "This week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately.";
+
+  const appendWarning = (text: string) => {
+    if (score.totalScore >= 70) {
+      return text;
+    }
+
+    if (text.includes(warningAdvisory)) {
+      return text;
+    }
+
+    const trimmed = text.trim();
+    return trimmed.length > 0
+      ? `${trimmed}\n\n${warningAdvisory}`
+      : warningAdvisory;
+  };
 
   const handlePrint = () => {
     window.print();
@@ -165,6 +182,7 @@ export default function WeeklyPerformanceEvaluation({
 
     const commentToSave =
       overrideComment !== undefined ? overrideComment : commentText;
+    const normalizedComment = appendWarning(commentToSave);
     
     setIsSaving(true);
     try {
@@ -179,7 +197,7 @@ export default function WeeklyPerformanceEvaluation({
         overdueTasksDetails: record.overdueTasksDetails,
         allOverdueTasks: record.allOverdueTasks,
         allOverdueTasksDetails: record.allOverdueTasksDetails,
-        managerComment: commentToSave,
+        managerComment: normalizedComment,
       };
       
       console.log(`Saving comment for record ${record.recordId}:`, payload);
@@ -212,7 +230,7 @@ export default function WeeklyPerformanceEvaluation({
       if (response.ok) {
         setEditingComment(false);
         if (overrideComment !== undefined) {
-          setCommentText(overrideComment);
+          setCommentText(normalizedComment);
         }
         if (!options?.silent) {
           alert("Comment saved successfully!");
@@ -301,7 +319,7 @@ export default function WeeklyPerformanceEvaluation({
           errorPayload = null;
         }
         if (errorPayload?.error === "GEMINI_QUOTA_EXCEEDED") {
-          const fallback = buildFallbackComment();
+          const fallback = appendWarning(buildFallbackComment());
           setCommentText(fallback);
           await handleSaveComment(fallback, { silent: true });
           setGenerateMessage(
@@ -319,8 +337,9 @@ export default function WeeklyPerformanceEvaluation({
       const generated = data?.comment?.trim();
       if (!generated) return;
 
-      setCommentText(generated);
-      await handleSaveComment(generated, { silent: true });
+      const normalized = appendWarning(generated);
+      setCommentText(normalized);
+      await handleSaveComment(normalized, { silent: true });
       setGenerateMessage("AI comment generated successfully.");
     } catch (error) {
       console.error("Error generating overall comment:", error);
@@ -335,6 +354,12 @@ export default function WeeklyPerformanceEvaluation({
     if (!record.recordId) return;
     if (record.managerComment && record.managerComment.trim().length > 0) return;
   }, [record, employeeName]);
+
+  const warningIndex = commentText.indexOf(warningAdvisory);
+  const displayComment =
+    warningIndex >= 0
+      ? commentText.slice(0, warningIndex).trimEnd()
+      : commentText;
 
   return (
     <>
@@ -754,9 +779,18 @@ export default function WeeklyPerformanceEvaluation({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-800 whitespace-pre-wrap">
-            {commentText || <span className="italic text-gray-500">No comment added yet</span>}
-          </p>
+          <div className="space-y-2">
+            <p className="text-sm text-gray-800 whitespace-pre-wrap">
+              {displayComment || (
+                <span className="italic text-gray-500">No comment added yet</span>
+              )}
+            </p>
+            {score.totalScore < 70 && (
+              <p className="text-sm font-bold text-red-600">
+                {warningAdvisory}
+              </p>
+            )}
+          </div>
         )}
       </div>
     </div>
