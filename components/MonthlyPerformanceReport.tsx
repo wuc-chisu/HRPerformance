@@ -143,7 +143,7 @@ San Jose, CA 95118`;
     try {
       const formData = new FormData();
       formData.append("to", employee.email);
-      formData.append("bcc", "yannhuang@wuc.edu, yuguo@wuc.edu");
+      formData.append("bcc", "chisu@wuc.edu, yannhuang@wuc.edu, yuguo@wuc.edu");
       formData.append("subject", monthlySubject);
       formData.append("body", emailBody);
       emailAttachments.forEach((file) => {
@@ -471,7 +471,7 @@ San Jose, CA 95118`;
               To: {employee.email || "(No employee email)"}
             </p>
             <p className="text-sm text-gray-600 mb-2">
-              BCC: yannhuang@wuc.edu, yuguo@wuc.edu
+              BCC: chisu@wuc.edu, yannhuang@wuc.edu, yuguo@wuc.edu
             </p>
             <p className="text-sm font-semibold text-gray-900 mb-2">
               Subject: {monthlySubject}
@@ -739,7 +739,7 @@ San Jose, CA 95118`;
         {monthlyAverage < 70 && (
           <div className="mt-4 bg-red-50 rounded-lg p-4 border border-red-200 print-avoid-break">
             <p className="text-sm font-bold text-red-600">
-              ⚠️ WARNING: Monthly average is below 70%. If the monthly average remains below 70% for three consecutive months, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination.
+              ⚠️ Performance Review Notice: A monthly performance average below 70% triggers a formal warning review under the Progressive Discipline & Performance Warning Policy. Accumulation of three confirmed warnings may lead to further disciplinary action, including reduction of work hours or termination of employment.
             </p>
           </div>
         )}

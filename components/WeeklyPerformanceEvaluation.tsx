@@ -256,7 +256,7 @@ Whitewater University of California
     try {
       const formData = new FormData();
       formData.append("to", employeeEmail);
-      formData.append("bcc", "yannhuang@wuc.edu, yuguo@wuc.edu");
+      formData.append("bcc", "chisu@wuc.edu, yannhuang@wuc.edu, yuguo@wuc.edu");
       formData.append("subject", weeklySubject);
       formData.append("body", emailBody);
       emailAttachments.forEach((file) => {
@@ -598,7 +598,7 @@ Whitewater University of California
             To: {employeeEmail || "(No employee email)"}
           </p>
           <p className="text-sm text-gray-600 mb-2">
-            BCC: yannhuang@wuc.edu, yuguo@wuc.edu
+            BCC: chisu@wuc.edu, yannhuang@wuc.edu, yuguo@wuc.edu
           </p>
           <p className="text-sm font-semibold text-gray-900 mb-2">
             Subject: {weeklySubject}
