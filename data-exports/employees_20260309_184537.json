@@ -1,0 +1,1114 @@
+[
+  {
+    "employeeId": "FAC250006",
+    "name": "Chi Su",
+    "department": "Executive Leadership",
+    "position": "Executive Secretary/HR",
+    "joinDate": "2025-07-01T19:00:00",
+    "workAuthorizationStatus": "U.S. Permanent Resident",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": [
+      {
+        "startDate": "2026-03-01T20:00:00",
+        "endDate": "2026-03-07T20:00:00",
+        "plannedWorkHours": 40,
+        "actualWorkHours": 39,
+        "assignedTasks": 13,
+        "assignedTasksDetails": [
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 8,
+            "priority": "high"
+          },
+          {
+            "count": 4,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 0,
+        "overdueTasksDetails": [],
+        "allOverdueTasks": 1,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "normal"
+          }
+        ],
+        "managerComment": "You achieved an excellent overall score of 94.38 this week, reflecting strong performance. Your task priority handling was exceptional, scoring a perfect 20/20, demonstrating excellent judgment in managing urgent and high-priority assignments. Your task completion score of 25/25 also indicates consistent delivery on assigned work, with no weekly overdue tasks. This consistent execution across 13 assigned tasks is highly commendable and contributes significantly to team productivity.\\n\\nWhile your weekly performance is strong, a critical area for immediate attention is the presence of one overdue task, which impacted your Past Due Management score. Although it is a normal priority task, any overdue item requires prompt resolution to maintain optimal workflow and prevent accumulation. Addressing this single outstanding task is crucial for ensuring all commitments are met in a timely manner.\\n\\nTo address this, please prioritize resolving the existing overdue normal priority task immediately. Moving forward, implement a proactive daily review of your task list to identify and address potential delays before they become overdue. Consider setting reminders for upcoming deadlines, especially for normal priority tasks, to ensure consistent progress. Focusing on these actions will help maintain your excellent performance and ensure all tasks are completed within their designated timelines."
+      },
+      {
+        "startDate": "2026-02-22T20:00:00",
+        "endDate": "2026-02-28T20:00:00",
+        "plannedWorkHours": 40,
+        "actualWorkHours": 34,
+        "assignedTasks": 11,
+        "assignedTasksDetails": [
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 2,
+            "priority": "high"
+          },
+          {
+            "count": 8,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 0,
+        "overdueTasksDetails": [],
+        "allOverdueTasks": 1,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "normal"
+          }
+        ],
+        "managerComment": "Your performance this week is rated as Very Good with a total score of 86.25. You demonstrated exceptional task priority handling and task completion, achieving perfect scores of 20/20 and 25/25 respectively. This indicates strong effectiveness in managing and completing your assigned workload, particularly the urgent and high-priority items.\\n\\nHowever, an area requiring immediate attention is past due management, reflected in your score of 20/30. Specifically, there is one overdue 'normal' priority task that needs to be addressed promptly. While you completed all weekly tasks on time, the existing overdue item impacts overall efficiency and needs resolution.\\n\\nTo improve, please prioritize resolving the outstanding normal priority task without delay. Additionally, focus on consistently meeting your planned 40 work hours to ensure all assigned tasks are completed within their deadlines and prevent future backlogs. Proactive management of all tasks, regardless of priority, will further enhance your strong performance."
+      },
+      {
+        "startDate": "2026-02-15T20:00:00",
+        "endDate": "2026-02-21T20:00:00",
+        "plannedWorkHours": 24,
+        "actualWorkHours": 27.5,
+        "assignedTasks": 7,
+        "assignedTasksDetails": [
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 6,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 0,
+        "overdueTasksDetails": [],
+        "allOverdueTasks": 1,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "normal"
+          }
+        ],
+        "managerComment": "Your performance this week is excellent, achieving an overall score of 90. You demonstrated strong commitment by exceeding planned work hours and earned perfect scores in Work Hours Fulfillment, Task Priority Handling, and Task Completion. Your effective management of urgent tasks and completion of all assigned weekly tasks are highly commendable, significantly contributing to team objectives.\\n\\nWhile your overall performance is strong, your Past Due Management score of 20/30 indicates an area for immediate attention. Specifically, the presence of one existing overdue task requires your focus. Proactively addressing and resolving tasks before they become overdue is crucial for maintaining workflow efficiency and ensuring all commitments are met in a timely manner.\\n\\nTo enhance performance, please prioritize resolving the outstanding overdue task immediately. Moving forward, review your task planning and time allocation strategies to prevent future tasks from becoming overdue. Implementing a daily check-in on task statuses can help identify and address potential delays early. Your continued dedication to improvement will further strengthen your contributions."
+      },
+      {
+        "startDate": "2026-02-08T20:00:00",
+        "endDate": "2026-02-14T20:00:00",
+        "plannedWorkHours": 40,
+        "actualWorkHours": 37.5,
+        "assignedTasks": 8,
+        "assignedTasksDetails": [
+          {
+            "count": 4,
+            "priority": "high"
+          },
+          {
+            "count": 4,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 1,
+        "overdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "normal"
+          }
+        ],
+        "allOverdueTasks": 2,
+        "allOverdueTasksDetails": [
+          {
+            "count": 2,
+            "priority": "normal"
+          }
+        ],
+        "managerComment": "Your total score is 86.35 (Very Good). Work hours are 37.5h/40h and you recorded 1 weekly overdue tasks (all overdue: 2). Task priority handling is 20.00/20 and task completion is 22.92/25.\\n\\nStrengths include consistent effort toward planned hours and steady completion of assigned tasks. Maintaining clear task priorities is helping keep results on track.\\n\\nTo improve further, tighten the daily review of pending work, reduce overdue carryover, and maintain focus on high-impact tasks to lift past due management (20.00/30)."
+      }
+    ]
+  },
+  {
+    "employeeId": "FAC23003",
+    "name": "Jennifer Fu",
+    "department": "Office of Compliance",
+    "position": "Manager,Office of Compliance",
+    "joinDate": "2025-01-01T20:00:00",
+    "workAuthorizationStatus": "Other Work Visa",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": [
+      {
+        "startDate": "2026-03-01T20:00:00",
+        "endDate": "2026-03-07T20:00:00",
+        "plannedWorkHours": 25,
+        "actualWorkHours": 28.5,
+        "assignedTasks": 4,
+        "assignedTasksDetails": [
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 3,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 1,
+        "overdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "normal"
+          }
+        ],
+        "allOverdueTasks": 11,
+        "allOverdueTasksDetails": [
+          {
+            "count": 11,
+            "priority": "normal"
+          }
+        ],
+        "managerComment": "Your overall performance this week, with a score of 65.83%, is below expectation. You demonstrated excellent task priority handling (20/20) and successfully fulfilled planned work hours, even exceeding them. These strengths in managing task urgency and commitment to hours are commendable and provide a solid base for improvement.\\n\\nHowever, a critical area requiring immediate attention is your past due management, reflected by a score of 0/30.\\n\\nThis week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately."
+      },
+      {
+        "startDate": "2026-02-08T20:00:00",
+        "endDate": "2026-02-14T20:00:00",
+        "plannedWorkHours": 25,
+        "actualWorkHours": 25,
+        "assignedTasks": 4,
+        "assignedTasksDetails": [
+          {
+            "count": 3,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "weeklyOverdueTasks": 1,
+        "overdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "allOverdueTasks": 13,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 1,
+            "priority": "normal"
+          },
+          {
+            "count": 11,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "Your total score is 65.00, which is below expectation. Work hours (25h/25h) and task results need immediate improvement, and you recorded 1 weekly overdue tasks (all overdue: 13). Task priority handling is 20.00/20 and task completion is 15.00/25, which are pulling the total score down.\\n\\nStrengths are limited this week; the focus should be on stabilizing execution and reducing overdue work. Past due management is 5.00/30, which indicates overdue items are accumulating.\\n\\nAct now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks.\\n\\nIf weekly performance score is below 70%, automatically append a warning advisory stating:\\n“This week’s performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately."
+      }
+    ]
+  },
+  {
+    "employeeId": "FAC24005",
+    "name": "Kelly Yang",
+    "department": "Office of Compliance",
+    "position": "Compliance Specialist",
+    "joinDate": "2025-01-01T20:00:00",
+    "workAuthorizationStatus": "Other Work Visa",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": [
+      {
+        "startDate": "2026-03-01T20:00:00",
+        "endDate": "2026-03-07T20:00:00",
+        "plannedWorkHours": 40,
+        "actualWorkHours": 50,
+        "assignedTasks": 4,
+        "assignedTasksDetails": [],
+        "weeklyOverdueTasks": 0,
+        "overdueTasksDetails": [],
+        "allOverdueTasks": 3,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 2,
+            "priority": "normal"
+          }
+        ],
+        "managerComment": "Your performance this week achieved a good total score of 70, reflecting strong contributions. You demonstrated exceptional commitment by fulfilling 50 hours of work, exceeding your planned hours, and achieved perfect scores in both Task Priority Handling and Task Completion. This highlights your effective approach to managing and completing weekly assignments with precision and focus.\\n\\nHowever, a critical area requiring immediate attention is your Past Due Management, which scored 0/30. This is directly linked to the presence of 3 overdue tasks, including 1 urgent and 2 normal priority items. The existence of these overdue tasks significantly impacts your overall effectiveness and requires prompt resolution to prevent further accumulation and potential disruption.\\n\\nTo address this, immediately prioritize and clear the urgent overdue task. Next, develop a clear plan to resolve the two normal overdue tasks by the end of next week. Moving forward, proactively review your task list daily to prevent new tasks from becoming overdue. Your focused effort on these areas will significantly enhance your overall performance and task management efficiency."
+      },
+      {
+        "startDate": "2026-02-08T20:00:00",
+        "endDate": "2026-02-14T20:00:00",
+        "plannedWorkHours": 40,
+        "actualWorkHours": 42,
+        "assignedTasks": 11,
+        "assignedTasksDetails": [
+          {
+            "count": 5,
+            "priority": "normal"
+          },
+          {
+            "count": 2,
+            "priority": "high"
+          },
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 3,
+            "priority": "no priority"
+          }
+        ],
+        "weeklyOverdueTasks": 2,
+        "overdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "no priority"
+          },
+          {
+            "count": 1,
+            "priority": "normal"
+          }
+        ],
+        "allOverdueTasks": 5,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 3,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "Your total score is 77.22 (Good). Work hours are 42h/40h and you recorded 2 weekly overdue tasks (all overdue: 5). Task priority handling is 15.00/20 and task completion is 22.22/25.\\n\\nStrengths include consistent effort toward planned hours and steady completion of assigned tasks. Maintaining clear task priorities is helping keep results on track.\\n\\nTo improve further, tighten the daily review of pending work, reduce overdue carryover, and maintain focus on high-impact tasks to lift past due management (15.00/30).\\n\\nPlease correct this ticket to only have one Assignee: https://app.clickup.com/t/86acq542z"
+      }
+    ]
+  },
+  {
+    "employeeId": "EMP-001",
+    "name": "YannHur Huang",
+    "department": "Executive Leadership",
+    "position": "CEO/President",
+    "joinDate": "2015-08-01T19:00:00",
+    "workAuthorizationStatus": "U.S. Citizen",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": null
+  },
+  {
+    "employeeId": "FAC19006",
+    "name": "Yu Guo",
+    "department": "Executive Leadership",
+    "position": "COO/VP",
+    "joinDate": "2019-05-01T19:00:00",
+    "workAuthorizationStatus": "H-1B",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": [
+      {
+        "startDate": "2026-02-08T20:00:00",
+        "endDate": "2026-02-14T20:00:00",
+        "plannedWorkHours": 40,
+        "actualWorkHours": 0,
+        "assignedTasks": 5,
+        "assignedTasksDetails": [
+          {
+            "count": 3,
+            "priority": "no priority"
+          },
+          {
+            "count": 1,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "urgent"
+          }
+        ],
+        "weeklyOverdueTasks": 5,
+        "overdueTasksDetails": [
+          {
+            "count": 3,
+            "priority": "no priority"
+          },
+          {
+            "count": 1,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "urgent"
+          }
+        ],
+        "allOverdueTasks": 13,
+        "allOverdueTasksDetails": [
+          {
+            "count": 2,
+            "priority": "urgent"
+          },
+          {
+            "count": 2,
+            "priority": "high"
+          },
+          {
+            "count": 1,
+            "priority": "normal"
+          },
+          {
+            "count": 8,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "Your total score is 5.00, which is below expectation. Work hours (0h/40h) and task results need immediate improvement, and you recorded 5 weekly overdue tasks (all overdue: 13). Task priority handling is 5.00/20 and task completion is 0.00/25, which are pulling the total score down.\\n\\nStrengths are limited this week; the focus should be on stabilizing execution and reducing overdue work. Past due management is 0.00/30, which indicates overdue items are accumulating.\\n\\nAct now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks.\\n\\nThis week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately."
+      }
+    ]
+  },
+  {
+    "employeeId": "FAC25004",
+    "name": "Yingying Wang",
+    "department": "Enrollment & Student Services",
+    "position": "Registrar",
+    "joinDate": "2025-04-01T19:00:00",
+    "workAuthorizationStatus": "Other Work Visa",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": [
+      {
+        "startDate": "2026-03-01T20:00:00",
+        "endDate": "2026-03-07T20:00:00",
+        "plannedWorkHours": 24,
+        "actualWorkHours": 19.5,
+        "assignedTasks": 8,
+        "assignedTasksDetails": [
+          {
+            "count": 8,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 7,
+        "overdueTasksDetails": [
+          {
+            "count": 7,
+            "priority": "normal"
+          }
+        ],
+        "allOverdueTasks": 12,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 11,
+            "priority": "normal"
+          }
+        ],
+        "managerComment": "Your performance this week scored 43.44%, below expectations. A notable strength was your perfect 20/20 Task Priority Handling, demonstrating effective task identification. However, your task completion and past due management scores were significantly low, indicating critical areas for immediate improvement.\\n\\nThe most critical issue is 12 overdue tasks, including one high-priority item, evident in your 3.\\n\\nThis week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately."
+      },
+      {
+        "startDate": "2026-02-22T20:00:00",
+        "endDate": "2026-02-28T20:00:00",
+        "plannedWorkHours": 24,
+        "actualWorkHours": 20,
+        "assignedTasks": 6,
+        "assignedTasksDetails": [
+          {
+            "count": 3,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 2,
+            "priority": "high"
+          }
+        ],
+        "weeklyOverdueTasks": 1,
+        "overdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "normal"
+          }
+        ],
+        "allOverdueTasks": 2,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "managerComment": "Your overall performance this week is good, reflected by a total score of 78.33. You demonstrated excellent task priority handling, achieving a perfect score of 20/20, and maintained a strong task completion score of 22.5/25. These areas highlight your ability to effectively prioritize and successfully complete assigned work.\\n\\nHowever, there are critical areas requiring immediate attention. Your past due management score is significantly low at 15/30, directly correlating with the presence of 2 total overdue tasks, including 1 from this week. Additionally, your work hour fulfillment was below expectations, with 20 actual hours against 24 planned, impacting your overall contribution.\\n\\nTo improve, focus on immediately resolving all overdue tasks and proactively managing deadlines to prevent new ones. Enhance your time management to consistently meet planned work hours, ensuring full engagement and productivity. Your consistent effort in these areas will lead to a stronger overall performance."
+      },
+      {
+        "startDate": "2026-02-15T20:00:00",
+        "endDate": "2026-03-21T19:00:00",
+        "plannedWorkHours": 8,
+        "actualWorkHours": 7,
+        "assignedTasks": 2,
+        "assignedTasksDetails": [
+          {
+            "count": 1,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "weeklyOverdueTasks": 0,
+        "overdueTasksDetails": [],
+        "allOverdueTasks": 1,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "managerComment": "Your performance this week resulted in a good total score of 76.88. You demonstrated excellent task priority handling and achieved a perfect score in task completion, successfully completing all assigned tasks for the week. This reflects your strong ability to manage current workload effectively and focus on immediate priorities.\\n\\nHowever, a critical area requiring immediate attention is your past due management, reflected in a score of 10/30. Specifically, the presence of one high-priority overdue task needs to be addressed promptly. Additionally, your work hours were slightly below the planned 8 hours, impacting overall fulfillment.\\n\\nTo improve, prioritize resolving the outstanding high-priority overdue task immediately. Moving forward, ensure consistent adherence to planned work hours and proactively manage your task queue to prevent any tasks from becoming overdue. Focusing on these areas will significantly enhance your overall performance and efficiency."
+      },
+      {
+        "startDate": "2026-02-08T20:00:00",
+        "endDate": "2026-02-14T20:00:00",
+        "plannedWorkHours": 16,
+        "actualWorkHours": 26,
+        "assignedTasks": 8,
+        "assignedTasksDetails": [
+          {
+            "count": 7,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "weeklyOverdueTasks": 1,
+        "overdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "allOverdueTasks": 1,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "managerComment": "Your total score is 84.44 (Very Good). Work hours are 26h/16h and you recorded 1 weekly overdue tasks (all overdue: 1). Task priority handling is 20.00/20 and task completion is 19.44/25.\\n\\nStrengths include consistent effort toward planned hours and steady completion of assigned tasks. Maintaining clear task priorities is helping keep results on track.\\n\\nTo improve further, tighten the daily review of pending work, reduce overdue carryover, and maintain focus on high-impact tasks to lift past due management (20.00/30)."
+      }
+    ]
+  },
+  {
+    "employeeId": "EMP-004",
+    "name": "Yuxian Lim",
+    "department": "Academic Affairs",
+    "position": "Associate Dean, College of CSE",
+    "joinDate": "2025-01-01T20:00:00",
+    "workAuthorizationStatus": "H-1B",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": [
+      {
+        "startDate": "2026-03-10T19:00:00",
+        "endDate": "2026-03-16T19:00:00",
+        "plannedWorkHours": 26,
+        "actualWorkHours": 26,
+        "assignedTasks": 7,
+        "assignedTasksDetails": [
+          {
+            "count": 2,
+            "priority": "urgent"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 3,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "low"
+          }
+        ],
+        "weeklyOverdueTasks": 0,
+        "overdueTasksDetails": [],
+        "allOverdueTasks": 0,
+        "allOverdueTasksDetails": [],
+        "managerComment": "Your performance this week is exemplary, reflected in a perfect total score of 100. You consistently fulfilled all assigned work hours and demonstrated outstanding commitment. Your exceptional scores in Task Priority Handling, Task Completion, and Past Due Management highlight your strong organizational skills and dedication to timely delivery. This level of performance is highly commendable.\\n\\nCrucially, you successfully managed all 7 assigned tasks without any weekly or overall overdue items, including two urgent tasks. This indicates a proactive and highly effective approach to workload management and adherence to deadlines. There are no critical performance issues to address this week, which is a testament to your consistent high standards and meticulous work ethic.\\n\\nTo continue building on this excellent foundation, maintain your rigorous approach to task management and proactive communication. Consider sharing your best practices in task prioritization and completion with colleagues, fostering a collaborative environment. Explore avenues for continuous professional development to further enhance your strong capabilities. Keep up the outstanding work."
+      },
+      {
+        "startDate": "2026-02-22T20:00:00",
+        "endDate": "2026-02-28T20:00:00",
+        "plannedWorkHours": 26,
+        "actualWorkHours": 27,
+        "assignedTasks": 13,
+        "assignedTasksDetails": [
+          {
+            "count": 5,
+            "priority": "urgent"
+          },
+          {
+            "count": 2,
+            "priority": "high"
+          },
+          {
+            "count": 6,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 0,
+        "overdueTasksDetails": [],
+        "allOverdueTasks": 3,
+        "allOverdueTasksDetails": [
+          {
+            "count": 2,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "You achieved an excellent total score of 90 this week, demonstrating strong overall performance. Your task priority handling and task completion scores were perfect, indicating effective execution of your 13 assigned tasks. Additionally, you fulfilled assigned work hours, contributing consistently to team objectives.\\n\\nHowever, a critical area requiring immediate attention is your past due management. Despite having no weekly overdue tasks, you currently have 3 outstanding overdue tasks. This is reflected in your past due management score of 20/30 and needs to be addressed promptly to maintain high performance standards.\\n\\nTo improve in this area, please prioritize clearing all existing overdue tasks, focusing on the 2 normal priority and 1 no priority items. Implement a proactive system for tracking and managing your workload to prevent tasks from becoming overdue in the future. Consistent attention to these items will ensure all commitments are met on time."
+      },
+      {
+        "startDate": "2026-02-15T20:00:00",
+        "endDate": "2026-02-21T20:00:00",
+        "plannedWorkHours": 24,
+        "actualWorkHours": 10,
+        "assignedTasks": 12,
+        "assignedTasksDetails": [
+          {
+            "count": 9,
+            "priority": "normal"
+          },
+          {
+            "count": 2,
+            "priority": "high"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "weeklyOverdueTasks": 3,
+        "overdueTasksDetails": [
+          {
+            "count": 2,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "allOverdueTasks": 3,
+        "allOverdueTasksDetails": [
+          {
+            "count": 2,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "You demonstrated excellent performance in Task Priority Handling this week, achieving a perfect score. However, your overall performance score of 64.99% is below expectations, indicating areas for immediate improvement.\\n\\nA critical area for improvement is work hour fulfillment; you failed to fulfill assigned work hours. The presence of 3 overdue tasks also significantly impacted your Past Due Management score, highlighting a need for more diligent task completion and deadline adherence.\\n\\nTo improve, focus on consistently fulfilling assigned work hours and proactively managing your workload to prevent tasks from becoming overdue. Prioritize completing all current overdue tasks immediately and ensure new tasks are completed within deadlines to boost your overall performance.\\n\\nThis week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately."
+      },
+      {
+        "startDate": "2026-02-08T20:00:00",
+        "endDate": "2026-02-14T20:00:00",
+        "plannedWorkHours": 26,
+        "actualWorkHours": 25.5,
+        "assignedTasks": 13,
+        "assignedTasksDetails": [
+          {
+            "count": 7,
+            "priority": "normal"
+          },
+          {
+            "count": 4,
+            "priority": "high"
+          },
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "weeklyOverdueTasks": 4,
+        "overdueTasksDetails": [
+          {
+            "count": 3,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "allOverdueTasks": 7,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 4,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "Your total score is 79.79 (Good). Work hours are 25.5h/26h and you recorded 4 weekly overdue tasks (all overdue: 7). Task priority handling is 20.00/20 and task completion is 20.27/25.\\n\\nStrengths include consistent effort toward planned hours and steady completion of assigned tasks. Maintaining clear task priorities is helping keep results on track.\\n\\nTo improve further, tighten the daily review of pending work, reduce overdue carryover, and maintain focus on high-impact tasks to lift past due management (15.00/30)."
+      }
+    ]
+  },
+  {
+    "employeeId": "EMP-006",
+    "name": "Jianwei Wu",
+    "department": "Information Technology",
+    "position": "Director of Information Technology",
+    "joinDate": "2024-01-01T20:00:00",
+    "workAuthorizationStatus": "Other Work Visa",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": [
+      {
+        "startDate": "2026-03-01T20:00:00",
+        "endDate": "2026-03-07T20:00:00",
+        "plannedWorkHours": 40,
+        "actualWorkHours": 42,
+        "assignedTasks": 20,
+        "assignedTasksDetails": [
+          {
+            "count": 10,
+            "priority": "high"
+          },
+          {
+            "count": 8,
+            "priority": "normal"
+          },
+          {
+            "count": 2,
+            "priority": "low"
+          }
+        ],
+        "weeklyOverdueTasks": 0,
+        "overdueTasksDetails": [],
+        "allOverdueTasks": 0,
+        "allOverdueTasksDetails": [],
+        "managerComment": "Your performance this week has been exceptional, reflected in a perfect total score of 100. You demonstrated outstanding task completion and priority handling, achieving full marks in both areas. Your proactive approach to past due management is also commendable, with no overdue tasks reported, indicating excellent organizational skills and commitment to deadlines.\\n\\nYou consistently met and exceeded expectations across all key performance indicators. The dedication shown by working 42 hours against a planned 40 hours further highlights your commitment and ensures all assigned tasks were managed effectively. This level of consistent high performance sets a strong benchmark for the team.\\n\\nTo maintain this excellent trajectory, continue leveraging your strong organizational skills to manage workload efficiently. Proactively seek opportunities to streamline processes or share your best practices with colleagues to foster collective improvement. Your sustained focus on high-quality output and proactive task management will be key to continued success."
+      },
+      {
+        "startDate": "2026-02-08T20:00:00",
+        "endDate": "2026-02-14T20:00:00",
+        "plannedWorkHours": 40,
+        "actualWorkHours": 39,
+        "assignedTasks": 30,
+        "assignedTasksDetails": [
+          {
+            "count": 2,
+            "priority": "urgent"
+          },
+          {
+            "count": 2,
+            "priority": "normal"
+          },
+          {
+            "count": 26,
+            "priority": "high"
+          }
+        ],
+        "weeklyOverdueTasks": 1,
+        "overdueTasksDetails": [],
+        "allOverdueTasks": 1,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "urgent"
+          }
+        ],
+        "managerComment": "Your total score is 94.38 (Excellent). Work hours are 39h/40h and you recorded 1 weekly overdue tasks (all overdue: 1). Task priority handling is 20.00/20 and task completion is 25.00/25.\\n\\nStrengths include consistent effort toward planned hours and steady completion of assigned tasks. Maintaining clear task priorities is helping keep results on track.\\n\\nTo improve further, tighten the daily review of pending work, reduce overdue carryover, and maintain focus on high-impact tasks to lift past due management (25.00/30).\\n\\nPlease resolve this overdue Task https://app.clickup.com/t/86adq7cjd as soon as possible. Main ticket should only with one assignee. "
+      }
+    ]
+  },
+  {
+    "employeeId": "EMP-010",
+    "name": "Yanan Wei",
+    "department": "Enrollment & Student Services",
+    "position": "Administrative Specialist",
+    "joinDate": "2025-01-01T20:00:00",
+    "workAuthorizationStatus": "Other Work Visa",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": [
+      {
+        "startDate": "2026-03-01T20:00:00",
+        "endDate": "2026-03-07T20:00:00",
+        "plannedWorkHours": 40,
+        "actualWorkHours": 0,
+        "assignedTasks": 8,
+        "assignedTasksDetails": [
+          {
+            "count": 3,
+            "priority": "urgent"
+          },
+          {
+            "count": 4,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "weeklyOverdueTasks": 5,
+        "overdueTasksDetails": [
+          {
+            "count": 4,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "allOverdueTasks": 26,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 10,
+            "priority": "normal"
+          },
+          {
+            "count": 15,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "IMPORTANT: You must enter and track your work hours in the time tracking system. Failure to record work hours will result in performance evaluation issues and may affect your employment status. Your total performance score this week is 36.67%, significantly below expectations. While your task priority handling score was excellent at 20/20, demonstrating strong prioritization, other critical areas demand immediate focus.\\n\\nThis week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately."
+      },
+      {
+        "startDate": "2026-02-08T20:00:00",
+        "endDate": "2026-02-14T20:00:00",
+        "plannedWorkHours": 40,
+        "actualWorkHours": 30.5,
+        "assignedTasks": 8,
+        "assignedTasksDetails": [
+          {
+            "count": 2,
+            "priority": "high"
+          },
+          {
+            "count": 3,
+            "priority": "no priority"
+          },
+          {
+            "count": 3,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 4,
+        "overdueTasksDetails": [
+          {
+            "count": 2,
+            "priority": "normal"
+          },
+          {
+            "count": 2,
+            "priority": "no priority"
+          }
+        ],
+        "allOverdueTasks": 23,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 8,
+            "priority": "normal"
+          },
+          {
+            "count": 14,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "Your total score is 50.24, which is below expectation. Work hours (30.5h/40h) and task results need immediate improvement, and you recorded 4 weekly overdue tasks (all overdue: 23). Task priority handling is 10.00/20 and task completion is 16.18/25, which are pulling the total score down.\\n\\nStrengths are limited this week; the focus should be on stabilizing execution and reducing overdue work. Past due management is 5.00/30, which indicates overdue items are accumulating.\\n\\nAct now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks."
+      }
+    ]
+  },
+  {
+    "employeeId": "FAC15002",
+    "name": "Yuet Hung Lau (Camilla)",
+    "department": "Enrollment & Student Services",
+    "position": "Director of Student Services",
+    "joinDate": "2021-01-01T20:00:00",
+    "workAuthorizationStatus": "H-1B",
+    "overallOverdueTasks": 0,
+    "weeklyRecords": [
+      {
+        "startDate": "2026-03-01T20:00:00",
+        "endDate": "2026-03-07T20:00:00",
+        "plannedWorkHours": 26,
+        "actualWorkHours": 71,
+        "assignedTasks": 20,
+        "assignedTasksDetails": [
+          {
+            "count": 9,
+            "priority": "urgent"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 10,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 0,
+        "overdueTasksDetails": [],
+        "allOverdueTasks": 1,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "managerComment": "Your performance this week is excellent, reflected in your total score of 95. You consistently demonstrated strong task priority handling and achieved a perfect task completion score, effectively managing all 20 assigned tasks for the week. Additionally, you fulfilled assigned work hours, contributing significantly to team objectives.\\n\\nWhile your weekly performance is strong, a critical area requiring immediate attention is the presence of one overdue high-priority task. This impacts your past due management score of 25/30 and necessitates prompt resolution to maintain overall project momentum.\\n\\nTo address this, please prioritize the immediate completion of the overdue high-priority task. Moving forward, focus on proactive time management and communication for high-priority items, ensuring all tasks are completed within their deadlines. Your continued dedication to resolving this will further enhance your excellent performance."
+      },
+      {
+        "startDate": "2026-02-22T20:00:00",
+        "endDate": "2026-02-28T20:00:00",
+        "plannedWorkHours": 26,
+        "actualWorkHours": 42,
+        "assignedTasks": 17,
+        "assignedTasksDetails": [
+          {
+            "count": 4,
+            "priority": "urgent"
+          },
+          {
+            "count": 4,
+            "priority": "high"
+          },
+          {
+            "count": 9,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 3,
+        "overdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "allOverdueTasks": 6,
+        "allOverdueTasksDetails": [
+          {
+            "count": 3,
+            "priority": "urgent"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 1,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "You fulfilled assigned work hours this week, demonstrating commitment to your schedule. Your task priority handling is a strength. However, your total performance score of 69.83 is below expectations, indicating critical areas requiring immediate focus to improve overall output.\\n\\nThe most significant concern is your past due management score of 10/30. This directly correlates with 9 total overdue tasks, including 4 urgent ones. Additionally, 3 tasks became overdue this week.\\n\\nThis week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately."
+      },
+      {
+        "startDate": "2026-02-15T20:00:00",
+        "endDate": "2026-02-21T20:00:00",
+        "plannedWorkHours": 26,
+        "actualWorkHours": 35.5,
+        "assignedTasks": 3,
+        "assignedTasksDetails": [
+          {
+            "count": 2,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "urgent"
+          }
+        ],
+        "weeklyOverdueTasks": 1,
+        "overdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "urgent"
+          }
+        ],
+        "allOverdueTasks": 6,
+        "allOverdueTasksDetails": [
+          {
+            "count": 3,
+            "priority": "urgent"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 1,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "Your performance this week resulted in a total score of 35%, which is below expectation. While you fulfilled assigned work hours, demonstrating commitment to your schedule, significant areas require immediate attention to improve overall productivity and task management.\\n\\nCritical issues this week include task completion and overdue management. Your task priority handling and past due management scores were both 0, indicating substantial challenges. You have 6 overdue tasks, including 3 urgent ones, significantly impacting team progress.\\n\\nThis week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately."
+      },
+      {
+        "startDate": "2026-02-08T20:00:00",
+        "endDate": "2026-02-14T20:00:00",
+        "plannedWorkHours": 26,
+        "actualWorkHours": 47,
+        "assignedTasks": 24,
+        "assignedTasksDetails": [
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 5,
+            "priority": "high"
+          },
+          {
+            "count": 18,
+            "priority": "normal"
+          }
+        ],
+        "weeklyOverdueTasks": 1,
+        "overdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          }
+        ],
+        "allOverdueTasks": 8,
+        "allOverdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 2,
+            "priority": "urgent"
+          },
+          {
+            "count": 2,
+            "priority": "normal"
+          },
+          {
+            "count": 3,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "Your overall performance this week is very good, reflected by a total score of 83.39. You demonstrated exceptional commitment by fulfilling 47 actual work hours against 26 planned, achieving a perfect Work Hours Fulfillment score. Your Task Priority Handling score of 20/20 also highlights excellent judgment in managing task importance, contributing to a strong Task Completion.\\n\\nHowever, a critical area for immediate improvement is Past Due Management, reflected by your score of."
+      },
+      {
+        "startDate": "2026-02-01T20:00:00",
+        "endDate": "2026-02-07T20:00:00",
+        "plannedWorkHours": 26,
+        "actualWorkHours": 26,
+        "assignedTasks": 19,
+        "assignedTasksDetails": [
+          {
+            "count": 3,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "high"
+          },
+          {
+            "count": 1,
+            "priority": "urgent"
+          },
+          {
+            "count": 14,
+            "priority": "no priority"
+          }
+        ],
+        "weeklyOverdueTasks": 2,
+        "overdueTasksDetails": [
+          {
+            "count": 1,
+            "priority": "normal"
+          },
+          {
+            "count": 1,
+            "priority": "no priority"
+          }
+        ],
+        "allOverdueTasks": 23,
+        "allOverdueTasksDetails": [
+          {
+            "count": 2,
+            "priority": "urgent"
+          },
+          {
+            "count": 6,
+            "priority": "normal"
+          },
+          {
+            "count": 15,
+            "priority": "no priority"
+          }
+        ],
+        "managerComment": "Your total score is 52.50, which is below expectation. Work hours (26h/26h) and task results need immediate improvement, and you recorded 2 weekly overdue tasks (all overdue: 23). Task priority handling is 0.00/20 and task completion is 22.50/25, which are pulling the total score down.\\n\\nStrengths are limited this week; the focus should be on stabilizing execution and reducing overdue work. Past due management is 5.00/30, which indicates overdue items are accumulating.\\n\\nAct now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks."
+      }
+    ]
+  }
+]
