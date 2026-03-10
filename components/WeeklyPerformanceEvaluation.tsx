@@ -291,10 +291,20 @@ export default function WeeklyPerformanceEvaluation({
     const workRatio = `${record.actualWorkHours}h/${record.plannedWorkHours}h`;
     const overdueCount = record.weeklyOverdueTasks;
     const allOverdueCount = record.allOverdueTasks ?? 0;
+    const noWorkHoursEntered = record.actualWorkHours === 0;
     
     // Check if employee fulfilled work hours requirement
     const workHoursFulfilled = record.actualWorkHours >= record.plannedWorkHours;
     const workHoursStatus = workHoursFulfilled ? "fulfilled" : "failed to fulfill";
+
+    // If no work hours entered, return critical message
+    if (noWorkHoursEntered) {
+      return (
+        `IMPORTANT: You must enter and track your work hours in the time tracking system. Failure to record work hours will result in performance evaluation issues and may affect your employment status.\n\n` +
+        `Your total score is ${scoreValue}. No work hours were recorded this week (0h / ${record.plannedWorkHours}h planned). You recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25.\n\n` +
+        `Immediate action required: 1) Enter all work hours in the time tracking system immediately, 2) Ensure daily time tracking going forward, 3) Contact your manager if you need assistance with the time tracking system.`
+      );
+    }
 
     if (score.totalScore < 70) {
       if (workAuthorizationStatus === "H-1B") {

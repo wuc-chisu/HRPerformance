@@ -9,6 +9,7 @@ import PerformanceDashboard from "@/components/PerformanceDashboard";
 import AddEditEmployee from "@/components/AddEditEmployee";
 import AddEditWeeklyRecord from "@/components/AddEditWeeklyRecord";
 import DepartmentManager from "@/components/DepartmentManager";
+import MonthlyPerformanceReport from "@/components/MonthlyPerformanceReport";
 
 export default function Home() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -47,6 +48,7 @@ export default function Home() {
     "Finance",
     "Operations",
   ]);
+  const [performanceView, setPerformanceView] = useState<"weekly" | "monthly">("weekly");
 
   // Generate available years (current year ± 5 years)
   const currentYear = new Date().getFullYear();
@@ -332,6 +334,9 @@ export default function Home() {
   const handleSaveWeeklyRecord = async (record: any) => {
     try {
       if (selectedEmployee) {
+        let focusStartDate: string | undefined;
+        let focusEndDate: string | undefined;
+
         if (editingWeeklyRecord) {
           const existingRecord =
             selectedEmployee.weeklyRecords[editingWeeklyRecord.index];
@@ -363,6 +368,9 @@ export default function Home() {
               record.managerComment ?? existingRecord?.managerComment ?? "",
           };
 
+          focusStartDate = mergedRecord.startDate;
+          focusEndDate = mergedRecord.endDate;
+
           const response = await fetch(`/api/weekly-records/${recordId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -383,6 +391,9 @@ export default function Home() {
           await fetchEmployees();
         } else {
           // Add new record
+          focusStartDate = record.startDate;
+          focusEndDate = record.endDate;
+
           const response = await fetch("/api/weekly-records", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -400,6 +411,19 @@ export default function Home() {
           }
           await fetchEmployees();
         }
+
+        if (focusStartDate && focusEndDate) {
+          const focusDate = parseDateInPacific(focusStartDate);
+          setSelectedYear(focusDate.getFullYear());
+          setSelectedMonth(focusDate.getMonth());
+          setSelectedWeekFilter(`${focusStartDate}|${focusEndDate}`);
+        } else {
+          setSelectedWeekFilter(null);
+        }
+
+        setActiveView("manage-performance");
+        setSelectedEmployeeForPerformance(selectedEmployee.id);
+        setSelectedEmployeeId(selectedEmployee.id);
       }
       setShowWeeklyRecordForm(false);
       setEditingWeeklyRecord(null);
@@ -713,7 +737,10 @@ export default function Home() {
                     </label>
                     <select
                       value={selectedYear}
-                      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                      onChange={(e) => {
+                        setSelectedYear(parseInt(e.target.value));
+                        setSelectedWeekFilter(null);
+                      }}
                       className="px-4 py-2 border border-blue-300 rounded-lg bg-blue-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
                     >
                       {availableYears.map((year) => (
@@ -729,7 +756,10 @@ export default function Home() {
                     </label>
                     <select
                       value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                      onChange={(e) => {
+                        setSelectedMonth(parseInt(e.target.value));
+                        setSelectedWeekFilter(null);
+                      }}
                       className="px-4 py-2 border border-blue-300 rounded-lg bg-blue-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
                     >
                       {[
@@ -760,6 +790,16 @@ export default function Home() {
                     Week
                   </label>
                   <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedWeekFilter(null)}
+                      className={`whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition-all ${
+                        selectedWeekFilter === null
+                          ? "bg-purple-300 text-white shadow-md"
+                          : "bg-purple-100 text-gray-700 border border-purple-200 hover:bg-purple-50"
+                      }`}
+                    >
+                      All
+                    </button>
                     {uniqueFilteredWeekRanges.map((week) => (
                       <button
                         key={week.range}
@@ -804,20 +844,48 @@ export default function Home() {
                 employees.find((e) => e.id === selectedEmployeeForPerformance) && (
                   <div className="space-y-6">
                     <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {
-                          employees.find(
-                            (e) => e.id === selectedEmployeeForPerformance
-                          )?.name
-                        }
-                        's Weekly Performance Records
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Add or edit weekly performance data for this employee
-                      </p>
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            {
+                              employees.find(
+                                (e) => e.id === selectedEmployeeForPerformance
+                              )?.name
+                            }
+                            's {performanceView === "weekly" ? "Weekly Performance Records" : "Monthly Performance Report"}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            {performanceView === "weekly" 
+                              ? "Add or edit weekly performance data for this employee"
+                              : "View monthly performance summary and trends"}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setPerformanceView("weekly")}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                              performanceView === "weekly"
+                                ? "bg-purple-600 text-white shadow-md"
+                                : "bg-white text-gray-700 border border-purple-300 hover:bg-purple-50"
+                            }`}
+                          >
+                            Weekly Records
+                          </button>
+                          <button
+                            onClick={() => setPerformanceView("monthly")}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                              performanceView === "monthly"
+                                ? "bg-purple-600 text-white shadow-md"
+                                : "bg-white text-gray-700 border border-purple-300 hover:bg-purple-50"
+                            }`}
+                          >
+                            Monthly Report
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
-                    {employees.find((e) => e.id === selectedEmployeeForPerformance) && (
+                    {performanceView === "weekly" && employees.find((e) => e.id === selectedEmployeeForPerformance) && (
                       <WeeklyRecordsTable
                         employee={
                           employees.find(
@@ -836,6 +904,18 @@ export default function Home() {
                         onUpdateOverdueTasks={handleUpdateOverdueTasks}
                         onUpdateAssignedTasks={handleUpdateAssignedTasks}
                         onUpdateAllOverdueTasks={handleUpdateAllOverdueTasks}
+                      />
+                    )}
+
+                    {performanceView === "monthly" && employees.find((e) => e.id === selectedEmployeeForPerformance) && (
+                      <MonthlyPerformanceReport
+                        employee={
+                          employees.find(
+                            (e) => e.id === selectedEmployeeForPerformance
+                          )!
+                        }
+                        year={selectedYear}
+                        month={selectedMonth}
                       />
                     )}
                   </div>

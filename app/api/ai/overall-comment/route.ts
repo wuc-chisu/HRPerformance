@@ -60,6 +60,7 @@ export async function POST(request: Request) {
       : "none";
 
     const needsUrgentImprovement = score.totalScore < 70;
+    const noWorkHoursEntered = record.actualWorkHours === 0;
 
     const promptBase = `You are a professional HR performance evaluation assistant.
 
@@ -80,6 +81,7 @@ Requirements:
 - Do NOT list all numbers repeatedly — reference only the most impactful ones.
 - End with a complete sentence.
 - IMPORTANT: If there are ANY overdue tasks (All overdue tasks > 0), it MUST be mentioned in the comment as an area requiring immediate attention and improvement, regardless of overall score.
+${noWorkHoursEntered ? "- CRITICAL: If actual work hours is 0, you MUST include this exact note in the first paragraph: 'IMPORTANT: You must enter and track your work hours in the time tracking system. Failure to record work hours will result in performance evaluation issues and may affect your employment status.'" : ""}
 ${workAuthorizationStatus === "H-1B" ? "- IMPORTANT: For work hours, do NOT mention specific hours (like '8h / 40h'). Instead, just say whether the employee 'fulfilled' or 'failed to fulfill' assigned work hours. For example: 'You fulfilled assigned work hours' or 'You failed to fulfill assigned work hours'." : ""}
 ${needsUrgentImprovement ?
   "- Because the total score is below 70, append a final paragraph with this exact warning text: This week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately." :
