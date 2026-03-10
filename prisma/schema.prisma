@@ -26,6 +26,7 @@ model Employee {
   workAuthorizationStatus String         @default("Other Work Visa")
   overallOverdueTasks     Int            @default(0)
   weeklyRecords           WeeklyRecord[]
+  monthlyComments         MonthlyPerformanceComment[]
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
 }
@@ -48,5 +49,19 @@ model WeeklyRecord {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
+  @@index([employeeId])
+}
+
+model MonthlyPerformanceComment {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  year       Int
+  month      Int
+  comment    String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, year, month])
   @@index([employeeId])
 }
