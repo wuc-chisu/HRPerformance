@@ -9,6 +9,9 @@ import OverdueTaskManager from "./OverdueTaskManager";
 
 interface WeeklyRecordsTableProps {
   employee: Employee;
+  selectedYear?: number;
+  selectedMonth?: number;
+  selectedWeekRange?: string | null;
   onEditRecord?: (record: WeeklyRecord, index: number) => void;
   onDeleteRecord?: (index: number) => void;
   onAddRecord?: () => void;
@@ -19,6 +22,9 @@ interface WeeklyRecordsTableProps {
 
 export default function WeeklyRecordsTable({
   employee,
+  selectedYear,
+  selectedMonth,
+  selectedWeekRange,
   onEditRecord,
   onDeleteRecord,
   onAddRecord,
@@ -108,6 +114,25 @@ export default function WeeklyRecordsTable({
     employee.overallOverdueTasks ??
     0;
 
+  const filteredRecords = employee.weeklyRecords.filter((record) => {
+    if (selectedYear !== undefined && selectedMonth !== undefined) {
+      const date = new Date(`${record.startDate}T12:00:00`);
+      if (
+        date.getFullYear() !== selectedYear ||
+        date.getMonth() !== selectedMonth
+      ) {
+        return false;
+      }
+    }
+
+    if (selectedWeekRange) {
+      const [start, end] = selectedWeekRange.split("|");
+      return record.startDate === start && record.endDate === end;
+    }
+
+    return true;
+  });
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <div className="bg-gradient-to-r from-purple-300 to-pink-300 px-6 py-4 flex justify-between items-center">
@@ -160,7 +185,7 @@ export default function WeeklyRecordsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {employee.weeklyRecords.map((record, index) => {
+            {filteredRecords.map((record) => {
               const status = getPerformanceStatus(record);
               const assignedDetailsTotal = (
                 record.assignedTasksDetails || []
@@ -177,7 +202,7 @@ export default function WeeklyRecordsTable({
               
               return (
                 <tr
-                  key={index}
+                  key={record.recordId || `${record.startDate}-${record.endDate}`}
                   className="hover:bg-gray-50 transition-colors"
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -258,7 +283,15 @@ export default function WeeklyRecordsTable({
                     <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2 flex">
                       {onEditRecord && (
                         <button
-                          onClick={() => onEditRecord(record, index)}
+                          onClick={() => {
+                            const originalIndex = employee.weeklyRecords.findIndex(
+                              (r) =>
+                                r.recordId === record.recordId ||
+                                (r.startDate === record.startDate &&
+                                  r.endDate === record.endDate)
+                            );
+                            onEditRecord(record, originalIndex);
+                          }}
                           className="bg-blue-300 text-white px-3 py-1 rounded hover:bg-blue-400 transition-colors text-xs font-semibold"
                         >
                           Edit
@@ -266,7 +299,15 @@ export default function WeeklyRecordsTable({
                       )}
                       {onDeleteRecord && (
                         <button
-                          onClick={() => onDeleteRecord(index)}
+                          onClick={() => {
+                            const originalIndex = employee.weeklyRecords.findIndex(
+                              (r) =>
+                                r.recordId === record.recordId ||
+                                (r.startDate === record.startDate &&
+                                  r.endDate === record.endDate)
+                            );
+                            onDeleteRecord(originalIndex);
+                          }}
                           className="bg-red-300 text-white px-3 py-1 rounded hover:bg-red-400 transition-colors text-xs font-semibold"
                         >
                           Delete
@@ -280,6 +321,12 @@ export default function WeeklyRecordsTable({
           </tbody>
         </table>
       </div>
+
+      {filteredRecords.length === 0 && (
+        <div className="px-6 py-6 text-sm text-gray-600 border-t">
+          No weekly records found for the selected year/month/week.
+        </div>
+      )}
 
       <div className="bg-blue-50 px-6 py-4 border-t">
         <div className="grid grid-cols-2 gap-4">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Employee } from "@/lib/employees";
-import { formatCompactDate, formatShortDate } from "@/lib/dateUtils";
+import { formatCompactDate, formatShortDate, parseDateInPacific } from "@/lib/dateUtils";
 import EmployeeCard from "@/components/EmployeeCard";
 import WeeklyRecordsTable from "@/components/WeeklyRecordsTable";
 import PerformanceDashboard from "@/components/PerformanceDashboard";
@@ -104,7 +104,7 @@ export default function Home() {
     try {
       if (editingEmployee) {
         // Update existing employee
-        const response = await fetch(`/api/employees/${employee.id}`, {
+        const response = await fetch(`/api/employees/${editingEmployee.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(employee),
@@ -135,6 +135,14 @@ export default function Home() {
         }
       }
       await fetchEmployees();
+      if (editingEmployee && editingEmployee.id !== employee.id) {
+        if (selectedEmployeeId === editingEmployee.id) {
+          setSelectedEmployeeId(employee.id);
+        }
+        if (selectedEmployeeForPerformance === editingEmployee.id) {
+          setSelectedEmployeeForPerformance(employee.id);
+        }
+      }
       setShowForm(false);
       setEditingEmployee(null);
     } catch (error) {
@@ -406,24 +414,46 @@ export default function Home() {
 
   // Get all unique week ranges from all employees
   const getAllWeekRanges = () => {
-    const weekRanges = new Set<string>();
+    const weekRangesByStart = new Map<string, { start: string; end: string; score: number }>();
     employees.forEach((emp) => {
       emp.weeklyRecords.forEach((record) => {
-        weekRanges.add(`${record.startDate}|${record.endDate}`);
+        const startDate = parseDateInPacific(record.startDate);
+        const endDate = parseDateInPacific(record.endDate);
+        const diffInDays = Math.round(
+          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        // Weekly records should normally be ~6 days from start to end (7-day span)
+        const score = Math.abs(diffInDays - 6);
+        const existing = weekRangesByStart.get(record.startDate);
+
+        if (!existing || score < existing.score) {
+          weekRangesByStart.set(record.startDate, {
+            start: record.startDate,
+            end: record.endDate,
+            score,
+          });
+        }
       });
     });
-    return Array.from(weekRanges)
-      .sort((a, b) => new Date(b.split("|")[0]).getTime() - new Date(a.split("|")[0]).getTime())
-      .map((range) => {
-        const [start, end] = range.split("|");
-        return { start, end, range };
-      });
+
+    return Array.from(weekRangesByStart.values())
+      .sort(
+        (a, b) =>
+          parseDateInPacific(b.start).getTime() -
+          parseDateInPacific(a.start).getTime()
+      )
+      .map(({ start, end }) => ({
+        start,
+        end,
+        range: `${start}|${end}`,
+      }));
   };
 
   // Filter week ranges by year and month
   const getFilteredWeekRanges = () => {
     return getAllWeekRanges().filter((week) => {
-      const startDate = new Date(week.start);
+      const startDate = parseDateInPacific(week.start);
       return (
         startDate.getFullYear() === selectedYear &&
         startDate.getMonth() === selectedMonth
@@ -433,6 +463,18 @@ export default function Home() {
 
   // Get filtered week ranges for display
   const filteredWeekRanges = getFilteredWeekRanges();
+  const uniqueFilteredWeekRanges = filteredWeekRanges.filter(
+    (week, index, arr) => arr.findIndex((item) => item.range === week.range) === index
+  );
+
+  useEffect(() => {
+    if (
+      selectedWeekFilter &&
+      !uniqueFilteredWeekRanges.some((week) => week.range === selectedWeekFilter)
+    ) {
+      setSelectedWeekFilter(null);
+    }
+  }, [selectedWeekFilter, uniqueFilteredWeekRanges]);
 
   // Get employee data for selected week
   const getEmployeeWeekData = (employee: Employee, range: string) => {
@@ -718,9 +760,9 @@ export default function Home() {
                     Week
                   </label>
                   <div className="flex gap-2">
-                    {filteredWeekRanges.map((week, idx) => (
+                    {uniqueFilteredWeekRanges.map((week) => (
                       <button
-                        key={idx}
+                        key={week.range}
                         onClick={() => setSelectedWeekFilter(week.range)}
                         className={`whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition-all ${
                           selectedWeekFilter === week.range
@@ -782,6 +824,9 @@ export default function Home() {
                             (e) => e.id === selectedEmployeeForPerformance
                           )!
                         }
+                        selectedYear={selectedYear}
+                        selectedMonth={selectedMonth}
+                        selectedWeekRange={selectedWeekFilter}
                         onAddRecord={() => {
                           setSelectedEmployeeId(selectedEmployeeForPerformance);
                           handleAddWeeklyRecord();

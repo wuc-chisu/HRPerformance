@@ -19,19 +19,40 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, department, position, joinDate, workAuthorizationStatus, overallOverdueTasks } = body;
+    const {
+      id: nextEmployeeId,
+      name,
+      department,
+      position,
+      joinDate,
+      workAuthorizationStatus,
+      overallOverdueTasks,
+    } = body;
 
     // Validate required fields
-    if (!name || !department || !position || !joinDate) {
+    if (!nextEmployeeId || !name || !department || !position || !joinDate) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
+    const existingByTargetId = await prisma.employee.findUnique({
+      where: { employeeId: nextEmployeeId },
+      select: { employeeId: true },
+    });
+
+    if (existingByTargetId && nextEmployeeId !== employeeId) {
+      return NextResponse.json(
+        { error: "Employee ID already exists" },
+        { status: 409 }
+      );
+    }
+
     const employee = await prisma.employee.update({
       where: { employeeId },
       data: {
+        employeeId: nextEmployeeId,
         name,
         department,
         position,
