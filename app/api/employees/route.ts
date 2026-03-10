@@ -22,6 +22,7 @@ export async function GET() {
       department: emp.department,
       position: emp.position,
       joinDate: emp.joinDate.toISOString().split("T")[0],
+      workAuthorizationStatus: emp.workAuthorizationStatus,
       overallOverdueTasks: emp.overallOverdueTasks,
       weeklyRecords: emp.weeklyRecords.map((record) => ({
         recordId: record.id,
@@ -53,7 +54,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { employeeId, name, department, position, joinDate, overallOverdueTasks } = body;
+    const { employeeId, name, department, position, joinDate, workAuthorizationStatus, overallOverdueTasks } = body;
 
     if (!employeeId || !name || !department || !position || !joinDate) {
       return NextResponse.json(
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
         department,
         position,
         joinDate: parseDateForDatabase(joinDate),
+        workAuthorizationStatus: workAuthorizationStatus || "Other Work Visa",
         overallOverdueTasks: overallOverdueTasks || 0,
       },
       include: {
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
       department: employee.department,
       position: employee.position,
       joinDate: employee.joinDate.toISOString().split("T")[0],
+      workAuthorizationStatus: employee.workAuthorizationStatus,
       overallOverdueTasks: employee.overallOverdueTasks,
       weeklyRecords: [],
     });

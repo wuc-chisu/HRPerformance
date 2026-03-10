@@ -5,6 +5,23 @@
 
 EXPORT_DIR="data-exports"
 
+# Use PostgreSQL 15 tools (explicit path to avoid version mismatch)
+PSQL="/usr/local/Cellar/postgresql@15/15.15_1/bin/psql"
+
+# Fallback to default if PostgreSQL 15 not found
+if [ ! -x "$PSQL" ]; then
+  # Try to find any available psql
+  PSQL=$(find /usr/local/Cellar/postgresql@*/*/bin/psql -type f 2>/dev/null | sort -V | tail -1)
+  if [ -z "$PSQL" ]; then
+    # Last resort: use whatever is in PATH
+    PSQL=$(command -v psql)
+    if [ -z "$PSQL" ]; then
+      echo "❌ psql not found!"
+      exit 1
+    fi
+  fi
+fi
+
 if [ -z "$1" ]; then
     echo "Available exports:"
     ls -lh "$EXPORT_DIR"/*.json 2>/dev/null || echo "No exports found"
@@ -73,8 +90,8 @@ async function importData() {
     const now = new Date().toISOString();
     
     await client.query(
-      'INSERT INTO \"Employee\" (\"id\", \"employeeId\", \"name\", \"department\", \"position\", \"joinDate\", \"overallOverdueTasks\", \"createdAt\", \"updatedAt\") VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9)',
-      [empId, emp.employeeId, emp.name, emp.department, emp.position, emp.joinDate, emp.overallOverdueTasks || 0, now, now]
+      'INSERT INTO \"Employee\" (\"id\", \"employeeId\", \"name\", \"department\", \"position\", \"joinDate\", \"workAuthorizationStatus\", \"overallOverdueTasks\", \"createdAt\", \"updatedAt\") VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10)',
+      [empId, emp.employeeId, emp.name, emp.department, emp.position, emp.joinDate, emp.workAuthorizationStatus || 'Other Work Visa', emp.overallOverdueTasks || 0, now, now]
     );
     
     if (emp.weeklyRecords && emp.weeklyRecords.length > 0) {

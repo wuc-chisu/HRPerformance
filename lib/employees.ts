@@ -30,6 +30,7 @@ export interface Employee {
   department: string;
   position: string;
   joinDate: string;
+  workAuthorizationStatus?: string;
   overallOverdueTasks?: number;
   weeklyRecords: WeeklyRecord[];
 }

@@ -30,6 +30,7 @@ export default function AddEditEmployee({
     department: employee?.department || "",
     position: employee?.position || "",
     joinDate: employee?.joinDate || "",
+    workAuthorizationStatus: employee?.workAuthorizationStatus || "Other Work Visa",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -213,6 +214,27 @@ export default function AddEditEmployee({
               <p className="text-red-600 text-sm mt-1">{errors.joinDate}</p>
             )}
             <p className="text-gray-500 text-xs mt-1">Format: YYYY-MM-DD</p>
+          </div>
+
+          {/* Work Authorization Status */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Work Authorization Status
+            </label>
+            <select
+              name="workAuthorizationStatus"
+              value={formData.workAuthorizationStatus}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+            >
+              <option value="U.S. Citizen">U.S. Citizen</option>
+              <option value="U.S. Permanent Resident">U.S. Permanent Resident</option>
+              <option value="F-1 OPT">F-1 OPT</option>
+              <option value="F-1 CPT">F-1 CPT</option>
+              <option value="H-1B">H-1B</option>
+              <option value="Work Authorization (EAD)">Work Authorization (EAD)</option>
+              <option value="Other Work Visa">Other Work Visa</option>
+            </select>
           </div>
 
           {/* Form Actions */}

@@ -17,35 +17,36 @@ model Department {
 }
 
 model Employee {
-  id                    String   @id @default(cuid())
-  employeeId            String   @unique
-  name                  String
-  department            String
-  position              String
-  joinDate              DateTime
-  overallOverdueTasks   Int      @default(0)
-  weeklyRecords         WeeklyRecord[]
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                      String         @id @default(cuid())
+  employeeId              String         @unique
+  name                    String
+  department              String
+  position                String
+  joinDate                DateTime
+  workAuthorizationStatus String         @default("Other Work Visa")
+  overallOverdueTasks     Int            @default(0)
+  weeklyRecords           WeeklyRecord[]
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
 }
 
 model WeeklyRecord {
-  id                    String   @id @default(cuid())
-  employeeId            String
-  employee              Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  startDate             DateTime
-  endDate               DateTime
-  plannedWorkHours      Float
-  actualWorkHours       Float
-  assignedTasks         Int
-  assignedTasksDetails  Json     @default("[]")  // JSON array storing assigned task priority breakdown
-  weeklyOverdueTasks    Int
-  overdueTasksDetails   Json     @default("[]")  // JSON array storing priority breakdown
-  allOverdueTasks       Int      @default(0)    // Total overdue tasks from all previous weeks
-  allOverdueTasksDetails Json    @default("[]")  // JSON array storing priority breakdown for all overdue tasks
-  managerComment        String?  @db.Text       // Optional manager comment for performance evaluation
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  employeeId             String
+  employee               Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  startDate              DateTime
+  endDate                DateTime
+  plannedWorkHours       Float
+  actualWorkHours        Float
+  assignedTasks          Int
+  assignedTasksDetails   Json     @default("[]") // JSON array storing assigned task priority breakdown
+  weeklyOverdueTasks     Int
+  overdueTasksDetails    Json     @default("[]") // JSON array storing priority breakdown
+  allOverdueTasks        Int      @default(0) // Total overdue tasks from all previous weeks
+  allOverdueTasksDetails Json     @default("[]") // JSON array storing priority breakdown for all overdue tasks
+  managerComment         String?  @db.Text // Optional manager comment for performance evaluation
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   @@index([employeeId])
 }

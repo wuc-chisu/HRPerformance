@@ -9,6 +9,7 @@ export default function EvaluationPage() {
     record: WeeklyRecord;
     employeeName: string;
     employeeId?: string;
+    workAuthorizationStatus?: string;
   } | null>(null);
 
   const applyTitle = (data?: {
@@ -84,6 +85,7 @@ export default function EvaluationPage() {
           record={evaluationData.record}
           employeeName={evaluationData.employeeName}
           employeeId={evaluationData.employeeId}
+          workAuthorizationStatus={evaluationData.workAuthorizationStatus}
         />
       </div>
     </div>

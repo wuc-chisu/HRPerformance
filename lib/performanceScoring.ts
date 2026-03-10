@@ -26,42 +26,69 @@ export function calculateWorkHoursFulfillment(
 
 /**
  * Calculate Task Priority Handling score (20% weight)
- * This evaluates how many assigned tasks have a defined priority (urgent/high/normal/low)
- * vs tasks with no priority
+ * Evaluates how well the employee handles high-priority tasks (urgent and high only)
  * 
- * Formula:
- * (tasks with priority) / (total assigned tasks) = result percentage
+ * Task weights:
+ * - Urgent: 3 points per task
+ * - High: 2 points per task
  * 
- * Scoring bands:
- * ≥ 90%: 20 points
- * 70-89%: 15 points
- * 50-69%: 10 points
- * 30-49%: 5 points
- * < 30%: 0 points
+ * Calculation:
+ * 1. Calculate weighted assigned high-priority workload (urgent + high only)
+ * 2. If no high-priority tasks assigned, return full score (nothing to fail on)
+ * 3. Calculate weighted overdue high-priority workload from weekly records
+ * 4. Calculate failure rate = overdue weighted / assigned weighted
+ * 5. Convert failure rate to score: score = 20 * (1 - failureRate)
+ * 6. Clamp score between 0 and 20
+ * 
+ * Returns: Numeric score (0–20)
  */
 export function calculateTaskPriorityHandling(
   record: WeeklyRecord
 ): number {
-  const taskDetails = record.assignedTasksDetails || [];
-  const totalAssignedTasks = record.assignedTasks;
+  const assignedDetails = record.assignedTasksDetails || [];
+  const weeklyOverdueDetails = record.overdueTasksDetails || [];
 
-  if (totalAssignedTasks === 0) {
-    // If no tasks assigned, full points for priority handling
+  // Step 1: Calculate weighted assigned priority workload
+  // Only count urgent and high priority tasks
+  const assignedUrgent = assignedDetails.find(
+    (detail) => detail.priority === "urgent"
+  )?.count || 0;
+  const assignedHigh = assignedDetails.find(
+    (detail) => detail.priority === "high"
+  )?.count || 0;
+  
+  const hiAssignedW = assignedUrgent * 3 + assignedHigh * 2;
+
+  // Step 2: If no high-priority tasks assigned, return full score
+  // (because there were no priority tasks to fail on)
+  if (hiAssignedW === 0) {
     return 20;
   }
 
-  // Count tasks that have a priority (not "no priority")
-  const tasksWithPriority = taskDetails
-    .filter((detail) => detail.priority !== "no priority")
-    .reduce((sum, detail) => sum + detail.count, 0);
+  // Step 3: Calculate weighted overdue priority workload
+  // Only count urgent and high priority tasks that went overdue this week
+  const weeklyOverdueUrgent = weeklyOverdueDetails.find(
+    (detail) => detail.priority === "urgent"
+  )?.count || 0;
+  const weeklyOverdueHigh = weeklyOverdueDetails.find(
+    (detail) => detail.priority === "high"
+  )?.count || 0;
+  
+  const hiOverdueW = weeklyOverdueUrgent * 3 + weeklyOverdueHigh * 2;
 
-  const priorityPercentage = (tasksWithPriority / totalAssignedTasks) * 100;
+  // Step 4: Calculate priority failure rate
+  const failureRate = hiOverdueW / hiAssignedW;
 
-  if (priorityPercentage >= 90) return 20;
-  if (priorityPercentage >= 70) return 15;
-  if (priorityPercentage >= 50) return 10;
-  if (priorityPercentage >= 30) return 5;
-  return 0;
+  // Step 5: Convert failure rate into score
+  // score = 20 * (1 - failureRate)
+  // Full score (20) when failureRate is 0 (no overdue high-priority tasks)
+  // Zero score (0) when failureRate is 1 (all high-priority tasks are overdue)
+  let score = 20 * (1 - failureRate);
+
+  // Step 6: Clamp score between 0 and 20
+  score = Math.max(0, Math.min(20, score));
+
+  return score;
 }
 
 /**
@@ -122,11 +149,11 @@ export function calculateTaskCompletionRate(record: WeeklyRecord): number {
  * Calculate Past Due Task Management score (30% weight)
  * This evaluates how well the employee manages overdue tasks using weighted ratio
  * 
- * Priority weights (different from task completion - no priority is 1 point):
- * - Urgent: 3 points per task
- * - High: 2 points per task
- * - Normal: 1 point per task
- * - No Priority: 1 point per task
+ * Priority weights (different from task completion - no priority is 2 points):
+ * - Urgent: 4 points per task
+ * - High: 3 points per task
+ * - Normal: 2 points per task
+ * - No Priority: 2 points per task
  * 
  * Formula:
  * 1. Calculate Total Overdue Weighted Value from allOverdueTasksDetails
@@ -138,12 +165,12 @@ export function calculatePastDueTaskManagement(record: WeeklyRecord): number {
   const allOverdueDetails = record.allOverdueTasksDetails || [];
   const assignedDetails = record.assignedTasksDetails || [];
 
-  // Priority weights for past due management (no priority = 1 point)
+  // Priority weights for past due management
   const overdueWeights: Record<string, number> = {
-    urgent: 3,
-    high: 2,
-    normal: 1,
-    "no priority": 1,
+    urgent: 4,
+    high: 3,
+    normal: 2,
+    "no priority": 2,
   };
 
   // Priority weights for assigned tasks (no priority = 0.5 point)

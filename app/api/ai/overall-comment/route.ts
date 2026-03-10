@@ -9,12 +9,13 @@ interface OverallCommentRequest {
   record: WeeklyRecord;
   employeeName?: string;
   employeeId?: string;
+  workAuthorizationStatus?: string;
 }
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as OverallCommentRequest;
-    const { record, employeeId } = body || {};
+    const { record, employeeId, workAuthorizationStatus } = body || {};
 
     if (!record) {
       return NextResponse.json(
@@ -78,6 +79,8 @@ Requirements:
 - Avoid excessive breakdown of every metric.
 - Do NOT list all numbers repeatedly — reference only the most impactful ones.
 - End with a complete sentence.
+- IMPORTANT: If there are ANY overdue tasks (All overdue tasks > 0), it MUST be mentioned in the comment as an area requiring immediate attention and improvement, regardless of overall score.
+${workAuthorizationStatus === "H-1B" ? "- IMPORTANT: For work hours, do NOT mention specific hours (like '8h / 40h'). Instead, just say whether the employee 'fulfilled' or 'failed to fulfill' assigned work hours. For example: 'You fulfilled assigned work hours' or 'You failed to fulfill assigned work hours'." : ""}
 ${needsUrgentImprovement ?
   "- Because the total score is below 70, append a final paragraph with this exact warning text: This week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately." :
   ""}
@@ -101,6 +104,7 @@ Task detail breakdowns:
 
 Flag:
 - Total score below 70: ${needsUrgentImprovement ? "YES" : "NO"}
+- Employee visa status: ${workAuthorizationStatus || "Unknown"}
 
 Return the full evaluation comment only.`;
 
@@ -122,6 +126,13 @@ Return the full evaluation comment only.`;
     const listResponse = await fetch(listUrl);
     if (!listResponse.ok) {
       const listError = await listResponse.text();
+      // If service is unavailable (503), return a special error so frontend can use fallback
+      if (listResponse.status === 503) {
+        return NextResponse.json(
+          { error: "GEMINI_SERVICE_UNAVAILABLE", details: listError },
+          { status: 503 }
+        );
+      }
       return NextResponse.json(
         { error: "Gemini listModels failed", details: listError },
         { status: 500 }
@@ -222,8 +233,22 @@ Return the full evaluation comment only.`;
       );
     }
 
+    // If content doesn't end with proper punctuation, trim to last complete sentence
     if (!/[.!?]$/.test(finalContent)) {
-      finalContent = `${finalContent.trim()}.`;
+      // Find the last sentence-ending punctuation mark
+      const lastPunctuationIndex = Math.max(
+        finalContent.lastIndexOf('.'),
+        finalContent.lastIndexOf('!'),
+        finalContent.lastIndexOf('?')
+      );
+      
+      if (lastPunctuationIndex > -1) {
+        // Trim to the last complete sentence
+        finalContent = finalContent.substring(0, lastPunctuationIndex + 1);
+      } else {
+        // No punctuation found, just trim and add a period
+        finalContent = `${finalContent.trim()}.`;
+      }
     }
 
     return NextResponse.json({ comment: finalContent });

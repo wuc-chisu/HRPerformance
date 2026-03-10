@@ -121,6 +121,7 @@ export default function Home() {
           department: employee.department,
           position: employee.position,
           joinDate: employee.joinDate,
+          workAuthorizationStatus: employee.workAuthorizationStatus,
           overallOverdueTasks: employee.overallOverdueTasks,
         };
         const response = await fetch("/api/employees", {

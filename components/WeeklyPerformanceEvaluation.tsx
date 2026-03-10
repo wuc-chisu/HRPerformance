@@ -14,28 +14,48 @@ interface WeeklyPerformanceEvaluationProps {
   record: WeeklyRecord;
   employeeName?: string;
   employeeId?: string;
+  workAuthorizationStatus?: string;
 }
 
 function getTaskPriorityBreakdown(record: WeeklyRecord): {
-  withPriority: number;
-  noPriority: number;
-  percentage: number;
+  highPriorityTasks: number;
+  totalAssignedTasks: number;
+  failureRate: number;
+  urgentOverdue: number;
+  highOverdue: number;
 } {
-  const taskDetails = record.assignedTasksDetails || [];
+  const assignedDetails = record.assignedTasksDetails || [];
+  const weeklyOverdueDetails = record.overdueTasksDetails || [];
   const totalAssignedTasks = record.assignedTasks;
 
-  if (totalAssignedTasks === 0) {
-    return { withPriority: 0, noPriority: 0, percentage: 100 };
+  // Count only urgent and high priority tasks
+  const assignedUrgent = assignedDetails.find(
+    (detail) => detail.priority === "urgent"
+  )?.count || 0;
+  const assignedHigh = assignedDetails.find(
+    (detail) => detail.priority === "high"
+  )?.count || 0;
+  const highPriorityTasks = assignedUrgent + assignedHigh;
+
+  // Calculate failure rate based on weighted overdue high-priority tasks
+  const hiAssignedW = assignedUrgent * 3 + assignedHigh * 2;
+  
+  const weeklyOverdueUrgent = weeklyOverdueDetails.find(
+    (detail) => detail.priority === "urgent"
+  )?.count || 0;
+  const weeklyOverdueHigh = weeklyOverdueDetails.find(
+    (detail) => detail.priority === "high"
+  )?.count || 0;
+  
+  if (hiAssignedW === 0) {
+    // No high-priority tasks assigned
+    return { highPriorityTasks: 0, totalAssignedTasks, failureRate: 0, urgentOverdue: 0, highOverdue: 0 };
   }
 
-  const withPriority = taskDetails
-    .filter((detail) => detail.priority !== "no priority")
-    .reduce((sum, detail) => sum + detail.count, 0);
-  
-  const noPriority = totalAssignedTasks - withPriority;
-  const percentage = (withPriority / totalAssignedTasks) * 100;
+  const hiOverdueW = weeklyOverdueUrgent * 3 + weeklyOverdueHigh * 2;
+  const failureRate = hiOverdueW / hiAssignedW;
 
-  return { withPriority, noPriority, percentage };
+  return { highPriorityTasks, totalAssignedTasks, failureRate, urgentOverdue: weeklyOverdueUrgent, highOverdue: weeklyOverdueHigh };
 }
 
 function getTaskCompletionBreakdown(record: WeeklyRecord): {
@@ -83,10 +103,10 @@ function getPastDueTaskBreakdown(record: WeeklyRecord): {
   scoreBand: string;
 } {
   const overdueWeights: Record<string, number> = {
-    urgent: 3,
-    high: 2,
-    normal: 1,
-    "no priority": 1,
+    urgent: 4,
+    high: 3,
+    normal: 2,
+    "no priority": 2,
   };
 
   const assignedWeights: Record<string, number> = {
@@ -134,6 +154,7 @@ export default function WeeklyPerformanceEvaluation({
   record,
   employeeName = "Employee",
   employeeId,
+  workAuthorizationStatus,
 }: WeeklyPerformanceEvaluationProps) {
   const [editingComment, setEditingComment] = useState(false);
   const [commentText, setCommentText] = useState(record.managerComment || "");
@@ -270,14 +291,39 @@ export default function WeeklyPerformanceEvaluation({
     const workRatio = `${record.actualWorkHours}h/${record.plannedWorkHours}h`;
     const overdueCount = record.weeklyOverdueTasks;
     const allOverdueCount = record.allOverdueTasks ?? 0;
+    
+    // Check if employee fulfilled work hours requirement
+    const workHoursFulfilled = record.actualWorkHours >= record.plannedWorkHours;
+    const workHoursStatus = workHoursFulfilled ? "fulfilled" : "failed to fulfill";
 
     if (score.totalScore < 70) {
+      if (workAuthorizationStatus === "H-1B") {
+        return (
+          `Your total score is ${scoreValue}, which is ${scoreLabel}. ` +
+          `You ${workHoursStatus} assigned work hours and recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). ` +
+          `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, which are pulling the total score down.\n\n` +
+          `Strengths are limited this week; the focus should be on stabilizing execution and reducing overdue work. Past due management is ${score.pastDueTaskManagement.toFixed(2)}/30, which indicates overdue items are accumulating.\n\n` +
+          `Act now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks.`
+        );
+      }
+      
       return (
         `Your total score is ${scoreValue}, which is ${scoreLabel}. ` +
         `Work hours (${workRatio}) and task results need immediate improvement, and you recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). ` +
         `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, which are pulling the total score down.\n\n` +
         `Strengths are limited this week; the focus should be on stabilizing execution and reducing overdue work. Past due management is ${score.pastDueTaskManagement.toFixed(2)}/30, which indicates overdue items are accumulating.\n\n` +
         `Act now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks.`
+      );
+    }
+
+    if (workAuthorizationStatus === "H-1B") {
+      return (
+        `Your total score is ${scoreValue} (${scoreLabel}). ` +
+        `You ${workHoursStatus} assigned work hours and recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). ` +
+        `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25.\n\n` +
+        `Strengths include steady completion of assigned tasks. ` +
+        `Maintaining clear task priorities is helping keep results on track.\n\n` +
+        `To improve further, tighten the daily review of pending work, reduce overdue carryover, and maintain focus on high-impact tasks to lift past due management (${score.pastDueTaskManagement.toFixed(2)}/30).`
       );
     }
 
@@ -307,6 +353,7 @@ export default function WeeklyPerformanceEvaluation({
           record,
           employeeName,
           employeeId,
+          workAuthorizationStatus,
         }),
       });
 
@@ -318,13 +365,14 @@ export default function WeeklyPerformanceEvaluation({
         } catch {
           errorPayload = null;
         }
-        if (errorPayload?.error === "GEMINI_QUOTA_EXCEEDED") {
+        if (errorPayload?.error === "GEMINI_QUOTA_EXCEEDED" || errorPayload?.error === "GEMINI_SERVICE_UNAVAILABLE") {
           const fallback = appendWarning(buildFallbackComment());
           setCommentText(fallback);
           await handleSaveComment(fallback, { silent: true });
-          setGenerateMessage(
-            "AI quota reached. A local fallback comment was generated."
-          );
+          const message = errorPayload?.error === "GEMINI_QUOTA_EXCEEDED" 
+            ? "AI quota reached. A local fallback comment was generated."
+            : "AI service temporarily unavailable. A local fallback comment was generated.";
+          setGenerateMessage(message);
           return;
         }
 
@@ -460,9 +508,15 @@ export default function WeeklyPerformanceEvaluation({
           <div className="flex justify-between items-start mb-2">
             <div>
               <p className="font-semibold text-gray-900">Work Hours Fulfillment</p>
-              <p className="text-xs text-gray-600 mt-1">
-                25% weight • {record.actualWorkHours}h / {record.plannedWorkHours}h
-              </p>
+              {workAuthorizationStatus !== "H-1B" ? (
+                <p className="text-xs text-gray-600 mt-1">
+                  25% weight • {record.actualWorkHours}h / {record.plannedWorkHours}h
+                </p>
+              ) : (
+                <p className="text-xs text-gray-600 mt-1">
+                  25% weight
+                </p>
+              )}
             </div>
             <span className="text-lg font-bold text-blue-600">
               {score.workHoursFulfillment.toFixed(2)}/25
@@ -490,7 +544,7 @@ export default function WeeklyPerformanceEvaluation({
                 const breakdown = getTaskPriorityBreakdown(record);
                 return (
                   <p className="text-xs text-gray-600 mt-1">
-                    20% weight • {breakdown.withPriority} of {record.assignedTasks} tasks have priority
+                    20% weight • {breakdown.urgentOverdue} urgent & {breakdown.highOverdue} high tasks overdue
                   </p>
                 );
               })()}
@@ -509,19 +563,10 @@ export default function WeeklyPerformanceEvaluation({
           </div>
           {(() => {
             const breakdown = getTaskPriorityBreakdown(record);
-            const scoreBand =
-              breakdown.percentage >= 90
-                ? "≥ 90%"
-                : breakdown.percentage >= 70
-                  ? "70-89%"
-                  : breakdown.percentage >= 50
-                    ? "50-69%"
-                    : breakdown.percentage >= 30
-                      ? "30-49%"
-                      : "< 30%";
+            const failurePercentage = (breakdown.failureRate * 100).toFixed(1);
             return (
               <p className="text-xs text-gray-500 mt-2">
-                max 20 points • {breakdown.percentage.toFixed(1)}% tasks with priority ({scoreBand} band = {score.taskPriorityHandling.toFixed(0)} points)
+                max 20 points • {failurePercentage}% failure rate on urgent/high priority tasks
               </p>
             );
           })()}
@@ -598,8 +643,17 @@ export default function WeeklyPerformanceEvaluation({
           </div>
           {(() => {
             const breakdown = getPastDueTaskBreakdown(record);
+            const allOverdueDetails = record.allOverdueTasksDetails || [];
+            const overdueBreakdown = allOverdueDetails.length
+              ? allOverdueDetails
+                  .map((detail) => `${detail.count} ${detail.priority}`)
+                  .join(", ")
+              : "none";
             return (
               <div className="text-xs text-gray-500 mt-2 space-y-1">
+                <p>
+                  Overdue tasks: {overdueBreakdown}
+                </p>
                 <p>
                   Overdue weighted: {breakdown.overdueWeighted.toFixed(1)} | Assigned weighted: {breakdown.assignedWeighted.toFixed(1)}
                 </p>
@@ -635,28 +689,12 @@ export default function WeeklyPerformanceEvaluation({
       </div>
 
       <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200 print-avoid-break">
-        <p className="text-xs font-semibold text-gray-600 mb-3">Task Priority Handling Bands</p>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="flex justify-between">
-            <span className="font-semibold text-green-600">≥ 90%:</span>
-            <span className="text-gray-600">20 points</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-semibold text-blue-600">70-89%:</span>
-            <span className="text-gray-600">15 points</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-semibold text-yellow-600">50-69%:</span>
-            <span className="text-gray-600">10 points</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-semibold text-orange-600">30-49%:</span>
-            <span className="text-gray-600">5 points</span>
-          </div>
-          <div className="flex justify-between col-span-2">
-            <span className="font-semibold text-red-600">&lt; 30%:</span>
-            <span className="text-gray-600">0 points</span>
-          </div>
+        <p className="text-xs font-semibold text-gray-600 mb-3">Task Priority Handling Scoring Formula</p>
+        <div className="text-xs text-gray-600 space-y-2">
+          <p><span className="font-semibold">Focuses on:</span> Urgent and High priority tasks only</p>
+          <p><span className="font-semibold">Weights:</span> Urgent = 3 points, High = 2 points</p>
+          <p><span className="font-semibold">Calculation:</span> Score = 20 × (1 − failure rate)</p>
+          <p><span className="font-semibold">Example:</span> 0% failure = 20 pts • 50% failure = 10 pts • 100% failure = 0 pts</p>
         </div>
       </div>
 
@@ -695,6 +733,12 @@ export default function WeeklyPerformanceEvaluation({
         </div>
         <p className="text-xs text-gray-500 mt-2 italic">
           Note: For overdue tasks, "No Priority" counts as 1 point (not 0.5)
+        </p>
+        <p className="text-xs text-gray-500 mt-2">
+          <span className="font-semibold">Calculation:</span> Overdue tasks are weighted by priority (Urgent: 4, High: 3, Normal: 2, No Priority: 2), while assigned tasks use different weights (Urgent: 3, High: 2, Normal: 1, No Priority: 0.5). The weighted overdue ratio is: (overdue weighted) ÷ (overdue weighted + assigned weighted) × 100. The resulting percentage determines which score band applies.
+        </p>
+        <p className="text-xs text-gray-500 mt-2">
+          <span className="font-semibold">Example:</span> 1 urgent + 1 high overdue = 4 + 3 = 7 weighted. If assigned tasks total 21 weighted, ratio = 7 ÷ (7 + 21) = 25% → "11-25%" band → 20 points.
         </p>
       </div>
 
@@ -792,6 +836,14 @@ export default function WeeklyPerformanceEvaluation({
             )}
           </div>
         )}
+      </div>
+
+      {/* Task Definition Reminder */}
+      <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200 print-avoid-break">
+        <p className="text-sm font-semibold text-amber-900 mb-2">Task Definition Reminder</p>
+        <p className="text-xs text-amber-800 leading-relaxed">
+          For the purpose of performance evaluation, tasks recorded in the task management system should represent measurable work deliverables or project-related outputs. Routine operational activities such as checking email or checking ClickUp are part of normal work operations and should not be logged as standalone tasks for performance scoring.
+        </p>
       </div>
     </div>
     </>

@@ -19,7 +19,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, department, position, joinDate, overallOverdueTasks } = body;
+    const { name, department, position, joinDate, workAuthorizationStatus, overallOverdueTasks } = body;
 
     // Validate required fields
     if (!name || !department || !position || !joinDate) {
@@ -36,6 +36,7 @@ export async function PUT(
         department,
         position,
         joinDate: parseDateForDatabase(joinDate),
+        workAuthorizationStatus: workAuthorizationStatus || "Other Work Visa",
         overallOverdueTasks: overallOverdueTasks || 0,
       },
       include: {
@@ -53,6 +54,7 @@ export async function PUT(
       department: employee.department,
       position: employee.position,
       joinDate: employee.joinDate.toISOString().split("T")[0],
+      workAuthorizationStatus: employee.workAuthorizationStatus,
       overallOverdueTasks: employee.overallOverdueTasks,
       weeklyRecords: employee.weeklyRecords.map((record) => ({
         startDate: record.startDate.toISOString().split("T")[0],

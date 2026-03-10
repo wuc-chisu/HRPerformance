@@ -48,6 +48,10 @@ export default function EmployeeCard({
             {formatCompactDate(employee.joinDate)}
           </p>
         </div>
+        <div>
+          <p className="text-gray-600">Authorization</p>
+          <p className="font-medium text-gray-900">{employee.workAuthorizationStatus || "Not specified"}</p>
+        </div>
       </div>
 
       {latestWeek && (
