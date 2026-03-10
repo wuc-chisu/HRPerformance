@@ -720,13 +720,13 @@ export default function Home() {
         {/* Manage Performance View */}
         {activeView === "manage-performance" && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            <div className="bg-white rounded-lg shadow-md p-6 print:shadow-none">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 print:hidden">
                 Manage Employee Performance
               </h2>
 
               {/* Year and Month Selectors */}
-              <div className="mb-6">
+              <div className="mb-6 print:hidden">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
                   Select Year, Month, and Week
                 </h3>
@@ -818,7 +818,7 @@ export default function Home() {
               </div>
 
               {/* Employee Selector */}
-              <div className="mb-6">
+              <div className="mb-6 print:hidden">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Select Employee
                 </label>
@@ -843,7 +843,7 @@ export default function Home() {
               {selectedEmployeeForPerformance &&
                 employees.find((e) => e.id === selectedEmployeeForPerformance) && (
                   <div className="space-y-6">
-                    <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                    <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 print:hidden">
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">

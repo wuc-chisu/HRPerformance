@@ -208,6 +208,30 @@ export default function MonthlyPerformanceReport({
           button {
             display: none !important;
           }
+          
+          /* Hide page header, navigation, and footer */
+          header,
+          footer {
+            display: none !important;
+          }
+          
+          /* Remove background gradients and margins for print */
+          body,
+          html {
+            background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
+          main {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          
+          /* Hide the year/month/week selector and employee selector sections */
+          .print\:hidden {
+            display: none !important;
+          }
         }
       `}</style>
       <div className={`rounded-lg shadow-md p-6 ${bgColor} print:shadow-none`}>
