@@ -20,6 +20,7 @@ model Employee {
   id                      String         @id @default(cuid())
   employeeId              String         @unique
   name                    String
+  email                   String         @default("")
   department              String
   position                String
   joinDate                DateTime

@@ -120,6 +120,7 @@ export default function Home() {
         const employeeData = {
           employeeId: employee.id,
           name: employee.name,
+          email: employee.email,
           department: employee.department,
           position: employee.position,
           joinDate: employee.joinDate,
@@ -655,6 +656,9 @@ export default function Home() {
                         Name
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Department
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -676,6 +680,9 @@ export default function Home() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {employee.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          {employee.email}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {employee.department}

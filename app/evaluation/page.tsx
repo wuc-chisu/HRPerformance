@@ -9,6 +9,7 @@ export default function EvaluationPage() {
     record: WeeklyRecord;
     employeeName: string;
     employeeId?: string;
+    employeeEmail?: string;
     workAuthorizationStatus?: string;
   } | null>(null);
 
@@ -85,6 +86,7 @@ export default function EvaluationPage() {
           record={evaluationData.record}
           employeeName={evaluationData.employeeName}
           employeeId={evaluationData.employeeId}
+          employeeEmail={evaluationData.employeeEmail}
           workAuthorizationStatus={evaluationData.workAuthorizationStatus}
         />
       </div>

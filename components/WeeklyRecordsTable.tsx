@@ -99,6 +99,7 @@ export default function WeeklyRecordsTable({
       record,
       employeeName: employee.name,
       employeeId: employee.id,
+      employeeEmail: employee.email,
       workAuthorizationStatus: employee.workAuthorizationStatus,
     };
     sessionStorage.setItem("evaluationData", JSON.stringify(evaluationData));

@@ -27,6 +27,7 @@ export interface WeeklyRecord {
 export interface Employee {
   id: string;
   name: string;
+  email: string;
   department: string;
   position: string;
   joinDate: string;
@@ -40,6 +41,7 @@ export const employees: Employee[] = [
   {
     id: "EMP-001",
     name: "John Smith",
+    email: "john.smith@example.com",
     department: "Engineering",
     position: "Senior Developer",
     joinDate: "2020-01-15",
@@ -74,6 +76,7 @@ export const employees: Employee[] = [
   {
     id: "EMP-002",
     name: "Sarah Johnson",
+    email: "sarah.johnson@example.com",
     department: "Product",
     position: "Product Manager",
     joinDate: "2021-06-20",
@@ -108,6 +111,7 @@ export const employees: Employee[] = [
   {
     id: "EMP-003",
     name: "Michael Chen",
+    email: "michael.chen@example.com",
     department: "Design",
     position: "UX Designer",
     joinDate: "2022-03-10",
@@ -142,6 +146,7 @@ export const employees: Employee[] = [
   {
     id: "EMP-004",
     name: "Emily Rodriguez",
+    email: "emily.rodriguez@example.com",
     department: "Marketing",
     position: "Marketing Specialist",
     joinDate: "2023-01-05",

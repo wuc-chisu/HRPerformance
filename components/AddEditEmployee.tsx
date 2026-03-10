@@ -27,6 +27,7 @@ export default function AddEditEmployee({
   const [formData, setFormData] = useState({
     id: employee?.id || "",
     name: employee?.name || "",
+    email: employee?.email || "",
     department: employee?.department || "",
     position: employee?.position || "",
     joinDate: employee?.joinDate || "",
@@ -40,6 +41,7 @@ export default function AddEditEmployee({
 
     if (!formData.id.trim()) newErrors.id = "Employee ID is required";
     if (!formData.name.trim()) newErrors.name = "Name is required";
+    if (!formData.email.trim()) newErrors.email = "Email is required";
     if (!formData.department) newErrors.department = "Department is required";
     if (!formData.position.trim()) newErrors.position = "Position/Title is required";
     if (!formData.joinDate) newErrors.joinDate = "Hire date is required";
@@ -49,6 +51,13 @@ export default function AddEditEmployee({
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(formData.joinDate)) {
         newErrors.joinDate = "Date must be in YYYY-MM-DD format";
+      }
+    }
+
+    if (formData.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = "Please enter a valid email address";
       }
     }
 
@@ -138,6 +147,28 @@ export default function AddEditEmployee({
             />
             {errors.name && (
               <p className="text-red-600 text-sm mt-1">{errors.name}</p>
+            )}
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Email *
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="e.g., staff@wuc.edu"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
+                errors.email
+                  ? "border-red-500 bg-red-50"
+                  : "border-gray-300 hover:border-gray-400"
+              }`}
+            />
+            {errors.email && (
+              <p className="text-red-600 text-sm mt-1">{errors.email}</p>
             )}
           </div>
 

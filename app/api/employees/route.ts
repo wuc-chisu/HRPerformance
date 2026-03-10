@@ -19,6 +19,7 @@ export async function GET() {
     const formattedEmployees = employees.map((emp) => ({
       id: emp.employeeId,
       name: emp.name,
+      email: emp.email,
       department: emp.department,
       position: emp.position,
       joinDate: emp.joinDate.toISOString().split("T")[0],
@@ -54,9 +55,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { employeeId, name, department, position, joinDate, workAuthorizationStatus, overallOverdueTasks } = body;
+    const { employeeId, name, email, department, position, joinDate, workAuthorizationStatus, overallOverdueTasks } = body;
 
-    if (!employeeId || !name || !department || !position || !joinDate) {
+    if (!employeeId || !name || !email || !department || !position || !joinDate) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
       data: {
         employeeId,
         name,
+        email,
         department,
         position,
         joinDate: parseDateForDatabase(joinDate),
@@ -81,6 +83,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       id: employee.employeeId,
       name: employee.name,
+      email: employee.email,
       department: employee.department,
       position: employee.position,
       joinDate: employee.joinDate.toISOString().split("T")[0],

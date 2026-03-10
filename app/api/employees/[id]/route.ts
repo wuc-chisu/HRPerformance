@@ -22,6 +22,7 @@ export async function PUT(
     const {
       id: nextEmployeeId,
       name,
+      email,
       department,
       position,
       joinDate,
@@ -30,7 +31,7 @@ export async function PUT(
     } = body;
 
     // Validate required fields
-    if (!nextEmployeeId || !name || !department || !position || !joinDate) {
+    if (!nextEmployeeId || !name || !email || !department || !position || !joinDate) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -54,6 +55,7 @@ export async function PUT(
       data: {
         employeeId: nextEmployeeId,
         name,
+        email,
         department,
         position,
         joinDate: parseDateForDatabase(joinDate),
@@ -72,6 +74,7 @@ export async function PUT(
     return NextResponse.json({
       id: employee.employeeId,
       name: employee.name,
+      email: employee.email,
       department: employee.department,
       position: employee.position,
       joinDate: employee.joinDate.toISOString().split("T")[0],
