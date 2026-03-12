@@ -77,3 +77,123 @@ Exports all **employee and weekly record data as JSON** and commits it to the Gi
 | `npm run restore` | Restore the database from a `.sql` backup file in `backups/` |
 | `npm run import-from-json` | Import employee data from the latest JSON export back into the database |
 | `npm run seed` | Safely seed initial department and employee data (will not overwrite existing records) |
+
+---
+
+## New Server Setup Guide
+
+**Yes — Prisma commands are required on every new server.** The database schema does not exist yet on a fresh machine, so you must run migrations before starting the app.
+
+Follow these steps in order:
+
+### Step 1 — Prerequisites
+
+Make sure the following are installed on the new server:
+
+- **Node.js** v18 or higher (`node -v` to check)
+- **PostgreSQL** v14 or higher (`psql --version` to check)
+- **npm** (`npm -v` to check)
+- **Git** (`git --version` to check)
+
+### Step 2 — Clone the repository
+
+```bash
+git clone <your-repo-url> hrperformance
+cd hrperformance
+npm install
+```
+
+### Step 3 — Create the environment file
+
+Create a file named `.env.local` in the project root. This file is **not included in Git** and must be created manually on each new server.
+
+```bash
+# .env.local
+
+# PostgreSQL connection string — update user, host, port, and database name to match the new server
+DATABASE_URL="postgresql://<your-db-user>@localhost:5432/hrperformance"
+
+# Google Gemini API key — used for AI-generated performance comments
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# SMTP email settings — used for sending weekly and monthly performance report emails
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@wuc.edu
+SMTP_PASS=your_gmail_app_password_here
+SMTP_SECURE=false
+
+# Display name in the From field of sent emails
+HR_EMAIL_FROM=Human Resources <your_email@wuc.edu>
+```
+
+> **Important:** `SMTP_PASS` must be a **Gmail App Password**, not your regular Gmail password. Generate one at myaccount.google.com → Security → App passwords.
+
+### Step 4 — Create the PostgreSQL database
+
+```bash
+createdb hrperformance
+```
+
+If your PostgreSQL uses a specific user:
+
+```bash
+createdb -U your-db-user hrperformance
+```
+
+### Step 5 — Run Prisma migrations ⚠️ Required
+
+This creates all the database tables on the new server:
+
+```bash
+npx prisma migrate deploy
+```
+
+Then generate the Prisma client (required so the app can talk to the database):
+
+```bash
+npx prisma generate
+```
+
+Or run both with the built-in shortcut:
+
+```bash
+npm run setup-db
+```
+
+### Step 6 — Restore your data
+
+**Option A — Restore from a SQL backup** (recommended, restores everything):
+
+```bash
+psql hrperformance < backups/hrperformance_YYYYMMDD_HHMMSS.sql
+```
+
+Replace the filename with the most recent `.sql` file in the `backups/` folder.
+
+**Option B — Import from JSON export** (restores employee + weekly records only):
+
+```bash
+npm run import-from-json
+```
+
+### Step 7 — Start the app
+
+```bash
+npm run dev
+```
+
+The app runs on **http://localhost:3001** by default.
+
+---
+
+### What to update when moving to a new server
+
+| Item | Where to change | Why |
+|---|---|---|
+| `DATABASE_URL` | `.env.local` | New server has a different PostgreSQL user/hostname |
+| `SMTP_USER` / `SMTP_PASS` | `.env.local` | Gmail credentials are account-specific |
+| `GEMINI_API_KEY` | `.env.local` | API key is tied to a Google Cloud account |
+| `HR_EMAIL_FROM` | `.env.local` | Should match the SMTP sending account |
+| PostgreSQL version | System install | Must match or exceed v14 for migrations to work |
+| Port number | `package.json` → `dev` / `start` scripts | Default is 3001, change if that port is in use |
