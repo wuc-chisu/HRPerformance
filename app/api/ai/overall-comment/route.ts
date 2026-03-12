@@ -12,6 +12,87 @@ interface OverallCommentRequest {
   workAuthorizationStatus?: string;
 }
 
+function buildWeeklyFallbackComment(params: {
+  totalScore: number;
+  rating: string;
+  record: WeeklyRecord;
+  score: {
+    workHoursFulfillment: number;
+    taskPriorityHandling: number;
+    taskCompletionRate: number;
+    pastDueTaskManagement: number;
+  };
+  lowAreas: string[];
+  workAuthorizationStatus?: string;
+}) {
+  const {
+    totalScore,
+    rating,
+    record,
+    score,
+    lowAreas,
+    workAuthorizationStatus,
+  } = params;
+
+  const strengthParts: string[] = [];
+  if (score.taskPriorityHandling >= 16) {
+    strengthParts.push(
+      "your task priority handling is strong, showing that you are focusing on high-impact work effectively"
+    );
+  }
+  if (score.taskCompletionRate >= 20) {
+    strengthParts.push(
+      "your task completion rate is solid, indicating consistent follow-through on assigned deliverables"
+    );
+  }
+  if (score.workHoursFulfillment >= 20) {
+    strengthParts.push(
+      workAuthorizationStatus === "H-1B"
+        ? "you fulfilled assigned work hours and maintained reliable availability for team execution"
+        : "you fulfilled work hour expectations and supported steady weekly output"
+    );
+  }
+  if (strengthParts.length === 0) {
+    strengthParts.push(
+      "you showed positive effort in completing assigned work and maintaining progress during the week"
+    );
+  }
+
+  const paragraphOne =
+    `You achieved a total score of ${totalScore.toFixed(2)} (${rating}) this week, and there are clear positives in your performance. ` +
+    `${strengthParts.slice(0, 2).join(". ")}. ` +
+    `These results show that you can deliver quality outcomes when you maintain consistent execution and prioritize key tasks.`;
+
+  const lowAreaText = lowAreas.length
+    ? lowAreas.join(", ")
+    : "Past Due Task Management";
+  const paragraphTwo =
+    `However, critical areas require immediate attention: ${lowAreaText}. ` +
+    `Your current scores are Work Hours Fulfillment ${score.workHoursFulfillment.toFixed(2)}/25, Task Priority Handling ${score.taskPriorityHandling.toFixed(2)}/20, Task Completion Rate ${score.taskCompletionRate.toFixed(2)}/25, and Past Due Task Management ${score.pastDueTaskManagement.toFixed(2)}/30. ` +
+    `In particular, you have ${record.allOverdueTasks ?? 0} all overdue tasks and ${record.weeklyOverdueTasks} weekly overdue tasks, which must be corrected right away to avoid continued performance risk.`;
+
+  const paragraphThree =
+    `To improve, manage your full workload in ClickUp with a strict daily routine: review all due items at the start of each day, re-prioritize urgent and high-priority tasks first, and close or update task status before end-of-day. ` +
+    `Set a weekly target to reduce overdue tasks to zero, break larger items into clear subtasks with deadlines, and document blockers early so support can be provided. ` +
+    `Consistent ClickUp planning, timely task completion, and proactive follow-up will raise your category scores and strengthen overall weekly performance.`;
+
+  let fallback = `${paragraphOne}\n\n${paragraphTwo}\n\n${paragraphThree}`;
+
+  if (fallback.length < 800) {
+    fallback +=
+      " You should also run a mid-week self-check in ClickUp to confirm completion rate, overdue exposure, and priority alignment against expectations.";
+  }
+
+  if (fallback.length > 1200) {
+    fallback = fallback.slice(0, 1199);
+    if (!/[.!?]$/.test(fallback)) {
+      fallback = `${fallback.trimEnd()}.`;
+    }
+  }
+
+  return fallback;
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as OverallCommentRequest;
@@ -61,6 +142,24 @@ export async function POST(request: Request) {
 
     const needsUrgentImprovement = score.totalScore < 70;
     const noWorkHoursEntered = record.actualWorkHours === 0;
+    const workHoursThreshold = 17.5;
+    const taskPriorityThreshold = 14;
+    const taskCompletionThreshold = 17.5;
+    const pastDueThreshold = 21;
+    const lowAreas: string[] = [];
+
+    if (score.workHoursFulfillment < workHoursThreshold) {
+      lowAreas.push("Work Hours Fulfillment");
+    }
+    if (score.taskPriorityHandling < taskPriorityThreshold) {
+      lowAreas.push("Task Priority Handling");
+    }
+    if (score.taskCompletionRate < taskCompletionThreshold) {
+      lowAreas.push("Task Completion Rate");
+    }
+    if (score.pastDueTaskManagement < pastDueThreshold) {
+      lowAreas.push("Past Due Task Management");
+    }
 
     const promptBase = `You are a professional HR performance evaluation assistant.
 
@@ -68,23 +167,30 @@ Goal:
 Write a focused and practical weekly performance comment based ONLY on the metrics provided.
 
 Requirements:
-- Length must be between 600 and 1000 characters (including spaces).
-- Use 3 paragraphs separated by a single blank line. Do not add line breaks within a paragraph.
+- Length must be between 800 and 1200 characters (including spaces).
+- Use exactly 3 paragraphs separated by a single blank line. Do not add line breaks within a paragraph.
 - Address the employee directly using "You" / "Your".
 - Do NOT include the employee ID.
 - Do NOT invent facts.
 - Maintain a professional and concise tone.
 - Highlight the 1–2 strongest areas.
 - Clearly identify the 1–2 most critical performance issues.
-- Provide practical improvement guidance (2–3 clear actions).
+- Provide practical improvement guidance (4–6 clear, specific actions).
+- For each LOW category, include one concrete action with timing/ownership detail (for example: daily planning, end-of-day review, weekly target).
 - Avoid excessive breakdown of every metric.
 - Do NOT list all numbers repeatedly — reference only the most impactful ones.
 - End with a complete sentence.
 - IMPORTANT: If there are ANY overdue tasks (All overdue tasks > 0), it MUST be mentioned in the comment as an area requiring immediate attention and improvement, regardless of overall score.
+- CRITICAL: If any category is marked LOW in the input, you MUST explicitly mention EACH low category by exact name and explain one concrete improvement action for each. Do not skip any LOW category.
+- Structure requirement (must follow):
+  1) Paragraph 1: what is good (strengths and positive outcomes),
+  2) Paragraph 2: critical areas needing immediate correction,
+  3) Paragraph 3: detailed improvement plan with concrete next steps.
+- In paragraph 2 or 3, explicitly instruct the employee to manage tasks properly in ClickUp.
 ${noWorkHoursEntered ? "- CRITICAL: If actual work hours is 0, you MUST include this exact note in the first paragraph: 'IMPORTANT: You must enter and track your work hours in the time tracking system. Failure to record work hours will result in performance evaluation issues and may affect your employment status.'" : ""}
 ${workAuthorizationStatus === "H-1B" ? "- IMPORTANT: For work hours, do NOT mention specific hours (like '8h / 40h'). Instead, just say whether the employee 'fulfilled' or 'failed to fulfill' assigned work hours. For example: 'You fulfilled assigned work hours' or 'You failed to fulfill assigned work hours'." : ""}
 ${needsUrgentImprovement ?
-  "- Because the total score is below 70, append a final paragraph with this exact warning text: This week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately." :
+  "- Because the total score is below 70, include this warning sentence in paragraph 2 (do not add a 4th paragraph): This week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately." :
   ""}
 
 Focus on clarity, priority, and improvement — not full statistical explanation.
@@ -106,6 +212,8 @@ Task detail breakdowns:
 
 Flag:
 - Total score below 70: ${needsUrgentImprovement ? "YES" : "NO"}
+- Category status: Work Hours Fulfillment=${score.workHoursFulfillment < workHoursThreshold ? "LOW" : "OK"}, Task Priority Handling=${score.taskPriorityHandling < taskPriorityThreshold ? "LOW" : "OK"}, Task Completion Rate=${score.taskCompletionRate < taskCompletionThreshold ? "LOW" : "OK"}, Past Due Task Management=${score.pastDueTaskManagement < pastDueThreshold ? "LOW" : "OK"}
+- LOW categories that MUST be addressed: ${lowAreas.length ? lowAreas.join(", ") : "none"}
 - Employee visa status: ${workAuthorizationStatus || "Unknown"}
 
 Return the full evaluation comment only.`;
@@ -117,7 +225,7 @@ Return the full evaluation comment only.`;
       return (
         promptBase +
         "\n\nIf the output is truncated, regenerate it with complete sentences and a full ending." +
-        " Keep it between 600 and 1000 characters."
+        " Keep it between 800 and 1200 characters. If it is too short, add more specific improvement steps and expected outcomes for each low category."
       );
     };
 
@@ -200,7 +308,7 @@ Return the full evaluation comment only.`;
     };
 
     let finalContent = "";
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
       const result = await generateOnce(attempt);
       if (result.error) {
         const statusCode = result.status === 429 ? 429 : 500;
@@ -217,7 +325,7 @@ Return the full evaluation comment only.`;
       }
 
       const content = result.content || "";
-      const isLengthOk = content.length >= 600 && content.length <= 1000;
+      const isLengthOk = content.length >= 800 && content.length <= 1200;
       const endsWithSentence = /[.!?]$/.test(content);
 
       if (isLengthOk && endsWithSentence) {
@@ -233,6 +341,22 @@ Return the full evaluation comment only.`;
         { error: "No content returned from Gemini" },
         { status: 500 }
       );
+    }
+
+    if (finalContent.length < 800) {
+      finalContent = buildWeeklyFallbackComment({
+        totalScore: score.totalScore,
+        rating,
+        record,
+        score: {
+          workHoursFulfillment: score.workHoursFulfillment,
+          taskPriorityHandling: score.taskPriorityHandling,
+          taskCompletionRate: score.taskCompletionRate,
+          pastDueTaskManagement: score.pastDueTaskManagement,
+        },
+        lowAreas,
+        workAuthorizationStatus,
+      });
     }
 
     // If content doesn't end with proper punctuation, trim to last complete sentence
