@@ -10,6 +10,7 @@ import AddEditEmployee from "@/components/AddEditEmployee";
 import AddEditWeeklyRecord from "@/components/AddEditWeeklyRecord";
 import DepartmentManager from "@/components/DepartmentManager";
 import MonthlyPerformanceReport from "@/components/MonthlyPerformanceReport";
+import IncidentTrackingTable from "@/components/IncidentTrackingTable";
 
 export default function Home() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -18,7 +19,7 @@ export default function Home() {
     null
   );
   const [activeView, setActiveView] = useState<
-    "dashboard" | "employees" | "manage" | "manage-performance"
+    "dashboard" | "employees" | "manage" | "manage-performance" | "incident-tracking"
   >("dashboard");
   const [selectedEmployeeForPerformance, setSelectedEmployeeForPerformance] =
     useState<string | null>(null);
@@ -122,6 +123,7 @@ export default function Home() {
           name: employee.name,
           email: employee.email,
           department: employee.department,
+          manager: employee.manager,
           position: employee.position,
           joinDate: employee.joinDate,
           workAuthorizationStatus: employee.workAuthorizationStatus,
@@ -574,6 +576,19 @@ export default function Home() {
           >
             Manage Performance
           </button>
+          <button
+            onClick={() => {
+              setActiveView("incident-tracking");
+              setSelectedEmployeeId(null);
+            }}
+            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              activeView === "incident-tracking"
+                ? "bg-red-300 text-white shadow-md"
+                : "bg-red-100 text-gray-700 border border-red-200 hover:bg-red-50"
+            }`}
+          >
+            Mistakes & Warnings
+          </button>
         </div>
 
         {/* Dashboard View */}
@@ -662,6 +677,9 @@ export default function Home() {
                         Department
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Manager
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Position
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -686,6 +704,9 @@ export default function Home() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {employee.department}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {employee.manager}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {employee.position}
@@ -838,7 +859,14 @@ export default function Home() {
                   className="w-full px-4 py-2 border border-blue-300 rounded-lg bg-blue-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
                   <option value="">Choose an employee...</option>
-                  {employees.map((emp) => (
+                  {[...employees]
+                    .sort((a, b) =>
+                      a.id.localeCompare(b.id, undefined, {
+                        numeric: true,
+                        sensitivity: "base",
+                      })
+                    )
+                    .map((emp) => (
                     <option key={emp.id} value={emp.id}>
                       {emp.name} ({emp.id})
                     </option>
@@ -930,6 +958,10 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {activeView === "incident-tracking" && (
+          <IncidentTrackingTable employees={employees} />
+        )}
       </main>
 
       {/* Footer */}
@@ -951,6 +983,7 @@ export default function Home() {
             setEditingEmployee(null);
           }}
           departments={departments}
+          employees={employees}
         />
       )}
 

@@ -1,0 +1,2 @@
+ALTER TABLE "IncidentRecord"
+ADD COLUMN "reason" TEXT NOT NULL DEFAULT '';

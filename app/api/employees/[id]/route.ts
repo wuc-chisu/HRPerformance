@@ -24,6 +24,7 @@ export async function PUT(
       name,
       email,
       department,
+      manager,
       position,
       joinDate,
       workAuthorizationStatus,
@@ -31,7 +32,7 @@ export async function PUT(
     } = body;
 
     // Validate required fields
-    if (!nextEmployeeId || !name || !email || !department || !position || !joinDate) {
+    if (!nextEmployeeId || !name || !email || !department || !manager || !position || !joinDate) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -57,6 +58,7 @@ export async function PUT(
         name,
         email,
         department,
+        manager,
         position,
         joinDate: parseDateForDatabase(joinDate),
         workAuthorizationStatus: workAuthorizationStatus || "Other Work Visa",
@@ -76,6 +78,7 @@ export async function PUT(
       name: employee.name,
       email: employee.email,
       department: employee.department,
+      manager: employee.manager,
       position: employee.position,
       joinDate: employee.joinDate.toISOString().split("T")[0],
       workAuthorizationStatus: employee.workAuthorizationStatus,

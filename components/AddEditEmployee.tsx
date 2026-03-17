@@ -8,12 +8,14 @@ interface AddEditEmployeeProps {
   onSave: (employee: Employee) => void;
   onCancel: () => void;
   departments?: string[];
+  employees?: Employee[];
 }
 
 export default function AddEditEmployee({
   employee,
   onSave,
   onCancel,
+  employees = [],
   departments = [
     "Engineering",
     "Product",
@@ -29,12 +31,18 @@ export default function AddEditEmployee({
     name: employee?.name || "",
     email: employee?.email || "",
     department: employee?.department || "",
+    manager: employee?.manager || "",
     position: employee?.position || "",
     joinDate: employee?.joinDate || "",
     workAuthorizationStatus: employee?.workAuthorizationStatus || "Other Work Visa",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const managerOptions = employees
+    .filter((entry) => entry.id !== formData.id)
+    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: "base" }))
+    .map((entry) => ({ value: entry.name, label: `${entry.name} (${entry.id})` }));
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -43,6 +51,7 @@ export default function AddEditEmployee({
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.email.trim()) newErrors.email = "Email is required";
     if (!formData.department) newErrors.department = "Department is required";
+    if (!formData.manager.trim()) newErrors.manager = "Manager is required";
     if (!formData.position.trim()) newErrors.position = "Position/Title is required";
     if (!formData.joinDate) newErrors.joinDate = "Hire date is required";
 
@@ -222,6 +231,33 @@ export default function AddEditEmployee({
                 <p className="text-red-600 text-sm mt-1">{errors.position}</p>
               )}
             </div>
+          </div>
+
+          {/* Direct Manager */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Direct Manager *
+            </label>
+            <select
+              name="manager"
+              value={formData.manager}
+              onChange={handleChange}
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${
+                errors.manager
+                  ? "border-red-500 bg-red-50"
+                  : "border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              <option value="">Select Direct Manager</option>
+              {managerOptions.map((option) => (
+                <option key={option.label} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {errors.manager && (
+              <p className="text-red-600 text-sm mt-1">{errors.manager}</p>
+            )}
           </div>
 
           {/* Hire Date */}

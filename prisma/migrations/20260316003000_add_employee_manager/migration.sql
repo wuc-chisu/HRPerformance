@@ -1,0 +1,2 @@
+ALTER TABLE "Employee"
+ADD COLUMN "manager" TEXT NOT NULL DEFAULT '';

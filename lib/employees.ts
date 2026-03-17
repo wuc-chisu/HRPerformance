@@ -29,6 +29,7 @@ export interface Employee {
   name: string;
   email: string;
   department: string;
+  manager: string;
   position: string;
   joinDate: string;
   workAuthorizationStatus?: string;
@@ -43,6 +44,7 @@ export const employees: Employee[] = [
     name: "John Smith",
     email: "john.smith@example.com",
     department: "Engineering",
+    manager: "David Wilson",
     position: "Senior Developer",
     joinDate: "2020-01-15",
     overallOverdueTasks: 2,
@@ -78,6 +80,7 @@ export const employees: Employee[] = [
     name: "Sarah Johnson",
     email: "sarah.johnson@example.com",
     department: "Product",
+    manager: "Laura Kim",
     position: "Product Manager",
     joinDate: "2021-06-20",
     overallOverdueTasks: 0,
@@ -113,6 +116,7 @@ export const employees: Employee[] = [
     name: "Michael Chen",
     email: "michael.chen@example.com",
     department: "Design",
+    manager: "Rachel Moore",
     position: "UX Designer",
     joinDate: "2022-03-10",
     overallOverdueTasks: 5,
@@ -148,6 +152,7 @@ export const employees: Employee[] = [
     name: "Emily Rodriguez",
     email: "emily.rodriguez@example.com",
     department: "Marketing",
+    manager: "James Carter",
     position: "Marketing Specialist",
     joinDate: "2023-01-05",
     overallOverdueTasks: 3,

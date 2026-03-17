@@ -8,6 +8,7 @@ export async function POST(request: Request) {
     const to = String(formData.get("to") || "").trim();
     const subject = String(formData.get("subject") || "").trim();
     const body = String(formData.get("body") || "").trim();
+    const cc = String(formData.get("cc") || "").trim();
     const bcc = String(formData.get("bcc") || "").trim();
 
     if (!to || !subject || !body) {
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
     await transporter.sendMail({
       from: fromAddress,
       to,
+      cc: cc || undefined,
       bcc: bcc || undefined,
       subject,
       text: body,

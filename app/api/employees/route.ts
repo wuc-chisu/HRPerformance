@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 // GET all employees with their weekly records
 export async function GET() {
   try {
-    const employees = await prisma.employee.findMany({
+    const employees = await (prisma as any).employee.findMany({
       include: {
         weeklyRecords: {
           orderBy: {
@@ -16,16 +16,17 @@ export async function GET() {
     });
 
     // Transform data to match the frontend format
-    const formattedEmployees = employees.map((emp) => ({
+    const formattedEmployees = employees.map((emp: any) => ({
       id: emp.employeeId,
       name: emp.name,
       email: emp.email,
       department: emp.department,
+      manager: emp.manager,
       position: emp.position,
       joinDate: emp.joinDate.toISOString().split("T")[0],
       workAuthorizationStatus: emp.workAuthorizationStatus,
       overallOverdueTasks: emp.overallOverdueTasks,
-      weeklyRecords: emp.weeklyRecords.map((record) => ({
+      weeklyRecords: emp.weeklyRecords.map((record: any) => ({
         recordId: record.id,
         startDate: record.startDate.toISOString().split("T")[0],
         endDate: record.endDate.toISOString().split("T")[0],
@@ -55,21 +56,22 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { employeeId, name, email, department, position, joinDate, workAuthorizationStatus, overallOverdueTasks } = body;
+    const { employeeId, name, email, department, manager, position, joinDate, workAuthorizationStatus, overallOverdueTasks } = body;
 
-    if (!employeeId || !name || !email || !department || !position || !joinDate) {
+    if (!employeeId || !name || !email || !department || !manager || !position || !joinDate) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    const employee = await prisma.employee.create({
+    const employee = await (prisma as any).employee.create({
       data: {
         employeeId,
         name,
         email,
         department,
+        manager,
         position,
         joinDate: parseDateForDatabase(joinDate),
         workAuthorizationStatus: workAuthorizationStatus || "Other Work Visa",
@@ -85,6 +87,7 @@ export async function POST(request: Request) {
       name: employee.name,
       email: employee.email,
       department: employee.department,
+      manager: employee.manager,
       position: employee.position,
       joinDate: employee.joinDate.toISOString().split("T")[0],
       workAuthorizationStatus: employee.workAuthorizationStatus,
