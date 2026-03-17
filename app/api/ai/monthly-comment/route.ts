@@ -35,6 +35,7 @@ function buildMonthlyFallbackComment(params: {
   avgPastDue: number;
   trend: string;
   lowAreas: string[];
+  isExcellentPerformance?: boolean;
 }) {
   const {
     monthName,
@@ -48,6 +49,7 @@ function buildMonthlyFallbackComment(params: {
     avgPastDue,
     trend,
     lowAreas,
+    isExcellentPerformance,
   } = params;
 
   const strengths: string[] = [];
@@ -60,8 +62,32 @@ function buildMonthlyFallbackComment(params: {
   if (avgWorkHours >= 20) {
     strengths.push("you generally fulfilled work hour expectations and maintained reliable contribution");
   }
+  if (avgPastDue >= 27) {
+    strengths.push("your past due task management was excellent with minimal overdue exposure throughout the month");
+  }
   if (strengths.length === 0) {
     strengths.push("you maintained engagement and completed key assignments during the evaluation period");
+  }
+
+  if (isExcellentPerformance) {
+    const paragraphOne =
+      `Your ${monthName} ${year} monthly performance average is ${monthlyAverage.toFixed(2)} (${monthlyRating}) across ${weeklyCount} evaluated weeks, with an overall ${trend} trend — an outstanding result. ` +
+      `${strengths.join(". ")}. ` +
+      `Achieving high scores across all evaluation categories reflects excellent discipline, strong work habits, and consistent commitment to delivering quality outcomes.`;
+
+    const paragraphTwo =
+      `To sustain this level of performance, continue managing your full workload in ClickUp — keep all tasks updated daily, maintain your current planning habits, and close completed items promptly so your workflow stays clean and transparent. ` +
+      `Stay proactive about flagging potential blockers before they cause delays, and continue the habits that have produced these strong results month over month. ` +
+      `This consistent standard is the foundation for continued high performance ratings and reflects positively on your contribution to the team.`;
+
+    let excellentFallback = `${paragraphOne}\n\n${paragraphTwo}`;
+    if (excellentFallback.length > 1200) {
+      excellentFallback = excellentFallback.slice(0, 1199);
+      if (!/[.!?]$/.test(excellentFallback)) {
+        excellentFallback = `${excellentFallback.trimEnd()}.`;
+      }
+    }
+    return excellentFallback;
   }
 
   const paragraphOne =
@@ -178,6 +204,8 @@ export async function POST(request: Request) {
       lowAreas.push("Past Due Task Management");
     }
 
+    const isExcellentPerformance = lowAreas.length === 0;
+
     const promptBase = `You are a professional HR performance evaluation assistant.
 
 Goal:
@@ -185,22 +213,24 @@ Write a focused monthly performance summary based on weekly performance data.
 
 Requirements:
 - Length must be between 800 and 1200 characters (including spaces).
-- Use exactly 3 paragraphs separated by a single blank line. Do not add line breaks within a paragraph.
 - Address the employee directly using "You" / "Your".
 - Do NOT include the employee ID or name.
 - Do NOT invent facts.
 - Maintain a professional and concise tone.
+- End with a complete sentence.
+${isExcellentPerformance ? `- Structure requirement: Use exactly 2 paragraphs separated by a single blank line.
+  1) Paragraph 1: celebrate the excellent monthly performance, highlight all strong category averages.
+  2) Paragraph 2: encourage the employee to sustain this level, reference ClickUp task management and daily habits. Do NOT suggest any area needs improvement.` : `- Use exactly 3 paragraphs separated by a single blank line. Do not add line breaks within a paragraph.
 - Highlight 1-2 key strengths observed over the month.
 - Identify 1-3 areas needing improvement or continued focus.
 - Provide practical guidance (4-6 clear, actionable steps).
 - For each LOW category, include one concrete action with timing/ownership detail (for example: daily planning, end-of-day review, weekly target).
-- End with a complete sentence.
 - CRITICAL: If any category is marked LOW in the input, you MUST explicitly mention EACH low category by exact name and provide one concrete improvement action for each. Do not skip any LOW category.
 - Structure requirement (must follow):
   1) Paragraph 1: what is good (monthly strengths),
   2) Paragraph 2: critical areas needing immediate correction,
   3) Paragraph 3: detailed improvement plan.
-- In paragraph 2 or 3, explicitly instruct the employee to manage tasks properly in ClickUp.
+- In paragraph 2 or 3, explicitly instruct the employee to manage tasks properly in ClickUp.`}
 ${needsUrgentImprovement ? "- CRITICAL: Because monthly average is below 70%, emphasize this requires immediate improvement and mention the formal warning policy." : ""}
 
 Monthly performance data for ${monthName} ${year}:
@@ -319,16 +349,29 @@ Return only the monthly summary comment.`;
       const result = await generateOnce(attempt);
 
       if (result.error) {
-        const statusCode = result.status === 429 ? 429 : 500;
         const isQuotaError =
           typeof result.error === "string" &&
           result.error.includes("RESOURCE_EXHAUSTED");
+        const isServiceUnavailable =
+          result.status === 503 ||
+          (typeof result.error === "string" &&
+            (result.error.includes("UNAVAILABLE") ||
+              result.error.includes("503")));
+        if (isQuotaError) {
+          return NextResponse.json(
+            { error: "GEMINI_QUOTA_EXCEEDED", details: result.error },
+            { status: 429 }
+          );
+        }
+        if (isServiceUnavailable) {
+          return NextResponse.json(
+            { error: "GEMINI_SERVICE_UNAVAILABLE", details: result.error },
+            { status: 503 }
+          );
+        }
         return NextResponse.json(
-          {
-            error: isQuotaError ? "GEMINI_QUOTA_EXCEEDED" : "Gemini request failed",
-            details: result.error,
-          },
-          { status: statusCode }
+          { error: "Gemini request failed", details: result.error },
+          { status: 500 }
         );
       }
 
@@ -362,6 +405,7 @@ Return only the monthly summary comment.`;
         avgPastDue,
         trend,
         lowAreas,
+        isExcellentPerformance,
       });
     }
 

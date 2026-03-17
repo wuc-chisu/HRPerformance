@@ -24,6 +24,7 @@ function buildWeeklyFallbackComment(params: {
   };
   lowAreas: string[];
   workAuthorizationStatus?: string;
+  isExcellentPerformance?: boolean;
 }) {
   const {
     totalScore,
@@ -32,6 +33,7 @@ function buildWeeklyFallbackComment(params: {
     score,
     lowAreas,
     workAuthorizationStatus,
+    isExcellentPerformance,
   } = params;
 
   const strengthParts: string[] = [];
@@ -52,10 +54,36 @@ function buildWeeklyFallbackComment(params: {
         : "you fulfilled work hour expectations and supported steady weekly output"
     );
   }
+  if (score.pastDueTaskManagement >= 27) {
+    strengthParts.push(
+      "your past due task management was excellent with zero overdue items this week"
+    );
+  }
   if (strengthParts.length === 0) {
     strengthParts.push(
       "you showed positive effort in completing assigned work and maintaining progress during the week"
     );
+  }
+
+  if (isExcellentPerformance) {
+    const paragraphOne =
+      `You achieved an outstanding total score of ${totalScore.toFixed(2)} (${rating}) this week, reflecting excellent performance across all evaluation categories. ` +
+      `${strengthParts.join(". ")}. ` +
+      `With zero overdue tasks and strong scores in every area, you demonstrated exceptional discipline and commitment to your responsibilities.`;
+
+    const paragraphTwo =
+      `Keep up this excellent standard by continuing to manage your tasks proactively in ClickUp, ensuring all assignments are updated and completed on time each week. ` +
+      `Maintain your current daily planning habits, keep all task statuses current, and continue communicating proactively on any blockers before they become overdue. ` +
+      `Consistent performance at this level is the benchmark for continued high ratings and reflects positively on your overall monthly evaluation.`;
+
+    let excellentFallback = `${paragraphOne}\n\n${paragraphTwo}`;
+    if (excellentFallback.length > 1200) {
+      excellentFallback = excellentFallback.slice(0, 1199);
+      if (!/[.!?]$/.test(excellentFallback)) {
+        excellentFallback = `${excellentFallback.trimEnd()}.`;
+      }
+    }
+    return excellentFallback;
   }
 
   const paragraphOne =
@@ -161,6 +189,10 @@ export async function POST(request: Request) {
       lowAreas.push("Past Due Task Management");
     }
 
+    const allOverdueCount = record.allOverdueTasks ?? 0;
+    const weeklyOverdueCount = record.weeklyOverdueTasks ?? 0;
+    const isExcellentPerformance = lowAreas.length === 0 && allOverdueCount === 0 && weeklyOverdueCount === 0;
+
     const promptBase = `You are a professional HR performance evaluation assistant.
 
 Goal:
@@ -168,25 +200,27 @@ Write a focused and practical weekly performance comment based ONLY on the metri
 
 Requirements:
 - Length must be between 800 and 1200 characters (including spaces).
-- Use exactly 3 paragraphs separated by a single blank line. Do not add line breaks within a paragraph.
 - Address the employee directly using "You" / "Your".
 - Do NOT include the employee ID.
 - Do NOT invent facts.
 - Maintain a professional and concise tone.
+- Avoid excessive breakdown of every metric.
+- Do NOT list all numbers repeatedly — reference only the most impactful ones.
+- End with a complete sentence.
+${isExcellentPerformance ? `- Structure requirement: Use exactly 2 paragraphs separated by a single blank line.
+  1) Paragraph 1: celebrate the excellent performance, highlight all strong scoring areas with specific scores.
+  2) Paragraph 2: encourage the employee to sustain this level of performance, mention keeping ClickUp tasks up to date and maintaining consistent work habits. Do NOT mention any improvement areas or suggest anything needs fixing.` : `- Use exactly 3 paragraphs separated by a single blank line. Do not add line breaks within a paragraph.
 - Highlight the 1–2 strongest areas.
 - Clearly identify the 1–2 most critical performance issues.
 - Provide practical improvement guidance (4–6 clear, specific actions).
 - For each LOW category, include one concrete action with timing/ownership detail (for example: daily planning, end-of-day review, weekly target).
-- Avoid excessive breakdown of every metric.
-- Do NOT list all numbers repeatedly — reference only the most impactful ones.
-- End with a complete sentence.
-- IMPORTANT: If there are ANY overdue tasks (All overdue tasks > 0), it MUST be mentioned in the comment as an area requiring immediate attention and improvement, regardless of overall score.
-- CRITICAL: If any category is marked LOW in the input, you MUST explicitly mention EACH low category by exact name and explain one concrete improvement action for each. Do not skip any LOW category.
+- IMPORTANT: If there are ANY overdue tasks (All overdue tasks > 0), it MUST be mentioned as an area requiring immediate attention and improvement.
+- CRITICAL: If any category is marked LOW, you MUST explicitly mention EACH low category by exact name and explain one concrete improvement action for each.
 - Structure requirement (must follow):
   1) Paragraph 1: what is good (strengths and positive outcomes),
   2) Paragraph 2: critical areas needing immediate correction,
   3) Paragraph 3: detailed improvement plan with concrete next steps.
-- In paragraph 2 or 3, explicitly instruct the employee to manage tasks properly in ClickUp.
+- In paragraph 2 or 3, explicitly instruct the employee to manage tasks properly in ClickUp.`}
 ${noWorkHoursEntered ? "- CRITICAL: If actual work hours is 0, you MUST include this exact note in the first paragraph: 'IMPORTANT: You must enter and track your work hours in the time tracking system. Failure to record work hours will result in performance evaluation issues and may affect your employment status.'" : ""}
 ${workAuthorizationStatus === "H-1B" ? "- IMPORTANT: For work hours, do NOT mention specific hours (like '8h / 40h'). Instead, just say whether the employee 'fulfilled' or 'failed to fulfill' assigned work hours. For example: 'You fulfilled assigned work hours' or 'You failed to fulfill assigned work hours'." : ""}
 ${needsUrgentImprovement ?
@@ -311,16 +345,29 @@ Return the full evaluation comment only.`;
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       const result = await generateOnce(attempt);
       if (result.error) {
-        const statusCode = result.status === 429 ? 429 : 500;
         const isQuotaError =
           typeof result.error === "string" &&
           result.error.includes("RESOURCE_EXHAUSTED");
+        const isServiceUnavailable =
+          result.status === 503 ||
+          (typeof result.error === "string" &&
+            (result.error.includes("UNAVAILABLE") ||
+              result.error.includes("503")));
+        if (isQuotaError) {
+          return NextResponse.json(
+            { error: "GEMINI_QUOTA_EXCEEDED", details: result.error },
+            { status: 429 }
+          );
+        }
+        if (isServiceUnavailable) {
+          return NextResponse.json(
+            { error: "GEMINI_SERVICE_UNAVAILABLE", details: result.error },
+            { status: 503 }
+          );
+        }
         return NextResponse.json(
-          {
-            error: isQuotaError ? "GEMINI_QUOTA_EXCEEDED" : "Gemini request failed",
-            details: result.error,
-          },
-          { status: statusCode }
+          { error: "Gemini request failed", details: result.error },
+          { status: 500 }
         );
       }
 
@@ -356,6 +403,7 @@ Return the full evaluation comment only.`;
         },
         lowAreas,
         workAuthorizationStatus,
+        isExcellentPerformance,
       });
     }
 

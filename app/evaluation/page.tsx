@@ -36,13 +36,31 @@ export default function EvaluationPage() {
     if (dataStr) {
       try {
         const data = JSON.parse(dataStr);
-        setEvaluationData(data);
-        applyTitle(data);
 
-        // Re-apply after a short delay to avoid HMR/layout overrides
-        setTimeout(() => {
+        // Fetch fresh record from DB to pick up saved managerComment
+        const recordId = data?.record?.recordId;
+        if (recordId) {
+          fetch(`/api/weekly-records/${recordId}`)
+            .then((res) => res.ok ? res.json() : null)
+            .then((freshRecord) => {
+              if (freshRecord) {
+                data.record = { ...data.record, ...freshRecord };
+              }
+              setEvaluationData(data);
+              applyTitle(data);
+              setTimeout(() => applyTitle(data), 100);
+            })
+            .catch(() => {
+              // Fallback to sessionStorage data if fetch fails
+              setEvaluationData(data);
+              applyTitle(data);
+              setTimeout(() => applyTitle(data), 100);
+            });
+        } else {
+          setEvaluationData(data);
           applyTitle(data);
-        }, 100);
+          setTimeout(() => applyTitle(data), 100);
+        }
       } catch (error) {
         console.error("Failed to parse evaluation data:", error);
       }

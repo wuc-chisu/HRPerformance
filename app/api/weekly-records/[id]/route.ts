@@ -2,6 +2,46 @@ import prisma from "@/lib/prisma";
 import { parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 
+// GET single weekly record by id
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const params = await context.params;
+    const recordId = params.id;
+
+    const record = await prisma.weeklyRecord.findUnique({
+      where: { id: recordId },
+    });
+
+    if (!record) {
+      return NextResponse.json({ error: "Record not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      recordId: record.id,
+      startDate: record.startDate.toISOString().split("T")[0],
+      endDate: record.endDate.toISOString().split("T")[0],
+      plannedWorkHours: record.plannedWorkHours,
+      actualWorkHours: record.actualWorkHours,
+      assignedTasks: record.assignedTasks,
+      assignedTasksDetails: (record as any).assignedTasksDetails || [],
+      weeklyOverdueTasks: record.weeklyOverdueTasks,
+      overdueTasksDetails: (record as any).overdueTasksDetails || [],
+      allOverdueTasks: (record as any).allOverdueTasks || 0,
+      allOverdueTasksDetails: (record as any).allOverdueTasksDetails || [],
+      managerComment: (record as any).managerComment || "",
+    });
+  } catch (error) {
+    console.error("Error fetching weekly record:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch weekly record" },
+      { status: 500 }
+    );
+  }
+}
+
 // PUT update weekly record
 export async function PUT(
   request: Request,
