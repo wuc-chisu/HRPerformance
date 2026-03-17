@@ -19,6 +19,9 @@ export async function PATCH(
       decisionDate,
       reviewedBy,
       finalAction,
+      meetingCompleted,
+      followUpEmailSent,
+      improvementPlanReceived,
       manager,
       recordType,
       issuedBy,
@@ -73,6 +76,14 @@ export async function PATCH(
           finalAction: finalAction
             ? finalAction
             : undefined,
+          meetingCompleted:
+            typeof meetingCompleted === "boolean" ? meetingCompleted : undefined,
+          followUpEmailSent:
+            typeof followUpEmailSent === "boolean" ? followUpEmailSent : undefined,
+          improvementPlanReceived:
+            typeof improvementPlanReceived === "boolean"
+              ? improvementPlanReceived
+              : undefined,
           manager: manager ?? undefined,
           recordType: recordType ?? undefined,
           issuedBy: issuedBy ?? undefined,
