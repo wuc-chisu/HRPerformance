@@ -20,6 +20,7 @@ export async function PATCH(
       reviewedBy,
       finalAction,
       meetingCompleted,
+      emailSent,
       followUpEmailSent,
       improvementPlanReceived,
       manager,
@@ -78,6 +79,8 @@ export async function PATCH(
             : undefined,
           meetingCompleted:
             typeof meetingCompleted === "boolean" ? meetingCompleted : undefined,
+          emailSent:
+            typeof emailSent === "boolean" ? emailSent : undefined,
           followUpEmailSent:
             typeof followUpEmailSent === "boolean" ? followUpEmailSent : undefined,
           improvementPlanReceived:
