@@ -424,7 +424,18 @@ Whitewater University of California
       );
     }
 
+    const isExcellentPerformance =
+      score.totalScore >= 100 && overdueCount === 0 && allOverdueCount === 0;
+
     if (workAuthorizationStatus === "H-1B") {
+      if (isExcellentPerformance) {
+        return (
+          `Your total score is ${scoreValue} (${scoreLabel}) — an outstanding result. ` +
+          `You fulfilled all assigned work hours and have zero overdue tasks this week and in total. ` +
+          `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, both at full marks.\n\n` +
+          `This is exactly the standard of performance expected. Your disciplined approach to work hours, task prioritization, and timely delivery sets a strong example for the team. Keep up the excellent work.`
+        );
+      }
       return (
         `Your total score is ${scoreValue} (${scoreLabel}). ` +
         `You ${workHoursStatus} assigned work hours and recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). ` +
@@ -432,6 +443,15 @@ Whitewater University of California
         `Strengths include steady completion of assigned tasks. ` +
         `Maintaining clear task priorities is helping keep results on track.\n\n` +
         `To improve further, tighten the daily review of pending work, reduce overdue carryover, and maintain focus on high-impact tasks to lift past due management (${score.pastDueTaskManagement.toFixed(2)}/30).`
+      );
+    }
+
+    if (isExcellentPerformance) {
+      return (
+        `Your total score is ${scoreValue} (${scoreLabel}) — outstanding performance this week. ` +
+        `Work hours are ${workRatio}, you have zero overdue tasks, and all scoring categories are at their maximum. ` +
+        `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, both fully achieved.\n\n` +
+        `This is the benchmark for excellence. Your consistency in meeting planned hours, eliminating overdue work, and executing tasks in priority order reflects the highest level of professional discipline. Excellent work — keep this momentum going.`
       );
     }
 
