@@ -91,6 +91,7 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
     incidentId: string;
     isFollowUp: boolean;
     to: string;
+    cc: string;
     bcc: string;
     subject: string;
     body: string;
@@ -99,7 +100,7 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
   const [sendingEmail, setSendingEmail] = useState(false);
   const [autoSavedPendingWarning, setAutoSavedPendingWarning] = useState<Record<string, string>>({});
 
-  const DEFAULT_BCC = "chisu@wuc.edu, yannhuang@wuc.edu";
+  const DEFAULT_BCC = "chisu@wuc.edu, yuguo@wuc.edu, yannhuang@wuc.edu";
 
   const getStatusFromAppealDecision = (decision: AppealDecision): RecordStatus => {
     if (decision === "DECLINED") return "CONFIRMED";
@@ -376,6 +377,12 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
   };
 
   const handleEmailIncidentReport = async (record: IncidentRecord) => {
+    const employee = sortedEmployees.find((entry) => entry.id === record.employeeId);
+    if (!employee?.email) {
+      setMessage(`Unable to email: employee email for ${record.name} was not found.`);
+      return;
+    }
+
     const managerName = (record.manager || "").trim().toLowerCase();
     const managerEmployee = sortedEmployees.find(
       (employee) => employee.name.trim().toLowerCase() === managerName
@@ -506,7 +513,8 @@ Human Resources`,
     setEmailDraft({
       incidentId: record.id,
       isFollowUp: false,
-      to: managerEmployee.email,
+      to: employee.email,
+      cc: managerEmployee.email,
       bcc: DEFAULT_BCC,
       subject,
       body,
@@ -541,6 +549,16 @@ Human Resources`,
     const employee = sortedEmployees.find((entry) => entry.id === record.employeeId);
     if (!employee?.email) {
       setMessage(`Unable to email: employee email for ${record.name} was not found.`);
+      return;
+    }
+
+    const managerName = (record.manager || "").trim().toLowerCase();
+    const managerEmployee = sortedEmployees.find(
+      (entry) => entry.name.trim().toLowerCase() === managerName
+    );
+
+    if (!managerEmployee?.email) {
+      setMessage(`Unable to email: manager email for ${record.manager} was not found.`);
       return;
     }
 
@@ -584,6 +602,7 @@ Human Resources`;
       incidentId: record.id,
       isFollowUp: true,
       to: employee.email,
+      cc: managerEmployee.email,
       bcc: DEFAULT_BCC,
       subject,
       body,
@@ -600,6 +619,7 @@ Human Resources`;
 
       const formData = new FormData();
       formData.append("to", emailDraft.to);
+      formData.append("cc", emailDraft.cc);
       formData.append("bcc", emailDraft.bcc);
       formData.append("subject", emailDraft.subject);
       formData.append("body", emailDraft.body);
@@ -1500,6 +1520,16 @@ Human Resources`;
                   type="text"
                   value={emailDraft.bcc}
                   onChange={(e) => setEmailDraft({ ...emailDraft, bcc: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-1">CC:</label>
+                <input
+                  type="text"
+                  value={emailDraft.cc}
+                  onChange={(e) => setEmailDraft({ ...emailDraft, cc: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 />
               </div>
