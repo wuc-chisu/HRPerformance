@@ -79,6 +79,13 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
     }>
   >({});
 
+  const [emailDraft, setEmailDraft] = useState<{
+    to: string;
+    subject: string;
+    body: string;
+  } | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+
   const getStatusFromAppealDecision = (decision: AppealDecision): RecordStatus => {
     if (decision === "DECLINED") return "CONFIRMED";
     if (decision === "APPROVED") return "REJECTED";
@@ -368,36 +375,11 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
       `Total Warning Equivalent: ${summary?.totalWarningEquivalent ?? 0}`,
     ];
 
-    try {
-      setSavingId(record.id);
-      setMessage("");
-
-      const formData = new FormData();
-      formData.append("to", managerEmployee.email);
-      formData.append("cc", "chisu@wuc.edu, yannhuang@wuc.edu");
-      formData.append(
-        "subject",
-        `Incident Report: ${record.name} (${record.employeeId})`
-      );
-      formData.append("body", lines.join("\n"));
-
-      const response = await fetch("/api/email/send", {
-        method: "POST",
-        body: formData,
-      });
-
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload?.error || "Failed to send email");
-      }
-
-      setMessage(`Incident report emailed to ${managerEmployee.name} (${managerEmployee.email}).`);
-    } catch (error) {
-      console.error(error);
-      setMessage(error instanceof Error ? error.message : "Failed to send report email.");
-    } finally {
-      setSavingId(null);
-    }
+    setEmailDraft({
+      to: managerEmployee.email,
+      subject: `Incident Report: ${record.name} (${record.employeeId})`,
+      body: lines.join("\n"),
+    });
   };
 
   const summaryRows = useMemo(() => {
