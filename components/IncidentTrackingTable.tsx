@@ -343,6 +343,7 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
             <td>${record.recordType}</td>
             <td>${record.occurrenceDate}</td>
             <td>${record.issuedBy}</td>
+            <td>${record.reason}</td>
             <td>${record.appealDecision}</td>
             <td>${record.decisionDate || ""}</td>
             <td>${getStatusFromAppealDecision(record.appealDecision)}</td>
@@ -361,8 +362,9 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
             h1 { font-size: 20px; margin: 0 0 6px; }
             p { font-size: 12px; margin: 0 0 12px; color: #4b5563; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
+            th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; vertical-align: top; }
             th { background: #f3f4f6; }
+            td:nth-child(7) { max-width: 260px; white-space: pre-wrap; word-break: break-word; }
           </style>
         </head>
         <body>
@@ -377,6 +379,7 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
                 <th>Record Type</th>
                 <th>Occurrence Date</th>
                 <th>Issued By</th>
+                <th>Reason</th>
                 <th>Appeal Decision</th>
                 <th>Decision Date</th>
                 <th>Status</th>
