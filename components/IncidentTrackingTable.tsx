@@ -226,8 +226,27 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
     }
   };
 
-  const handleReviewSave = async (recordId: string) => {
-    const draft = reviewDrafts[recordId];
+  const handleReviewSave = async (
+    recordId: string,
+    draftOverride?: {
+      manager: string;
+      recordType: RecordType;
+      occurrenceDate: string;
+      issuedBy: string;
+      reason: string;
+      status: RecordStatus;
+      appealDecision: AppealDecision;
+      finalAction: FinalAction;
+      meetingCompleted: boolean;
+      emailSent: boolean;
+      followUpEmailSent: boolean;
+      improvementPlanReceived: boolean;
+      reviewedBy: string;
+      decisionDate: string;
+      note: string;
+    }
+  ) => {
+    const draft = draftOverride ?? reviewDrafts[recordId];
     if (!draft) return;
 
     try {
@@ -713,12 +732,16 @@ Human Resources`;
           confirmedWarnings: 0,
         };
 
-      if (record.status === "CONFIRMED") {
-        if (record.recordType === "MISTAKE") {
-          existing.confirmedMistakes += 1;
-        } else if (record.recordType === "WARNING") {
-          existing.confirmedWarnings += 1;
-        }
+      if (record.status === "CONFIRMED" && record.recordType === "MISTAKE") {
+        existing.confirmedMistakes += 1;
+      }
+
+      if (
+        record.recordType === "WARNING" &&
+        record.status === "CONFIRMED" &&
+        record.appealDecision === "DECLINED"
+      ) {
+        existing.confirmedWarnings += 1;
       }
 
       byEmployee.set(record.employeeId, existing);
@@ -749,10 +772,27 @@ Human Resources`;
       : null;
 
   const filteredRecords = useMemo(() => {
-    if (!selectedEmployeeFilter) {
-      return records;
-    }
-    return records.filter((record) => record.employeeId === selectedEmployeeFilter);
+    const scopedRecords = selectedEmployeeFilter
+      ? records.filter((record) => record.employeeId === selectedEmployeeFilter)
+      : records;
+
+    return [...scopedRecords].sort((first, second) => {
+      const byName = first.name.localeCompare(second.name, undefined, {
+        sensitivity: "base",
+      });
+      if (byName !== 0) return byName;
+
+      const byEmployeeId = first.employeeId.localeCompare(second.employeeId, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+      if (byEmployeeId !== 0) return byEmployeeId;
+
+      const byDate = second.occurrenceDate.localeCompare(first.occurrenceDate);
+      if (byDate !== 0) return byDate;
+
+      return second.id.localeCompare(first.id);
+    });
   }, [records, selectedEmployeeFilter]);
 
   useEffect(() => {
@@ -1291,14 +1331,18 @@ Human Resources`;
                         value={draft.appealDecision}
                         onChange={(event) => {
                           const nextDecision = event.target.value as AppealDecision;
+                          const nextDraft = {
+                            ...draft,
+                            appealDecision: nextDecision,
+                            status: getStatusFromAppealDecision(nextDecision),
+                          };
+
                           setReviewDrafts((previous) => ({
                             ...previous,
-                            [record.id]: {
-                              ...draft,
-                              appealDecision: nextDecision,
-                              status: getStatusFromAppealDecision(nextDecision),
-                            },
+                            [record.id]: nextDraft,
                           }));
+
+                          void handleReviewSave(record.id, nextDraft);
                         }}
                         className="px-2 py-1 border border-blue-300 rounded bg-blue-50"
                       >

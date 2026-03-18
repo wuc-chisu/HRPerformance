@@ -23,7 +23,12 @@ export async function calculateIncidentTotals(
     }),
     prisma.incidentRecord.groupBy({
       by: ["employeeId"],
-      where: { ...where, recordType: "WARNING" },
+      where: {
+        ...where,
+        recordType: "WARNING",
+        // A warning is only considered confirmed for totals when appeal is declined.
+        appealDecision: "DECLINED",
+      },
       _count: { _all: true },
     }),
   ]);
