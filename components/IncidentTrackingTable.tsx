@@ -544,25 +544,27 @@ Human Resources`,
     });
   };
 
-  const getPendingWarningLevel = (record: IncidentRecord): number | null => {
-    if (record.recordType !== "WARNING" || record.appealDecision !== "PENDING") {
+  const getConfirmedWarningLevel = (record: IncidentRecord): number | null => {
+    if (record.recordType !== "WARNING" || record.appealDecision !== "DECLINED") {
       return null;
     }
 
-    const pendingWarningRecords = records
+    const confirmedWarningRecords = records
       .filter(
         (entry) =>
           entry.employeeId === record.employeeId &&
           entry.recordType === "WARNING" &&
-          entry.appealDecision === "PENDING"
+          entry.appealDecision === "DECLINED"
       )
       .sort(
         (first, second) =>
-          first.occurrenceDate.localeCompare(second.occurrenceDate) ||
+          (first.decisionDate || first.occurrenceDate).localeCompare(
+            second.decisionDate || second.occurrenceDate
+          ) ||
           first.id.localeCompare(second.id)
       );
 
-    const index = pendingWarningRecords.findIndex((entry) => entry.id === record.id);
+    const index = confirmedWarningRecords.findIndex((entry) => entry.id === record.id);
     if (index === -1) return null;
     return index + 1;
   };
@@ -586,14 +588,14 @@ Human Resources`,
 
     const subject =
       warningLevel === 1
-        ? `Follow-Up: Written Improvement Plan Request (1st Pending Warning) - ${record.name} (${record.employeeId})`
-        : `Follow-Up: Written Response Request (2nd Pending Warning) - ${record.name} (${record.employeeId})`;
+        ? `Follow-Up: Written Improvement Plan Request (1st Confirmed Warning) - ${record.name} (${record.employeeId})`
+        : `Follow-Up: Written Response Request (2nd Confirmed Warning) - ${record.name} (${record.employeeId})`;
 
     const body =
       warningLevel === 1
         ? `Dear ${record.name},
 
-Following your recent meeting with your direct manager regarding the pending warning, this is a reminder to submit your written improvement plan.
+Following your recent meeting with your direct manager regarding the confirmed warning, this is a reminder to submit your written improvement plan.
 
 Please outline your understanding of the areas that require improvement and the specific actions you will take to address them. This plan is intended to ensure alignment between you, your manager, and Human Resources on expectations moving forward.
 
@@ -605,7 +607,7 @@ Sincerely,
 Human Resource`
         : `Dear ${record.name},
 
-Following your recent meeting with your direct manager and Human Resources regarding the pending warning, this is a request for your written response.
+Following your recent meeting with your direct manager and Human Resources regarding the confirmed warning, this is a request for your written response.
 
 Please provide:
 1. A written improvement plan outlining your understanding of the areas that require improvement and the specific actions you will take.
@@ -802,7 +804,7 @@ Human Resources`;
     if (savingId) return;
 
     for (const record of filteredRecords) {
-      const warningLevel = getPendingWarningLevel(record);
+      const warningLevel = getConfirmedWarningLevel(record);
       if (warningLevel !== 1 && warningLevel !== 2 && warningLevel !== 3) {
         continue;
       }
@@ -1295,20 +1297,20 @@ Human Resources`;
                   note: "",
                 };
 
-                const pendingWarningLevel = getPendingWarningLevel(record);
+                const confirmedWarningLevel = getConfirmedWarningLevel(record);
                 const showMeetingCheckbox =
-                  pendingWarningLevel === 1 ||
-                  pendingWarningLevel === 2 ||
-                  pendingWarningLevel === 3;
-                const showFollowUpEmail = pendingWarningLevel === 1 || pendingWarningLevel === 2;
+                  confirmedWarningLevel === 1 ||
+                  confirmedWarningLevel === 2 ||
+                  confirmedWarningLevel === 3;
+                const showFollowUpEmail = confirmedWarningLevel === 1 || confirmedWarningLevel === 2;
                 const showImprovementPlanCheckbox =
                   showFollowUpEmail && draft.followUpEmailSent;
                 const isMeetingChecked = !!draft.meetingCompleted;
-                const showFinalActionInline = pendingWarningLevel === 3 && isMeetingChecked;
+                const showFinalActionInline = confirmedWarningLevel === 3 && isMeetingChecked;
                 const meetingLabel =
-                  pendingWarningLevel === 1
+                  confirmedWarningLevel === 1
                     ? "Met with direct manager"
-                    : pendingWarningLevel === 2
+                    : confirmedWarningLevel === 2
                     ? "Met with direct manager and HR"
                     : "Met with direct manager, HR, and executive leadership";
 
@@ -1463,7 +1465,7 @@ Human Resources`;
                         {showFollowUpEmail && isMeetingChecked && (
                           <button
                             onClick={() =>
-                              handleOpenFollowUpEmail(record, pendingWarningLevel === 1 ? 1 : 2)
+                              handleOpenFollowUpEmail(record, confirmedWarningLevel === 1 ? 1 : 2)
                             }
                             disabled={draft.followUpEmailSent}
                             className={`text-white text-xs px-2 py-1 rounded ${
