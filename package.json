@@ -14,7 +14,9 @@
     "backup": "bash scripts/backup-db.sh",
     "restore": "bash scripts/restore-db.sh",
     "export-to-github": "bash scripts/export-to-github.sh",
-    "import-from-json": "bash scripts/import-from-json.sh"
+    "import-from-json": "bash scripts/import-from-json.sh",
+    "benchmark:employees": "node scripts/benchmark-employee-processing.cjs",
+    "cluster:employees": "node scripts/kmeans-employee-clustering.cjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.0",

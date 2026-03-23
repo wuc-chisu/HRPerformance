@@ -28,10 +28,68 @@ model Employee {
   workAuthorizationStatus String         @default("Other Work Visa")
   overallOverdueTasks     Int            @default(0)
   weeklyRecords           WeeklyRecord[]
+  tasks                   Task[]
+  evaluations             Evaluation[]
   monthlyComments         MonthlyPerformanceComment[]
   incidentRecords         IncidentRecord[]
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskCompletionStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+  OVERDUE
+}
+
+model Task {
+  id               String               @id @default(cuid())
+  employeeId       String
+  employee         Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?              @db.Text
+  priority         TaskPriority         @default(MEDIUM)
+  completionStatus TaskCompletionStatus @default(NOT_STARTED)
+  isCompleted      Boolean              @default(false)
+  dueDate          DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([employeeId])
+  @@index([employeeId, completionStatus])
+  @@index([employeeId, priority])
+  @@index([dueDate])
+}
+
+model Evaluation {
+  id                 String   @id @default(cuid())
+  employeeId         String
+  employee           Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  periodStart        DateTime
+  periodEnd          DateTime
+  evaluatorName      String
+  evaluationScore    Float
+  taskCompletionRate Float    @default(0)
+  overdueTaskCount   Int      @default(0)
+  strengths          String?  @db.Text
+  improvementAreas   String?  @db.Text
+  comments           String?  @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([employeeId, periodStart, periodEnd])
+  @@index([evaluationScore])
 }
 
 enum IncidentRecordType {
