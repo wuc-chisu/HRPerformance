@@ -1,23 +1,18 @@
 #!/bin/bash
-# Verify database is properly set up with all required tables
+# Verify database schema and seed baseline data when needed.
+
+set -e
 
 echo "🔍 Checking database setup..."
 
-# Check if Department table exists
-psql -U chisu -d hrperformance -c "SELECT 1 FROM \"Department\" LIMIT 1;" 2>/dev/null
-if [ $? -ne 0 ]; then
-  echo "⚠️  Department table missing. Running setup..."
-  npx prisma migrate deploy
-  if [ $? -ne 0 ]; then
-    echo "❌ Migration failed"
-    exit 1
-  fi
+# Keep schema in sync for local/dev databases that may not have Prisma migration history.
+PAGER=cat npx prisma db push >/dev/null
+
+# Seed default departments only if table is empty.
+DEPT_COUNT=$(psql -U chisu -d hrperformance -tAc "SELECT COUNT(*) FROM \"Department\";" 2>/dev/null || echo "0")
+if [ "$DEPT_COUNT" = "0" ]; then
+  echo "⚠️  Department table is empty. Seeding defaults..."
   node prisma/seed-departments.cjs
-  if [ $? -ne 0 ]; then
-    echo "❌ Seeding failed"
-    exit 1
-  fi
-  echo "✅ Database setup complete!"
-else
-  echo "✅ Database is properly configured"
 fi
+
+echo "✅ Database is properly configured"
