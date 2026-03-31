@@ -27,6 +27,26 @@ model Employee {
   joinDate                DateTime
   workAuthorizationStatus String         @default("Other Work Visa")
   overallOverdueTasks     Int            @default(0)
+  onboardingChecklistAssigned Boolean    @default(true)
+  systemAccessGmail       Boolean        @default(true)
+  systemAccessClickup     Boolean        @default(true)
+  systemAccessMoodle      Boolean        @default(true)
+  systemAccessGoogleDrive Boolean        @default(true)
+  onboardingStep2Completed Boolean       @default(true)
+  onboardingStep2Forms    Json           @default("[]")
+  onboardingStep3Completed Boolean       @default(true)
+  onboardingStep4Completed Boolean       @default(true)
+  onboardingStep5Completed Boolean       @default(true)
+  onboardingStep6AnnualTracking Boolean  @default(false)
+  onboardingStep1UpdatedBy String        @default("System")
+  onboardingStep1UpdatedAt DateTime?
+  onboardingStep1Notes    String?        @db.Text
+  onboardingStep2CompletedAt DateTime?
+  onboardingStep3CompletedAt DateTime?
+  onboardingStep4CompletedAt DateTime?
+  onboardingStep5CompletedAt DateTime?
+  onboardingStep6StartedAt DateTime?
+  onboardingStep6LastReviewAt DateTime?
   weeklyRecords           WeeklyRecord[]
   tasks                   Task[]
   evaluations             Evaluation[]

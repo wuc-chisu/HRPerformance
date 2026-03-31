@@ -24,6 +24,71 @@ export interface WeeklyRecord {
   managerComment?: string; // Optional manager comment for performance evaluation
 }
 
+export interface OnboardingSystemAccess {
+  gmail: boolean;
+  clickup: boolean;
+  moodle: boolean;
+  googleDrive: boolean;
+}
+
+export type OnboardingFormStatus = "Pending" | "Submitted" | "Approved";
+
+export interface OnboardingFormItem {
+  name: string;
+  status: OnboardingFormStatus;
+  dateCompleted?: string | null;
+  verifiedBy: string;
+}
+
+export const REQUIRED_ONBOARDING_FORMS: string[] = [
+  "Application Form",
+  "Direct Deposit Form",
+  "Self-Identification Form",
+  "Background Check Authorization",
+  "Copyright Release Authorization",
+  "Portrait Rights Authorization",
+  "Drug & Alcohol-Free Workplace Acknowledgment",
+  "Emergency Contact Form",
+  "Faculty Handbook Acknowledgment",
+  "Form W-4",
+  "Form I-9",
+  "Form W-9",
+  "Verification Form",
+];
+
+export interface OnboardingState {
+  checklistAssigned: boolean;
+  enrolled: boolean;
+  step1Completed: boolean;
+  systemAccess: OnboardingSystemAccess;
+  step2Completed: boolean;
+  step2Forms: OnboardingFormItem[];
+  step3Completed: boolean;
+  step4Completed: boolean;
+  step5Completed: boolean;
+  step6AnnualTracking: boolean;
+  step2CompletedAt?: string | null;
+  step3CompletedAt?: string | null;
+  step4CompletedAt?: string | null;
+  step5CompletedAt?: string | null;
+  step6StartedAt?: string | null;
+  step6LastReviewAt?: string | null;
+  updatedBy: string;
+  updatedAt?: string | null;
+  notes?: string;
+}
+
+export interface OnboardingStep1Update {
+  systemAccess: OnboardingSystemAccess;
+  checklistAssigned: boolean;
+  updatedBy: string;
+  notes?: string;
+}
+
+export interface OnboardingStep2Update {
+  forms: OnboardingFormItem[];
+}
+
 export interface Employee {
   id: string;
   name: string;
@@ -34,6 +99,7 @@ export interface Employee {
   joinDate: string;
   workAuthorizationStatus?: string;
   overallOverdueTasks?: number;
+  onboarding?: OnboardingState;
   weeklyRecords: WeeklyRecord[];
 }
 

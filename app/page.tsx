@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Employee } from "@/lib/employees";
+import { Employee, OnboardingStep1Update, OnboardingStep2Update } from "@/lib/employees";
 import { formatCompactDate, formatShortDate, parseDateInPacific } from "@/lib/dateUtils";
 import EmployeeCard from "@/components/EmployeeCard";
 import WeeklyRecordsTable from "@/components/WeeklyRecordsTable";
@@ -11,6 +11,7 @@ import AddEditWeeklyRecord from "@/components/AddEditWeeklyRecord";
 import DepartmentManager from "@/components/DepartmentManager";
 import MonthlyPerformanceReport from "@/components/MonthlyPerformanceReport";
 import IncidentTrackingTable from "@/components/IncidentTrackingTable";
+import OnboardingModule from "@/components/OnboardingModule";
 
 export default function Home() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -19,7 +20,7 @@ export default function Home() {
     null
   );
   const [activeView, setActiveView] = useState<
-    "dashboard" | "employees" | "manage" | "manage-performance" | "incident-tracking"
+    "dashboard" | "employees" | "manage" | "manage-performance" | "onboarding" | "incident-tracking"
   >("dashboard");
   const [selectedEmployeeForPerformance, setSelectedEmployeeForPerformance] =
     useState<string | null>(null);
@@ -169,6 +170,116 @@ export default function Home() {
         alert("Failed to delete employee");
       }
     }
+  };
+
+  const handleSaveOnboardingStep1 = async (
+    employeeId: string,
+    payload: OnboardingStep1Update
+  ) => {
+    const employee = employees.find((entry) => entry.id === employeeId);
+    if (!employee) {
+      alert("Unable to save onboarding: Employee not found");
+      return;
+    }
+
+    const currentOnboarding = employee.onboarding;
+    const step1Completed =
+      payload.systemAccess.gmail &&
+      payload.systemAccess.clickup &&
+      payload.systemAccess.moodle &&
+      payload.systemAccess.googleDrive;
+
+    const response = await fetch(`/api/employees/${employeeId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...employee,
+        onboarding: {
+          checklistAssigned: payload.checklistAssigned,
+          enrolled: payload.checklistAssigned,
+          step1Completed,
+          systemAccess: payload.systemAccess,
+          step2Completed: currentOnboarding?.step2Completed || false,
+          step3Completed: currentOnboarding?.step3Completed || false,
+          step4Completed: currentOnboarding?.step4Completed || false,
+          step5Completed: currentOnboarding?.step5Completed || false,
+          step6AnnualTracking: currentOnboarding?.step6AnnualTracking || false,
+          step2CompletedAt: currentOnboarding?.step2CompletedAt || null,
+          step3CompletedAt: currentOnboarding?.step3CompletedAt || null,
+          step4CompletedAt: currentOnboarding?.step4CompletedAt || null,
+          step5CompletedAt: currentOnboarding?.step5CompletedAt || null,
+          step6StartedAt: currentOnboarding?.step6StartedAt || null,
+          step6LastReviewAt: currentOnboarding?.step6LastReviewAt || null,
+          updatedBy: payload.updatedBy,
+          updatedAt: new Date().toISOString(),
+          notes: payload.notes || "",
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.details || errorData.error || "Failed to update onboarding");
+    }
+
+    await fetchEmployees();
+  };
+
+  const handleSaveOnboardingStep2 = async (
+    employeeId: string,
+    payload: OnboardingStep2Update
+  ) => {
+    const employee = employees.find((entry) => entry.id === employeeId);
+    if (!employee) {
+      alert("Unable to save forms: Employee not found");
+      return;
+    }
+
+    const currentOnboarding = employee.onboarding;
+    const step2Completed = payload.forms.every((form) => form.status === "Approved");
+
+    const response = await fetch(`/api/employees/${employeeId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...employee,
+        onboarding: {
+          checklistAssigned: currentOnboarding?.checklistAssigned || false,
+          enrolled: currentOnboarding?.checklistAssigned || false,
+          step1Completed: currentOnboarding?.step1Completed || false,
+          systemAccess: currentOnboarding?.systemAccess || {
+            gmail: false,
+            clickup: false,
+            moodle: false,
+            googleDrive: false,
+          },
+          step2Completed,
+          step2Forms: payload.forms,
+          step3Completed: currentOnboarding?.step3Completed || false,
+          step4Completed: currentOnboarding?.step4Completed || false,
+          step5Completed: currentOnboarding?.step5Completed || false,
+          step6AnnualTracking: currentOnboarding?.step6AnnualTracking || false,
+          step2CompletedAt: step2Completed
+            ? currentOnboarding?.step2CompletedAt || new Date().toISOString()
+            : null,
+          step3CompletedAt: currentOnboarding?.step3CompletedAt || null,
+          step4CompletedAt: currentOnboarding?.step4CompletedAt || null,
+          step5CompletedAt: currentOnboarding?.step5CompletedAt || null,
+          step6StartedAt: currentOnboarding?.step6StartedAt || null,
+          step6LastReviewAt: currentOnboarding?.step6LastReviewAt || null,
+          updatedBy: currentOnboarding?.updatedBy || "HR Manager",
+          updatedAt: currentOnboarding?.updatedAt || new Date().toISOString(),
+          notes: currentOnboarding?.notes || "",
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.details || errorData.error || "Failed to update forms");
+    }
+
+    await fetchEmployees();
   };
 
   const handleAddWeeklyRecord = () => {
@@ -578,6 +689,19 @@ export default function Home() {
           </button>
           <button
             onClick={() => {
+              setActiveView("onboarding");
+              setSelectedEmployeeId(null);
+            }}
+            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              activeView === "onboarding"
+                ? "bg-cyan-400 text-white shadow-md"
+                : "bg-cyan-100 text-gray-700 border border-cyan-200 hover:bg-cyan-50"
+            }`}
+          >
+            Onboarding
+          </button>
+          <button
+            onClick={() => {
               setActiveView("incident-tracking");
               setSelectedEmployeeId(null);
             }}
@@ -957,6 +1081,14 @@ export default function Home() {
                 )}
             </div>
           </div>
+        )}
+
+        {activeView === "onboarding" && (
+          <OnboardingModule
+            employees={employees}
+            onSaveStep1={handleSaveOnboardingStep1}
+            onSaveStep2={handleSaveOnboardingStep2}
+          />
         )}
 
         {activeView === "incident-tracking" && (
