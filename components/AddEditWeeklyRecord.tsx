@@ -6,15 +6,21 @@ import { parseDateInPacific } from "@/lib/dateUtils";
 
 interface AddEditWeeklyRecordProps {
   record?: WeeklyRecord;
+  employeeType?: string;
+  contractWorkHours?: number | null;
   onSave: (record: WeeklyRecord) => void;
   onCancel: () => void;
 }
 
 export default function AddEditWeeklyRecord({
   record,
+  employeeType,
+  contractWorkHours,
   onSave,
   onCancel,
 }: AddEditWeeklyRecordProps) {
+  const defaultPlannedHours = record?.plannedWorkHours
+    ?? (employeeType === "Contract" && contractWorkHours ? contractWorkHours : 40);
   const hasAssignedDetails = Boolean(record?.assignedTasksDetails?.length);
   const hasOverdueDetails = Boolean(record?.overdueTasksDetails?.length);
 
@@ -25,8 +31,8 @@ export default function AddEditWeeklyRecord({
       new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0],
-    plannedWorkHours: record?.plannedWorkHours || 40,
-    actualWorkHours: record?.actualWorkHours || 40,
+    plannedWorkHours: defaultPlannedHours,
+    actualWorkHours: record?.actualWorkHours || defaultPlannedHours,
     assignedTasks: record?.assignedTasks || 0,
     weeklyOverdueTasks: record?.weeklyOverdueTasks || 0,
   });

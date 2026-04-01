@@ -128,6 +128,8 @@ export default function Home() {
           position: employee.position,
           joinDate: employee.joinDate,
           workAuthorizationStatus: employee.workAuthorizationStatus,
+          employeeType: employee.employeeType,
+          contractWorkHours: employee.contractWorkHours,
           overallOverdueTasks: employee.overallOverdueTasks,
         };
         const response = await fetch("/api/employees", {
@@ -1123,6 +1125,8 @@ export default function Home() {
       {showWeeklyRecordForm && (
         <AddEditWeeklyRecord
           record={editingWeeklyRecord?.record || undefined}
+          employeeType={selectedEmployee?.employeeType}
+          contractWorkHours={selectedEmployee?.contractWorkHours}
           onSave={handleSaveWeeklyRecord}
           onCancel={() => {
             setShowWeeklyRecordForm(false);

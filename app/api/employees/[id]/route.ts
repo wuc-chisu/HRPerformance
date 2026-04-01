@@ -106,6 +106,8 @@ export async function PUT(
       position,
       joinDate,
       workAuthorizationStatus,
+      employeeType,
+      contractWorkHours,
       overallOverdueTasks,
       onboarding,
     } = body;
@@ -141,6 +143,8 @@ export async function PUT(
         position,
         joinDate: parseDateForDatabase(joinDate),
         workAuthorizationStatus: workAuthorizationStatus || "Other Work Visa",
+        employeeType: employeeType || "Full time",
+        contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
         overallOverdueTasks: overallOverdueTasks || 0,
         ...(onboarding
           ? {
@@ -201,6 +205,8 @@ export async function PUT(
       position: employee.position,
       joinDate: employee.joinDate.toISOString().split("T")[0],
       workAuthorizationStatus: employee.workAuthorizationStatus,
+      employeeType: (employee as any).employeeType || "Full time",
+      contractWorkHours: (employee as any).contractWorkHours ?? null,
       overallOverdueTasks: employee.overallOverdueTasks,
       onboarding: formatOnboarding(employee),
       weeklyRecords: employee.weeklyRecords.map((record) => ({
