@@ -9,6 +9,7 @@ const sampleEmployees = [
     department: "Engineering",
     position: "Senior Developer",
     joinDate: "2020-01-15",
+    employeeType: "Full time",
     overallOverdueTasks: 2,
     weeklyRecords: [
       { startDate: "2025-02-10", endDate: "2025-02-16", plannedWorkHours: 40, actualWorkHours: 42, assignedTasks: 8, weeklyOverdueTasks: 0 },
@@ -22,6 +23,7 @@ const sampleEmployees = [
     department: "Product",
     position: "Product Manager",
     joinDate: "2021-06-20",
+    employeeType: "Full time",
     overallOverdueTasks: 0,
     weeklyRecords: [
       { startDate: "2025-02-10", endDate: "2025-02-16", plannedWorkHours: 40, actualWorkHours: 44, assignedTasks: 12, weeklyOverdueTasks: 0 },
@@ -34,6 +36,8 @@ const sampleEmployees = [
     name: "Michael Chen",
     department: "Design",
     position: "UX Designer",
+    employeeType: "Contract",
+    contractWorkHours: 30,
     joinDate: "2022-03-10",
     overallOverdueTasks: 5,
     weeklyRecords: [
@@ -46,6 +50,7 @@ const sampleEmployees = [
     id: "EMP-004",
     name: "Emily Rodriguez",
     department: "Marketing",
+    employeeType: "Full time",
     position: "Marketing Specialist",
     joinDate: "2023-01-05",
     overallOverdueTasks: 3,
@@ -66,8 +71,8 @@ async function main() {
   for (const emp of sampleEmployees) {
     const generatedId = 'emp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
     const now = new Date().toISOString();
-    await client.query(
-      'INSERT INTO "Employee" ("id", "employeeId", "name", "department", "position", "joinDate", "overallOverdueTasks", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+    await client.query(employeeType", "contractWorkHours", "overallOverdueTasks", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+      [generatedId, emp.id, emp.name, emp.department, emp.position, emp.joinDate, emp.employeeType || "Full time", emp.contractWorkHours || nullon", "joinDate", "overallOverdueTasks", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
       [generatedId, emp.id, emp.name, emp.department, emp.position, emp.joinDate, emp.overallOverdueTasks || 0, now, now]
     );
 

@@ -98,6 +98,8 @@ export interface Employee {
   position: string;
   joinDate: string;
   workAuthorizationStatus?: string;
+  employeeType?: "Full time" | "Contract";
+  contractWorkHours?: number;
   overallOverdueTasks?: number;
   onboarding?: OnboardingState;
   weeklyRecords: WeeklyRecord[];

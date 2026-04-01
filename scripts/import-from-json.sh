@@ -42,10 +42,11 @@ echo "⚠️  WARNING: This will REPLACE all data in the database!"
 echo "Import file: $JSON_FILE"
 echo ""
 
-# Count employees in the export
-EMPLOYEE_COUNT=$(jq '. | length' "$JSON_FILE" 2>/dev/null)
+# Count employees in the export (support both old array format and new {departments, employees} format)
+EMPLOYEE_COUNT=$(jq 'if type == "array" then length else .employees | length end' "$JSON_FILE" 2>/dev/null)
+DEPT_COUNT=$(jq 'if type == "array" then 0 else (.departments | length) end' "$JSON_FILE" 2>/dev/null)
 if [ $? -eq 0 ]; then
-    echo "This file contains $EMPLOYEE_COUNT employees"
+    echo "This file contains $DEPT_COUNT departments and $EMPLOYEE_COUNT employees"
 else
     echo "Unable to parse JSON file"
     exit 1
@@ -78,20 +79,40 @@ async function importData() {
   await client.connect();
   
   // Read JSON file
-  const employees = JSON.parse(fs.readFileSync('$JSON_FILE', 'utf8'));
+  const raw = JSON.parse(fs.readFileSync('$JSON_FILE', 'utf8'));
+  // Support both old format (array) and new format ({departments, employees})
+  const departments = Array.isArray(raw) ? [] : (raw.departments || []);
+  const employees = Array.isArray(raw) ? raw : (raw.employees || []);
   
-  // Clear existing data
+  // Clear existing data (order matters due to foreign keys)
+  await client.query('DELETE FROM \"IncidentHistory\"');
+  await client.query('DELETE FROM \"IncidentRecord\"');
+  await client.query('DELETE FROM \"MonthlyPerformanceComment\"');
   await client.query('DELETE FROM \"WeeklyRecord\"');
   await client.query('DELETE FROM \"Employee\"');
+  await client.query('DELETE FROM \"Department\"');
+
+  // Import departments
+  for (const dept of departments) {
+    const deptId = 'dept_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+    const now = new Date().toISOString();
+    await client.query(
+      'INSERT INTO \"Department\" (id, name, \"createdAt\", \"updatedAt\") VALUES (\$1, \$2, \$3, \$4) ON CONFLICT (name) DO NOTHING',
+      [deptId, dept.name, now, now]
+    );
+  }
   
+  let totalIncidents = 0;
+  let totalComments = 0;
+
   // Import employees
   for (const emp of employees) {
     const empId = 'emp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
     const now = new Date().toISOString();
     
     await client.query(
-      'INSERT INTO \"Employee\" (\"id\", \"employeeId\", \"name\", \"department\", \"position\", \"joinDate\", \"workAuthorizationStatus\", \"overallOverdueTasks\", \"createdAt\", \"updatedAt\") VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10)',
-      [empId, emp.employeeId, emp.name, emp.department, emp.position, emp.joinDate, emp.workAuthorizationStatus || 'Other Work Visa', emp.overallOverdueTasks || 0, now, now]
+      'INSERT INTO \"Employee\" (\"id\", \"employeeId\", \"name\", \"email\", \"department\", \"manager\", \"position\", \"joinDate\", \"workAuthorizationStatus\", \"employeeType\", \"contractWorkHours\", \"overallOverdueTasks\", \"createdAt\", \"updatedAt\") VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14)',
+      [empId, emp.employeeId, emp.name, emp.email || '', emp.department, emp.manager || '', emp.position, emp.joinDate, emp.workAuthorizationStatus || 'Other Work Visa', emp.employeeType || 'Full time', emp.contractWorkHours || null, emp.overallOverdueTasks || 0, now, now]
     );
     
     if (emp.weeklyRecords && emp.weeklyRecords.length > 0) {
@@ -101,7 +122,7 @@ async function importData() {
         await client.query(
           'INSERT INTO \"WeeklyRecord\" (\"id\", \"employeeId\", \"startDate\", \"endDate\", \"plannedWorkHours\", \"actualWorkHours\", \"assignedTasks\", \"assignedTasksDetails\", \"weeklyOverdueTasks\", \"overdueTasksDetails\", \"allOverdueTasks\", \"allOverdueTasksDetails\", \"managerComment\", \"createdAt\", \"updatedAt\") VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15)',
           [
-            recordId, empId, record.startDate, record.endDate, 
+            recordId, empId, record.startDate, record.endDate,
             record.plannedWorkHours, record.actualWorkHours, record.assignedTasks,
             JSON.stringify(record.assignedTasksDetails || []),
             record.weeklyOverdueTasks,
@@ -114,12 +135,53 @@ async function importData() {
         );
       }
     }
+
+    if (emp.monthlyComments && emp.monthlyComments.length > 0) {
+      for (const mc of emp.monthlyComments) {
+        const mcId = 'mc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+        await client.query(
+          'INSERT INTO \"MonthlyPerformanceComment\" (\"id\", \"employeeId\", \"year\", \"month\", \"comment\", \"createdAt\", \"updatedAt\") VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7)',
+          [mcId, empId, mc.year, mc.month, mc.comment, now, now]
+        );
+        totalComments++;
+      }
+    }
+
+    if (emp.incidentRecords && emp.incidentRecords.length > 0) {
+      for (const ir of emp.incidentRecords) {
+        const irId = 'ir_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+        await client.query(
+          'INSERT INTO \"IncidentRecord\" (\"id\", \"employeeId\", \"name\", \"department\", \"manager\", \"recordType\", \"occurrenceDate\", \"issuedBy\", \"reason\", \"status\", \"appealDecision\", \"decisionDate\", \"reviewedBy\", \"finalAction\", \"isAutoGenerated\", \"meetingCompleted\", \"emailSent\", \"followUpEmailSent\", \"improvementPlanReceived\", \"createdAt\", \"updatedAt\") VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15, \$16, \$17, \$18, \$19, \$20, \$21)',
+          [
+            irId, empId, ir.name, ir.department, ir.manager,
+            ir.recordType, ir.occurrenceDate, ir.issuedBy, ir.reason,
+            ir.status || 'PENDING', ir.appealDecision || 'PENDING',
+            ir.decisionDate || null, ir.reviewedBy || null,
+            ir.finalAction || 'NONE', ir.isAutoGenerated || false,
+            ir.meetingCompleted || false, ir.emailSent || false,
+            ir.followUpEmailSent || false, ir.improvementPlanReceived || false,
+            ir.createdAt || now, now
+          ]
+        );
+        totalIncidents++;
+
+        if (ir.histories && ir.histories.length > 0) {
+          for (const ih of ir.histories) {
+            const ihId = 'ih_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+            await client.query(
+              'INSERT INTO \"IncidentHistory\" (\"id\", \"incidentId\", \"memo\", \"type\", \"createdAt\", \"createdBy\") VALUES (\$1, \$2, \$3, \$4, \$5, \$6)',
+              [ihId, irId, ih.memo, ih.type, ih.createdAt || now, ih.createdBy || 'System']
+            );
+          }
+        }
+      }
+    }
     
     console.log('Imported: ' + emp.employeeId + ' - ' + emp.name);
   }
   
   await client.end();
-  console.log('✅ Import complete! Imported ' + employees.length + ' employees');
+  console.log('✅ Import complete! Imported ' + employees.length + ' employees, ' + totalIncidents + ' incidents, ' + totalComments + ' monthly comments');
 }
 
 importData().catch(console.error);

@@ -35,6 +35,8 @@ export default function AddEditEmployee({
     position: employee?.position || "",
     joinDate: employee?.joinDate || "",
     workAuthorizationStatus: employee?.workAuthorizationStatus || "Other Work Visa",
+    employeeType: employee?.employeeType || "Full time",
+    contractWorkHours: employee?.contractWorkHours || 0,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -79,6 +81,7 @@ export default function AddEditEmployee({
     if (validateForm()) {
       const newEmployee: Employee = {
         ...formData,
+        contractWorkHours: formData.employeeType === "Contract" ? formData.contractWorkHours : undefined,
         weeklyRecords: employee?.weeklyRecords || [],
       };
       onSave(newEmployee);
@@ -282,26 +285,65 @@ export default function AddEditEmployee({
             <p className="text-gray-500 text-xs mt-1">Format: YYYY-MM-DD</p>
           </div>
 
-          {/* Work Authorization Status */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Work Authorization Status
-            </label>
-            <select
-              name="workAuthorizationStatus"
-              value={formData.workAuthorizationStatus}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
-            >
-              <option value="U.S. Citizen">U.S. Citizen</option>
-              <option value="U.S. Permanent Resident">U.S. Permanent Resident</option>
-              <option value="F-1 OPT">F-1 OPT</option>
-              <option value="F-1 CPT">F-1 CPT</option>
-              <option value="H-1B">H-1B</option>
-              <option value="Work Authorization (EAD)">Work Authorization (EAD)</option>
-              <option value="Other Work Visa">Other Work Visa</option>
-            </select>
+          {/* Work Authorization Status and Employee Type in 2 columns */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Work Authorization Status */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Work Authorization Status
+              </label>
+              <select
+                name="workAuthorizationStatus"
+                value={formData.workAuthorizationStatus}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+              >
+                <option value="U.S. Citizen">U.S. Citizen</option>
+                <option value="U.S. Permanent Resident">U.S. Permanent Resident</option>
+                <option value="F-1 OPT">F-1 OPT</option>
+                <option value="F-1 CPT">F-1 CPT</option>
+                <option value="H-1B">H-1B</option>
+                <option value="Work Authorization (EAD)">Work Authorization (EAD)</option>
+                <option value="Other Work Visa">Other Work Visa</option>
+              </select>
+            </div>
+
+            {/* Employee Type */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Employee Type
+              </label>
+              <select
+                name="employeeType"
+                value={formData.employeeType}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+              >
+                <option value="Full time">Full time</option>
+                <option value="Contract">Contract</option>
+              </select>
+            </div>
           </div>
+
+          {/* Contract Work Hours - Only show for contract employees */}
+          {formData.employeeType === "Contract" && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Contract Work Hours
+              </label>
+              <input
+                type="number"
+                name="contractWorkHours"
+                value={formData.contractWorkHours}
+                onChange={handleChange}
+                placeholder="e.g., 20"
+                min="0"
+                max="168"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+              />
+              <p className="text-gray-500 text-xs mt-1">Hours per week</p>
+            </div>
+          )}
 
           {/* Form Actions */}
           <div className="flex gap-4 pt-4 border-t">

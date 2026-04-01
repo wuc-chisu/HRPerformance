@@ -26,6 +26,8 @@ model Employee {
   position                String
   joinDate                DateTime
   workAuthorizationStatus String         @default("Other Work Visa")
+  employeeType            String         @default("Full time")
+  contractWorkHours       Int?
   overallOverdueTasks     Int            @default(0)
   onboardingChecklistAssigned Boolean    @default(true)
   systemAccessGmail       Boolean        @default(true)
