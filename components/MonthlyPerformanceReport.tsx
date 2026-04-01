@@ -77,16 +77,25 @@ export default function MonthlyPerformanceReport({
   const bgColor = getPerformanceBgColor(monthlyAverage);
 
   const getTrend = () => {
-    if (weeklyScores.length < 2) return "Insufficient data";
+    if (weeklyScores.length === 0) return "Insufficient data";
 
-    const scores = weeklyScores.map((ws) => ws.totalScore);
-    const firstHalf = scores.slice(0, Math.ceil(scores.length / 2));
-    const secondHalf = scores.slice(Math.ceil(scores.length / 2));
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const prevYear = month === 0 ? year - 1 : year;
 
-    const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
-    const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+    const prevMonthRecords = employee.weeklyRecords.filter((record) => {
+      const startDate = new Date(`${record.startDate}T12:00:00`);
+      return startDate.getFullYear() === prevYear && startDate.getMonth() === prevMonth;
+    });
 
-    const diff = secondAvg - firstAvg;
+    if (prevMonthRecords.length === 0) return "Insufficient data";
+
+    const prevMonthScores = prevMonthRecords.map(
+      (record) => calculateWeeklyPerformanceScore(record).totalScore
+    );
+    const prevMonthAverage =
+      prevMonthScores.reduce((a, b) => a + b, 0) / prevMonthScores.length;
+
+    const diff = monthlyAverage - prevMonthAverage;
 
     if (Math.abs(diff) < 3) return "Stable";
     if (diff > 0) return `Improving (+${diff.toFixed(1)})`;
