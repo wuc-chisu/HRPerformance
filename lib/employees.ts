@@ -24,6 +24,41 @@ export interface WeeklyRecord {
   managerComment?: string; // Optional manager comment for performance evaluation
 }
 
+export type TimeOffType =
+  | "PTO"
+  | "SICK_LEAVE"
+  | "PERSONAL_LEAVE_UNPAID"
+  | "JURY_DUTY"
+  | "MEDICAL_LEAVE";
+
+export type TimeOffStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+
+export interface TimeOffRequest {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  department?: string;
+  requestType: TimeOffType;
+  status: TimeOffStatus;
+  startDate: string;
+  endDate: string;
+  hours?: number | null;
+  reason?: string;
+  managerNote?: string;
+  approvedAt?: string | null;
+  plannedHoursAdjustedAt?: string | null;
+  createdAt: string;
+}
+
+export interface HolidayRecord {
+  id: string;
+  name: string;
+  date: string;
+  year: number;
+  isPaid: boolean;
+  notes?: string;
+}
+
 export interface OnboardingSystemAccess {
   gmail: boolean;
   clickup: boolean;
@@ -103,6 +138,7 @@ export interface Employee {
   overallOverdueTasks?: number;
   onboarding?: OnboardingState;
   weeklyRecords: WeeklyRecord[];
+  timeOffRequests?: TimeOffRequest[];
 }
 
 // Sample employee data

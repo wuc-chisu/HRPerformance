@@ -1,6 +1,75 @@
 import prisma from "@/lib/prisma";
 import { parseDateForDatabase } from "@/lib/dateUtils";
+import { allocateHoursAcrossOverlaps, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
 import { NextResponse } from "next/server";
+
+type PendingApprovedTimeOffRequest = {
+  id: string;
+  startDate: Date;
+  endDate: Date;
+  hours: number | null;
+  plannedHoursAdjustedAt: Date | null;
+};
+
+type PendingTimeOffModel = {
+  findMany: (args: {
+    where: {
+      employeeId: string;
+      approvedAt: { not: null };
+      plannedHoursAdjustedAt: null;
+    };
+    orderBy: Array<{ startDate: "asc" }>;
+  }) => Promise<PendingApprovedTimeOffRequest[]>;
+  update: (args: {
+    where: { id: string };
+    data: { plannedHoursAdjustedAt: Date };
+  }) => Promise<unknown>;
+};
+
+type WeeklyRecordModel = {
+  create: (args: {
+    data: {
+      employeeId: string;
+      startDate: Date;
+      endDate: Date;
+      plannedWorkHours: number;
+      actualWorkHours: number;
+      assignedTasks: number;
+      assignedTasksDetails: unknown[];
+      weeklyOverdueTasks: number;
+      overdueTasksDetails: unknown[];
+      allOverdueTasks: number;
+      allOverdueTasksDetails: unknown[];
+      managerComment: string | null;
+    };
+  }) => Promise<{
+    id: string;
+    startDate: Date;
+    endDate: Date;
+    plannedWorkHours: number;
+    actualWorkHours: number;
+    assignedTasks: number;
+    assignedTasksDetails: unknown[];
+    weeklyOverdueTasks: number;
+    overdueTasksDetails: unknown[];
+    allOverdueTasks: number;
+    allOverdueTasksDetails: unknown[];
+    managerComment: string | null;
+  }>;
+  findMany: (args: {
+    where: { employeeId: string };
+    orderBy: Array<{ startDate: "asc" }>;
+  }) => Promise<WeeklyRecordWindow[]>;
+  update: (args: {
+    where: { id: string };
+    data: { plannedWorkHours: number };
+  }) => Promise<unknown>;
+};
+
+type TransactionClient = {
+  timeOffRequest: PendingTimeOffModel;
+  weeklyRecord: WeeklyRecordModel;
+};
 
 // POST new weekly record
 export async function POST(request: Request) {
@@ -44,26 +113,103 @@ export async function POST(request: Request) {
         ? assignedTasksTotal
         : assignedTasks ?? 0;
 
-    const record = await prisma.weeklyRecord.create({
-      data: {
-        employeeId: employee.id,
-        startDate: parseDateForDatabase(startDate),
-        endDate: parseDateForDatabase(endDate),
-        plannedWorkHours,
-        actualWorkHours,
-        assignedTasks: assignedTasksValue,
-        assignedTasksDetails: safeAssignedTasksDetails,
-        weeklyOverdueTasks: Array.isArray(overdueTasksDetails)
-          ? overdueTasksDetails.reduce(
-              (sum, detail) => sum + (detail?.count || 0),
-              0
-            )
-          : weeklyOverdueTasks,
-        overdueTasksDetails: overdueTasksDetails || [],
-        allOverdueTasks: allOverdueTasks || 0,
-        allOverdueTasksDetails: allOverdueTasksDetails || [],
-        managerComment: managerComment || null,
-      },
+    const parsedStartDate = parseDateForDatabase(startDate);
+    const parsedEndDate = parseDateForDatabase(endDate);
+
+    const record = await prisma.$transaction(async (rawTx) => {
+      const tx = rawTx as unknown as TransactionClient;
+
+      const createdRecord = await tx.weeklyRecord.create({
+        data: {
+          employeeId: employee.id,
+          startDate: parsedStartDate,
+          endDate: parsedEndDate,
+          plannedWorkHours,
+          actualWorkHours,
+          assignedTasks: assignedTasksValue,
+          assignedTasksDetails: safeAssignedTasksDetails,
+          weeklyOverdueTasks: Array.isArray(overdueTasksDetails)
+            ? overdueTasksDetails.reduce(
+                (sum, detail) => sum + (detail?.count || 0),
+                0
+              )
+            : weeklyOverdueTasks,
+          overdueTasksDetails: overdueTasksDetails || [],
+          allOverdueTasks: allOverdueTasks || 0,
+          allOverdueTasksDetails: allOverdueTasksDetails || [],
+          managerComment: managerComment || null,
+        },
+      });
+
+      const pendingApprovedRequests = await tx.timeOffRequest.findMany({
+        where: {
+          employeeId: employee.id,
+          approvedAt: { not: null },
+          plannedHoursAdjustedAt: null,
+        },
+        orderBy: [{ startDate: "asc" }],
+      });
+
+      if (pendingApprovedRequests.length === 0) {
+        return createdRecord;
+      }
+
+      const employeeWeeklyRecords = await tx.weeklyRecord.findMany({
+        where: { employeeId: employee.id },
+        orderBy: [{ startDate: "asc" }],
+      });
+
+      let adjustedPlannedWorkHours = Number(createdRecord.plannedWorkHours);
+
+      for (const request of pendingApprovedRequests) {
+        if (request.hours == null || request.hours <= 0) {
+          continue;
+        }
+
+        const { overlaps, isFullyCovered } = getFullyCoveredOverlaps(
+          request.startDate,
+          request.endDate,
+          employeeWeeklyRecords
+        );
+
+        if (!isFullyCovered || overlaps.length === 0) {
+          continue;
+        }
+
+        const deductions = allocateHoursAcrossOverlaps(Number(request.hours), overlaps);
+
+        for (const entry of deductions) {
+          if (entry.record.id === createdRecord.id) {
+            adjustedPlannedWorkHours = Math.max(0, adjustedPlannedWorkHours - entry.allocatedHours);
+          } else {
+            await tx.weeklyRecord.update({
+              where: { id: entry.record.id },
+              data: {
+                plannedWorkHours: Math.max(0, Number(entry.record.plannedWorkHours) - entry.allocatedHours),
+              },
+            });
+          }
+        }
+
+        await tx.timeOffRequest.update({
+          where: { id: request.id },
+          data: { plannedHoursAdjustedAt: new Date() },
+        });
+      }
+
+      if (adjustedPlannedWorkHours !== Number(createdRecord.plannedWorkHours)) {
+        await tx.weeklyRecord.update({
+          where: { id: createdRecord.id },
+          data: { plannedWorkHours: adjustedPlannedWorkHours },
+        });
+
+        return {
+          ...createdRecord,
+          plannedWorkHours: adjustedPlannedWorkHours,
+        };
+      }
+
+      return createdRecord;
     });
 
     return NextResponse.json({

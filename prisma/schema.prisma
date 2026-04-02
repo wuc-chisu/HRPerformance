@@ -17,45 +17,96 @@ model Department {
 }
 
 model Employee {
-  id                      String         @id @default(cuid())
-  employeeId              String         @unique
-  name                    String
-  email                   String         @default("")
-  department              String
-  manager                 String         @default("")
-  position                String
-  joinDate                DateTime
-  workAuthorizationStatus String         @default("Other Work Visa")
-  employeeType            String         @default("Full time")
-  contractWorkHours       Int?
-  overallOverdueTasks     Int            @default(0)
-  onboardingChecklistAssigned Boolean    @default(true)
-  systemAccessGmail       Boolean        @default(true)
-  systemAccessClickup     Boolean        @default(true)
-  systemAccessMoodle      Boolean        @default(true)
-  systemAccessGoogleDrive Boolean        @default(true)
-  onboardingStep2Completed Boolean       @default(true)
-  onboardingStep2Forms    Json           @default("[]")
-  onboardingStep3Completed Boolean       @default(true)
-  onboardingStep4Completed Boolean       @default(true)
-  onboardingStep5Completed Boolean       @default(true)
-  onboardingStep6AnnualTracking Boolean  @default(false)
-  onboardingStep1UpdatedBy String        @default("System")
-  onboardingStep1UpdatedAt DateTime?
-  onboardingStep1Notes    String?        @db.Text
-  onboardingStep2CompletedAt DateTime?
-  onboardingStep3CompletedAt DateTime?
-  onboardingStep4CompletedAt DateTime?
-  onboardingStep5CompletedAt DateTime?
-  onboardingStep6StartedAt DateTime?
-  onboardingStep6LastReviewAt DateTime?
-  weeklyRecords           WeeklyRecord[]
-  tasks                   Task[]
-  evaluations             Evaluation[]
-  monthlyComments         MonthlyPerformanceComment[]
-  incidentRecords         IncidentRecord[]
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
+  id                            String                      @id @default(cuid())
+  employeeId                    String                      @unique
+  name                          String
+  email                         String                      @default("")
+  department                    String
+  manager                       String                      @default("")
+  position                      String
+  joinDate                      DateTime
+  workAuthorizationStatus       String                      @default("Other Work Visa")
+  employeeType                  String                      @default("Full time")
+  contractWorkHours             Int?
+  overallOverdueTasks           Int                         @default(0)
+  onboardingChecklistAssigned   Boolean                     @default(true)
+  systemAccessGmail             Boolean                     @default(true)
+  systemAccessClickup           Boolean                     @default(true)
+  systemAccessMoodle            Boolean                     @default(true)
+  systemAccessGoogleDrive       Boolean                     @default(true)
+  onboardingStep2Completed      Boolean                     @default(true)
+  onboardingStep2Forms          Json                        @default("[]")
+  onboardingStep3Completed      Boolean                     @default(true)
+  onboardingStep4Completed      Boolean                     @default(true)
+  onboardingStep5Completed      Boolean                     @default(true)
+  onboardingStep6AnnualTracking Boolean                     @default(false)
+  onboardingStep1UpdatedBy      String                      @default("System")
+  onboardingStep1UpdatedAt      DateTime?
+  onboardingStep1Notes          String?                     @db.Text
+  onboardingStep2CompletedAt    DateTime?
+  onboardingStep3CompletedAt    DateTime?
+  onboardingStep4CompletedAt    DateTime?
+  onboardingStep5CompletedAt    DateTime?
+  onboardingStep6StartedAt      DateTime?
+  onboardingStep6LastReviewAt   DateTime?
+  weeklyRecords                 WeeklyRecord[]
+  tasks                         Task[]
+  evaluations                   Evaluation[]
+  monthlyComments               MonthlyPerformanceComment[]
+  incidentRecords               IncidentRecord[]
+  timeOffRequests               TimeOffRequest[]
+  createdAt                     DateTime                    @default(now())
+  updatedAt                     DateTime                    @updatedAt
+}
+
+enum TimeOffType {
+  PTO
+  SICK_LEAVE
+  PERSONAL_LEAVE_UNPAID
+  JURY_DUTY
+  MEDICAL_LEAVE
+}
+
+enum TimeOffStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model TimeOffRequest {
+  id          String        @id @default(cuid())
+  employeeId  String
+  employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  requestType TimeOffType
+  status      TimeOffStatus @default(PENDING)
+  startDate   DateTime
+  endDate     DateTime
+  hours       Float?
+  reason      String?       @db.Text
+  managerNote String?       @db.Text
+  approvedAt  DateTime?
+  plannedHoursAdjustedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate])
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  name      String
+  date      DateTime
+  year      Int
+  isPaid    Boolean  @default(true)
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, date])
+  @@index([year, date])
 }
 
 enum TaskPriority {
@@ -145,42 +196,42 @@ enum IncidentHistoryType {
 }
 
 model IncidentRecord {
-  id             String                 @id @default(cuid())
-  employeeId     String
-  employee       Employee               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  name           String
-  department     String
-  manager        String
-  recordType     IncidentRecordType
-  occurrenceDate DateTime
-  issuedBy       String
-  reason         String                 @db.Text
-  status         IncidentStatus         @default(PENDING)
-  appealDecision IncidentAppealDecision @default(PENDING)
-  decisionDate   DateTime?
-  reviewedBy     String?
-  finalAction    IncidentFinalAction    @default(NONE)
-  isAutoGenerated Boolean               @default(false)
-  meetingCompleted Boolean              @default(false)
-  emailSent Boolean                     @default(false)
-  followUpEmailSent Boolean             @default(false)
-  improvementPlanReceived Boolean       @default(false)
-  histories      IncidentHistory[]
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  id                      String                 @id @default(cuid())
+  employeeId              String
+  employee                Employee               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name                    String
+  department              String
+  manager                 String
+  recordType              IncidentRecordType
+  occurrenceDate          DateTime
+  issuedBy                String
+  reason                  String                 @db.Text
+  status                  IncidentStatus         @default(PENDING)
+  appealDecision          IncidentAppealDecision @default(PENDING)
+  decisionDate            DateTime?
+  reviewedBy              String?
+  finalAction             IncidentFinalAction    @default(NONE)
+  isAutoGenerated         Boolean                @default(false)
+  meetingCompleted        Boolean                @default(false)
+  emailSent               Boolean                @default(false)
+  followUpEmailSent       Boolean                @default(false)
+  improvementPlanReceived Boolean                @default(false)
+  histories               IncidentHistory[]
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
 
   @@index([employeeId, status, recordType])
   @@index([occurrenceDate])
 }
 
 model IncidentHistory {
-  id          String              @id @default(cuid())
-  incidentId  String
-  incident    IncidentRecord      @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  memo        String              @db.Text
-  type        IncidentHistoryType
-  createdAt   DateTime            @default(now())
-  createdBy   String
+  id         String              @id @default(cuid())
+  incidentId String
+  incident   IncidentRecord      @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  memo       String              @db.Text
+  type       IncidentHistoryType
+  createdAt  DateTime            @default(now())
+  createdBy  String
 
   @@index([incidentId, createdAt])
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Employee, OnboardingStep1Update, OnboardingStep2Update } from "@/lib/employees";
+import { Employee, HolidayRecord, OnboardingStep1Update, OnboardingStep2Update, TimeOffRequest, TimeOffStatus, TimeOffType } from "@/lib/employees";
 import { formatCompactDate, formatShortDate, parseDateInPacific } from "@/lib/dateUtils";
 import EmployeeCard from "@/components/EmployeeCard";
 import WeeklyRecordsTable from "@/components/WeeklyRecordsTable";
@@ -12,6 +12,7 @@ import DepartmentManager from "@/components/DepartmentManager";
 import MonthlyPerformanceReport from "@/components/MonthlyPerformanceReport";
 import IncidentTrackingTable from "@/components/IncidentTrackingTable";
 import OnboardingModule from "@/components/OnboardingModule";
+import TimeOffManager from "@/components/TimeOffManager";
 
 export default function Home() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -20,7 +21,7 @@ export default function Home() {
     null
   );
   const [activeView, setActiveView] = useState<
-    "dashboard" | "employees" | "manage" | "manage-performance" | "onboarding" | "incident-tracking"
+    "dashboard" | "employees" | "manage" | "manage-performance" | "onboarding" | "incident-tracking" | "time-off"
   >("dashboard");
   const [selectedEmployeeForPerformance, setSelectedEmployeeForPerformance] =
     useState<string | null>(null);
@@ -51,6 +52,8 @@ export default function Home() {
     "Operations",
   ]);
   const [performanceView, setPerformanceView] = useState<"weekly" | "monthly">("weekly");
+  const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
+  const [holidays, setHolidays] = useState<HolidayRecord[]>([]);
 
   // Generate available years (current year ± 5 years)
   const currentYear = new Date().getFullYear();
@@ -63,7 +66,13 @@ export default function Home() {
   useEffect(() => {
     fetchEmployees();
     fetchDepartments();
+    fetchTimeOffRequests();
+    fetchHolidays(selectedYear);
   }, []);
+
+  useEffect(() => {
+    fetchHolidays(selectedYear);
+  }, [selectedYear]);
 
   const fetchEmployees = async () => {
     try {
@@ -89,6 +98,28 @@ export default function Home() {
     } catch (error) {
       console.error("Error fetching departments:", error);
       // Keep the default departments if fetch fails
+    }
+  };
+
+  const fetchTimeOffRequests = async () => {
+    try {
+      const response = await fetch("/api/time-off");
+      if (!response.ok) throw new Error("Failed to fetch time-off requests");
+      const data = await response.json();
+      setTimeOffRequests(data);
+    } catch (error) {
+      console.error("Error fetching time-off requests:", error);
+    }
+  };
+
+  const fetchHolidays = async (year: number) => {
+    try {
+      const response = await fetch(`/api/holidays?year=${year}`);
+      if (!response.ok) throw new Error("Failed to fetch holidays");
+      const data = await response.json();
+      setHolidays(data);
+    } catch (error) {
+      console.error("Error fetching holidays:", error);
     }
   };
 
@@ -172,6 +203,84 @@ export default function Home() {
         alert("Failed to delete employee");
       }
     }
+  };
+
+  const handleCreateTimeOffRequest = async (payload: {
+    employeeId: string;
+    requestType: TimeOffType;
+    startDate: string;
+    endDate: string;
+    hours?: number | null;
+    reason?: string;
+  }) => {
+    const response = await fetch("/api/time-off", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to create time-off request");
+    }
+
+    await fetchTimeOffRequests();
+  };
+
+  const handleUpdateTimeOffRequest = async (
+    id: string,
+    payload: { status?: TimeOffStatus; managerNote?: string }
+  ) => {
+    const response = await fetch(`/api/time-off/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to update time-off request");
+    }
+
+    await fetchTimeOffRequests();
+  };
+
+  const handleDeleteTimeOffRequest = async (id: string) => {
+    const response = await fetch(`/api/time-off/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to delete time-off request");
+    }
+    await fetchTimeOffRequests();
+  };
+
+  const handleCreateHoliday = async (payload: {
+    name: string;
+    date: string;
+    isPaid: boolean;
+    notes?: string;
+  }) => {
+    const response = await fetch("/api/holidays", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to create holiday");
+    }
+
+    await fetchHolidays(selectedYear);
+  };
+
+  const handleDeleteHoliday = async (id: string) => {
+    const response = await fetch(`/api/holidays/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to delete holiday");
+    }
+    await fetchHolidays(selectedYear);
   };
 
   const handleSaveOnboardingStep1 = async (
@@ -715,6 +824,19 @@ export default function Home() {
           >
             Mistakes & Warnings
           </button>
+          <button
+            onClick={() => {
+              setActiveView("time-off");
+              setSelectedEmployeeId(null);
+            }}
+            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              activeView === "time-off"
+                ? "bg-emerald-400 text-white shadow-md"
+                : "bg-emerald-100 text-gray-700 border border-emerald-200 hover:bg-emerald-50"
+            }`}
+          >
+            Time Off & Holidays
+          </button>
         </div>
 
         {/* Dashboard View */}
@@ -1095,6 +1217,20 @@ export default function Home() {
 
         {activeView === "incident-tracking" && (
           <IncidentTrackingTable employees={employees} />
+        )}
+
+        {activeView === "time-off" && (
+          <TimeOffManager
+            employees={employees}
+            requests={timeOffRequests}
+            holidays={holidays}
+            selectedYear={selectedYear}
+            onCreateRequest={handleCreateTimeOffRequest}
+            onUpdateRequest={handleUpdateTimeOffRequest}
+            onDeleteRequest={handleDeleteTimeOffRequest}
+            onCreateHoliday={handleCreateHoliday}
+            onDeleteHoliday={handleDeleteHoliday}
+          />
         )}
       </main>
 
