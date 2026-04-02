@@ -159,6 +159,7 @@ export default function Home() {
           position: employee.position,
           joinDate: employee.joinDate,
           workAuthorizationStatus: employee.workAuthorizationStatus,
+          staffWorkLocation: employee.staffWorkLocation,
           employeeType: employee.employeeType,
           contractWorkHours: employee.contractWorkHours,
           overallOverdueTasks: employee.overallOverdueTasks,
@@ -257,6 +258,7 @@ export default function Home() {
   const handleCreateHoliday = async (payload: {
     name: string;
     date: string;
+    workLocation: "USA" | "Taiwan";
     isPaid: boolean;
     notes?: string;
   }) => {

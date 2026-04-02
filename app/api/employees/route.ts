@@ -99,6 +99,7 @@ export async function GET() {
       position: emp.position,
       joinDate: emp.joinDate.toISOString().split("T")[0],
       workAuthorizationStatus: emp.workAuthorizationStatus,
+      staffWorkLocation: emp.staffWorkLocation || "USA",
       employeeType: emp.employeeType || "Full time",
       contractWorkHours: emp.contractWorkHours ?? null,
       overallOverdueTasks: emp.overallOverdueTasks,
@@ -133,7 +134,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { employeeId, name, email, department, manager, position, joinDate, workAuthorizationStatus, employeeType, contractWorkHours, overallOverdueTasks } = body;
+    const { employeeId, name, email, department, manager, position, joinDate, workAuthorizationStatus, staffWorkLocation, employeeType, contractWorkHours, overallOverdueTasks } = body;
 
     if (!employeeId || !name || !email || !department || !manager || !position || !joinDate) {
       return NextResponse.json(
@@ -152,6 +153,7 @@ export async function POST(request: Request) {
         position,
         joinDate: parseDateForDatabase(joinDate),
         workAuthorizationStatus: workAuthorizationStatus || "Other Work Visa",
+        staffWorkLocation: staffWorkLocation || "USA",
         employeeType: employeeType || "Full time",
         contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
         overallOverdueTasks: overallOverdueTasks || 0,
@@ -187,6 +189,7 @@ export async function POST(request: Request) {
       position: employee.position,
       joinDate: employee.joinDate.toISOString().split("T")[0],
       workAuthorizationStatus: employee.workAuthorizationStatus,
+      staffWorkLocation: employee.staffWorkLocation || "USA",
       employeeType: (employee as any).employeeType || "Full time",
       contractWorkHours: (employee as any).contractWorkHours ?? null,
       overallOverdueTasks: employee.overallOverdueTasks,

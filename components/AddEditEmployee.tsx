@@ -35,6 +35,7 @@ export default function AddEditEmployee({
     position: employee?.position || "",
     joinDate: employee?.joinDate || "",
     workAuthorizationStatus: employee?.workAuthorizationStatus || "Other Work Visa",
+    staffWorkLocation: employee?.staffWorkLocation || "USA",
     employeeType: employee?.employeeType || "Full time",
     contractWorkHours: employee?.contractWorkHours || 0,
   });
@@ -53,7 +54,6 @@ export default function AddEditEmployee({
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.email.trim()) newErrors.email = "Email is required";
     if (!formData.department) newErrors.department = "Department is required";
-    if (!formData.manager.trim()) newErrors.manager = "Manager is required";
     if (!formData.position.trim()) newErrors.position = "Position/Title is required";
     if (!formData.joinDate) newErrors.joinDate = "Hire date is required";
 
@@ -81,6 +81,7 @@ export default function AddEditEmployee({
     if (validateForm()) {
       const newEmployee: Employee = {
         ...formData,
+        staffWorkLocation: formData.staffWorkLocation,
         contractWorkHours: formData.employeeType === "Contract" ? formData.contractWorkHours : undefined,
         weeklyRecords: employee?.weeklyRecords || [],
       };
@@ -239,7 +240,7 @@ export default function AddEditEmployee({
           {/* Direct Manager */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Direct Manager *
+              Direct Manager
             </label>
             <select
               name="manager"
@@ -283,6 +284,23 @@ export default function AddEditEmployee({
               <p className="text-red-600 text-sm mt-1">{errors.joinDate}</p>
             )}
             <p className="text-gray-500 text-xs mt-1">Format: YYYY-MM-DD</p>
+          </div>
+
+          {/* Staff Work Location */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Staff Work Location
+            </label>
+            <select
+              name="staffWorkLocation"
+              value={formData.staffWorkLocation}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+            >
+              <option value="USA">USA</option>
+              <option value="Taiwan">Taiwan</option>
+            </select>
+            <p className="text-gray-500 text-xs mt-1">Used to determine applicable public holidays</p>
           </div>
 
           {/* Work Authorization Status and Employee Type in 2 columns */}

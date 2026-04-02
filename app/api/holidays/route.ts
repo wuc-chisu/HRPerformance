@@ -2,23 +2,63 @@ import prisma from "@/lib/prisma";
 import { parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 
+type HolidayLocation = "USA" | "Taiwan";
+
+type HolidayRecord = {
+  id: string;
+  name: string;
+  date: Date;
+  year: number;
+  workLocation: HolidayLocation;
+  isPaid: boolean;
+  notes: string | null;
+};
+
+type HolidayModel = {
+  findMany: (args: {
+    where?: {
+      year?: number;
+      workLocation?: HolidayLocation;
+    };
+    orderBy: Array<{ date: "asc" }>;
+  }) => Promise<HolidayRecord[]>;
+  create: (args: {
+    data: {
+      name: string;
+      date: Date;
+      year: number;
+      workLocation: HolidayLocation;
+      isPaid: boolean;
+      notes: string | null;
+    };
+  }) => Promise<HolidayRecord>;
+};
+
+const holidayModel = (prisma as unknown as { holiday: HolidayModel }).holiday;
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const yearParam = searchParams.get("year");
+    const workLocationParam = searchParams.get("workLocation");
     const year = yearParam ? parseInt(yearParam, 10) : null;
+    const workLocation = workLocationParam === "Taiwan" || workLocationParam === "USA" ? workLocationParam : null;
 
-    const holidays = await (prisma as any).holiday.findMany({
-      where: year ? { year } : undefined,
+    const holidays = await holidayModel.findMany({
+      where: {
+        ...(year ? { year } : {}),
+        ...(workLocation ? { workLocation } : {}),
+      },
       orderBy: [{ date: "asc" }],
     });
 
     return NextResponse.json(
-      holidays.map((holiday: any) => ({
+      holidays.map((holiday) => ({
         id: holiday.id,
         name: holiday.name,
         date: holiday.date.toISOString().split("T")[0],
         year: holiday.year,
+        workLocation: holiday.workLocation || "USA",
         isPaid: holiday.isPaid,
         notes: holiday.notes || "",
       }))
@@ -32,19 +72,22 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, date, isPaid, notes } = body;
+    const { name, date, isPaid, notes, workLocation } = body;
 
     if (!name || !date) {
       return NextResponse.json({ error: "Name and date are required" }, { status: 400 });
     }
 
+    const normalizedWorkLocation = workLocation === "Taiwan" ? "Taiwan" : "USA";
+
     const dateObj = parseDateForDatabase(date);
 
-    const created = await (prisma as any).holiday.create({
+    const created = await holidayModel.create({
       data: {
         name,
         date: dateObj,
         year: dateObj.getUTCFullYear(),
+        workLocation: normalizedWorkLocation,
         isPaid: Boolean(isPaid),
         notes: notes || null,
       },
@@ -56,6 +99,7 @@ export async function POST(request: Request) {
         name: created.name,
         date: created.date.toISOString().split("T")[0],
         year: created.year,
+        workLocation: created.workLocation || "USA",
         isPaid: created.isPaid,
         notes: created.notes || "",
       },

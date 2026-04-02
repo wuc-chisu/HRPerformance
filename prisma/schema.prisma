@@ -26,6 +26,7 @@ model Employee {
   position                      String
   joinDate                      DateTime
   workAuthorizationStatus       String                      @default("Other Work Visa")
+  staffWorkLocation             String                      @default("USA")
   employeeType                  String                      @default("Full time")
   contractWorkHours             Int?
   overallOverdueTasks           Int                         @default(0)
@@ -100,12 +101,13 @@ model Holiday {
   name      String
   date      DateTime
   year      Int
+  workLocation String @default("USA")
   isPaid    Boolean  @default(true)
   notes     String?  @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([name, date])
+  @@unique([name, date, workLocation])
   @@index([year, date])
 }
 

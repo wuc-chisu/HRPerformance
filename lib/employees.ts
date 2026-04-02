@@ -55,6 +55,7 @@ export interface HolidayRecord {
   name: string;
   date: string;
   year: number;
+  workLocation: "USA" | "Taiwan";
   isPaid: boolean;
   notes?: string;
 }
@@ -133,6 +134,7 @@ export interface Employee {
   position: string;
   joinDate: string;
   workAuthorizationStatus?: string;
+  staffWorkLocation?: string;
   employeeType?: "Full time" | "Contract";
   contractWorkHours?: number;
   overallOverdueTasks?: number;

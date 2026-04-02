@@ -52,6 +52,10 @@ export default function EmployeeCard({
           <p className="text-gray-600">Authorization</p>
           <p className="font-medium text-gray-900">{employee.workAuthorizationStatus || "Not specified"}</p>
         </div>
+        <div>
+          <p className="text-gray-600">Work Location</p>
+          <p className="font-medium text-gray-900">{employee.staffWorkLocation || "USA"}</p>
+        </div>
       </div>
 
       {latestWeek && (

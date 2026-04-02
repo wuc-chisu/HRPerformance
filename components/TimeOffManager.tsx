@@ -33,7 +33,13 @@ interface TimeOffManagerProps {
   }) => Promise<void>;
   onUpdateRequest: (id: string, payload: { status?: TimeOffStatus; managerNote?: string }) => Promise<void>;
   onDeleteRequest: (id: string) => Promise<void>;
-  onCreateHoliday: (payload: { name: string; date: string; isPaid: boolean; notes?: string }) => Promise<void>;
+  onCreateHoliday: (payload: {
+    name: string;
+    date: string;
+    workLocation: "USA" | "Taiwan";
+    isPaid: boolean;
+    notes?: string;
+  }) => Promise<void>;
   onDeleteHoliday: (id: string) => Promise<void>;
 }
 
@@ -59,11 +65,19 @@ export default function TimeOffManager({
   const [holidayForm, setHolidayForm] = useState({
     name: "",
     date: `${selectedYear}-01-01`,
+    workLocation: "USA" as "USA" | "Taiwan",
     isPaid: true,
     notes: "",
   });
   const [managerNotes, setManagerNotes] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [requestNotice, setRequestNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [holidayNotice, setHolidayNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const [filterEmployeeId, setFilterEmployeeId] = useState("");
+  const [filterMode, setFilterMode] = useState<"all" | "month">("month");
+  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
+  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
 
   const sortedEmployees = useMemo(
     () => [...employees].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: "base" })),
@@ -80,14 +94,38 @@ export default function TimeOffManager({
     [requests]
   );
 
+  const availableYears = useMemo(() => {
+    const years = new Set<number>([new Date().getFullYear()]);
+    requests.forEach((r) => {
+      years.add(new Date(r.startDate).getFullYear());
+      years.add(new Date(r.endDate).getFullYear());
+    });
+    return [...years].sort((a, b) => b - a);
+  }, [requests]);
+
+  const filteredRequests = useMemo(() => {
+    return sortedRequests.filter((request) => {
+      if (filterEmployeeId && request.employeeId !== filterEmployeeId) return false;
+      if (filterMode === "month") {
+        const monthStart = new Date(filterYear, filterMonth - 1, 1);
+        const monthEnd = new Date(filterYear, filterMonth, 0);
+        const reqStart = new Date(request.startDate);
+        const reqEnd = new Date(request.endDate);
+        if (reqStart > monthEnd || reqEnd < monthStart) return false;
+      }
+      return true;
+    });
+  }, [sortedRequests, filterEmployeeId, filterMode, filterMonth, filterYear]);
+
   const submitRequest = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!requestForm.employeeId || !requestForm.startDate || !requestForm.endDate) {
-      alert("Employee, start date, and end date are required.");
+      setRequestNotice({ type: "error", message: "Employee, start date, and end date are required." });
       return;
     }
 
     setSaving(true);
+    setRequestNotice(null);
     try {
       await onCreateRequest({
         employeeId: requestForm.employeeId,
@@ -104,6 +142,10 @@ export default function TimeOffManager({
         hours: "",
         reason: "",
       }));
+      setFilterMode("all");
+      setRequestNotice({ type: "success", message: "Time off request submitted successfully!" });
+    } catch (err) {
+      setRequestNotice({ type: "error", message: err instanceof Error ? err.message : "Failed to submit request. Please try again." });
     } finally {
       setSaving(false);
     }
@@ -112,24 +154,30 @@ export default function TimeOffManager({
   const submitHoliday = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!holidayForm.name || !holidayForm.date) {
-      alert("Holiday name and date are required.");
+      setHolidayNotice({ type: "error", message: "Holiday name and date are required." });
       return;
     }
 
     setSaving(true);
+    setHolidayNotice(null);
     try {
       await onCreateHoliday({
         name: holidayForm.name,
         date: holidayForm.date,
+        workLocation: holidayForm.workLocation,
         isPaid: holidayForm.isPaid,
         notes: holidayForm.notes || undefined,
       });
       setHolidayForm({
         name: "",
         date: `${selectedYear}-01-01`,
+        workLocation: "USA",
         isPaid: true,
         notes: "",
       });
+      setHolidayNotice({ type: "success", message: "Holiday added successfully!" });
+    } catch (err) {
+      setHolidayNotice({ type: "error", message: err instanceof Error ? err.message : "Failed to add holiday. Please try again." });
     } finally {
       setSaving(false);
     }
@@ -215,12 +263,21 @@ export default function TimeOffManager({
                 className="w-full px-4 py-2 border border-emerald-200 rounded-lg bg-white text-gray-900"
               />
             </div>
+            {requestNotice && (
+              <div className={`px-4 py-3 rounded-lg text-sm font-medium ${
+                requestNotice.type === "success"
+                  ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+                  : "bg-rose-50 border border-rose-200 text-rose-800"
+              }`}>
+                {requestNotice.message}
+              </div>
+            )}
             <button
               type="submit"
               disabled={saving}
               className="px-5 py-2.5 rounded-lg bg-emerald-500 text-white font-semibold hover:bg-emerald-600 disabled:opacity-50"
             >
-              Submit Request
+              {saving ? "Submitting..." : "Submit Request"}
             </button>
           </form>
         </div>
@@ -250,6 +307,18 @@ export default function TimeOffManager({
                 className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
               />
             </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Holiday Location</label>
+              <select
+                value={holidayForm.workLocation}
+                onChange={(e) => setHolidayForm((prev) => ({ ...prev, workLocation: e.target.value as "USA" | "Taiwan" }))}
+                className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
+              >
+                <option value="USA">USA</option>
+                <option value="Taiwan">Taiwan</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Mapped by employee work location for holiday calculations.</p>
+            </div>
             <div className="flex items-center gap-3">
               <input
                 id="isPaidHoliday"
@@ -271,12 +340,21 @@ export default function TimeOffManager({
                 className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
               />
             </div>
+            {holidayNotice && (
+              <div className={`px-4 py-3 rounded-lg text-sm font-medium ${
+                holidayNotice.type === "success"
+                  ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+                  : "bg-rose-50 border border-rose-200 text-rose-800"
+              }`}>
+                {holidayNotice.message}
+              </div>
+            )}
             <button
               type="submit"
               disabled={saving}
               className="px-5 py-2.5 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 disabled:opacity-50"
             >
-              Add Holiday
+              {saving ? "Adding..." : "Add Holiday"}
             </button>
           </form>
 
@@ -288,7 +366,7 @@ export default function TimeOffManager({
                 <div key={holiday.id} className="flex items-start justify-between gap-4 border border-amber-100 rounded-xl p-3 bg-amber-50/60">
                   <div>
                     <p className="font-semibold text-gray-900">{holiday.name}</p>
-                    <p className="text-sm text-gray-600">{holiday.date} {holiday.isPaid ? "• Paid" : "• Unpaid"}</p>
+                    <p className="text-sm text-gray-600">{holiday.date} • {holiday.workLocation} {holiday.isPaid ? "• Paid" : "• Unpaid"}</p>
                     {holiday.notes ? <p className="text-sm text-gray-500 mt-1">{holiday.notes}</p> : null}
                   </div>
                   <button
@@ -305,15 +383,95 @@ export default function TimeOffManager({
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Time Off Tracking</h2>
-        <p className="text-sm text-gray-600 mb-6">
-          Step 1 is request submission. Step 2 is direct manager approval. Approval deducts the approved hours from the matching weekly planned work hours exactly once.
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Time Off Tracking</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Step 1: request submitted. Step 2: direct manager approves — approved hours are deducted from overlapping weekly planned hours exactly once.
+            </p>
+          </div>
+          <span className="shrink-0 text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            {filteredRequests.length} record{filteredRequests.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        {/* Filter bar */}
+        <div className="flex flex-wrap items-center gap-3 mt-4 mb-6 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          {/* Employee picker */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Employee</label>
+            <select
+              value={filterEmployeeId}
+              onChange={(e) => setFilterEmployeeId(e.target.value)}
+              className="text-sm px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            >
+              <option value="">All Employees</option>
+              {sortedEmployees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="hidden sm:block h-6 w-px bg-slate-300" />
+
+          {/* Mode tabs */}
+          <div className="flex gap-1 p-1 bg-white border border-slate-200 rounded-lg">
+            <button
+              onClick={() => setFilterMode("all")}
+              className={`px-3 py-1 rounded-md text-sm font-semibold transition-colors ${
+                filterMode === "all"
+                  ? "bg-slate-700 text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Show All
+            </button>
+            <button
+              onClick={() => setFilterMode("month")}
+              className={`px-3 py-1 rounded-md text-sm font-semibold transition-colors ${
+                filterMode === "month"
+                  ? "bg-slate-700 text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              By Month
+            </button>
+          </div>
+
+          {/* Month / Year pickers */}
+          {filterMode === "month" && (
+            <div className="flex items-center gap-2">
+              <select
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(Number(e.target.value))}
+                className="text-sm px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              >
+                {["January","February","March","April","May","June","July","August","September","October","November","December"].map((name, idx) => (
+                  <option key={idx + 1} value={idx + 1}>{name}</option>
+                ))}
+              </select>
+              <select
+                value={filterYear}
+                onChange={(e) => setFilterYear(Number(e.target.value))}
+                className="text-sm px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              >
+                {availableYears.map((yr) => (
+                  <option key={yr} value={yr}>{yr}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
         <div className="space-y-4">
-          {sortedRequests.length === 0 ? (
-            <p className="text-sm text-gray-500">No time-off requests yet.</p>
+          {filteredRequests.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">
+              <p className="text-sm font-medium">No time-off records match the current filters.</p>
+            </div>
           ) : (
-            sortedRequests.map((request) => (
+            filteredRequests.map((request) => (
               <div key={request.id} className="rounded-2xl border border-slate-200 p-4 bg-slate-50">
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                   <div className="space-y-1">
