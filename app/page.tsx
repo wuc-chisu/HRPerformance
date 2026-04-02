@@ -1175,6 +1175,9 @@ export default function Home() {
                             (e) => e.id === selectedEmployeeForPerformance
                           )!
                         }
+                        timeOffRequests={timeOffRequests.filter(
+                          (request) => request.employeeId === selectedEmployeeForPerformance
+                        )}
                         selectedYear={selectedYear}
                         selectedMonth={selectedMonth}
                         selectedWeekRange={selectedWeekFilter}

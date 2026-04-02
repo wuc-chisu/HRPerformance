@@ -8,16 +8,12 @@ type PendingApprovedTimeOffRequest = {
   startDate: Date;
   endDate: Date;
   hours: number | null;
-  plannedHoursAdjustedAt: Date | null;
+  plannedHoursAdjustedAt?: Date | null;
 };
 
 type PendingTimeOffModel = {
   findMany: (args: {
-    where: {
-      employeeId: string;
-      approvedAt: { not: null };
-      plannedHoursAdjustedAt: null;
-    };
+    where: Record<string, unknown>;
     orderBy: Array<{ startDate: "asc" }>;
   }) => Promise<PendingApprovedTimeOffRequest[]>;
   update: (args: {
@@ -69,6 +65,11 @@ type WeeklyRecordModel = {
 type TransactionClient = {
   timeOffRequest: PendingTimeOffModel;
   weeklyRecord: WeeklyRecordModel;
+};
+
+const missingAdjustedAtField = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("Unknown argument `plannedHoursAdjustedAt`");
 };
 
 // POST new weekly record
@@ -148,6 +149,23 @@ export async function POST(request: Request) {
           plannedHoursAdjustedAt: null,
         },
         orderBy: [{ startDate: "asc" }],
+      }).catch(async (error) => {
+        if (!missingAdjustedAtField(error)) {
+          throw error;
+        }
+
+        // Fallback for environments where Prisma client/schema has not yet picked up plannedHoursAdjustedAt.
+        // Limit to requests overlapping the created week to avoid repeatedly reapplying old deductions.
+        return tx.timeOffRequest.findMany({
+          where: {
+            employeeId: employee.id,
+            approvedAt: { not: null },
+            status: "APPROVED",
+            startDate: { lte: parsedEndDate },
+            endDate: { gte: parsedStartDate },
+          },
+          orderBy: [{ startDate: "asc" }],
+        });
       });
 
       if (pendingApprovedRequests.length === 0) {
@@ -191,10 +209,16 @@ export async function POST(request: Request) {
           }
         }
 
-        await tx.timeOffRequest.update({
-          where: { id: request.id },
-          data: { plannedHoursAdjustedAt: new Date() },
-        });
+        await tx.timeOffRequest
+          .update({
+            where: { id: request.id },
+            data: { plannedHoursAdjustedAt: new Date() },
+          })
+          .catch((error) => {
+            if (!missingAdjustedAtField(error)) {
+              throw error;
+            }
+          });
       }
 
       if (adjustedPlannedWorkHours !== Number(createdRecord.plannedWorkHours)) {

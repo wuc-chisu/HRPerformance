@@ -362,8 +362,7 @@ export default function TimeOffManager({
                     </button>
                     <button
                       onClick={() => onDeleteRequest(request.id)}
-                      disabled={request.status === "APPROVED"}
-                      className="px-3 py-2 rounded-lg bg-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 py-2 rounded-lg bg-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-300"
                     >
                       Delete
                     </button>

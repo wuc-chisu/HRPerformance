@@ -1,27 +1,30 @@
 "use client";
 
-import { Employee, WeeklyRecord } from "@/lib/employees";
+import { AssignedTaskDetail, Employee, OverdueTaskDetail, TimeOffRequest, WeeklyRecord } from "@/lib/employees";
+import { allocateHoursAcrossOverlaps, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
 import { calculateWeeklyPerformanceScore } from "@/lib/performanceScoring";
 import { formatDateInPacific } from "@/lib/dateUtils";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import AssignedTaskManager from "./AssignedTaskManager";
 import OverdueTaskManager from "./OverdueTaskManager";
 
 interface WeeklyRecordsTableProps {
   employee: Employee;
+  timeOffRequests?: TimeOffRequest[];
   selectedYear?: number;
   selectedMonth?: number;
   selectedWeekRange?: string | null;
   onEditRecord?: (record: WeeklyRecord, index: number) => void;
   onDeleteRecord?: (index: number) => void;
   onAddRecord?: () => void;
-  onUpdateOverdueTasks?: (recordId: string, details: any[]) => void;
-  onUpdateAssignedTasks?: (recordId: string, details: any[]) => void;
-  onUpdateAllOverdueTasks?: (recordId: string, details: any[]) => void;
+  onUpdateOverdueTasks?: (recordId: string, details: OverdueTaskDetail[]) => void;
+  onUpdateAssignedTasks?: (recordId: string, details: AssignedTaskDetail[]) => void;
+  onUpdateAllOverdueTasks?: (recordId: string, details: OverdueTaskDetail[]) => void;
 }
 
 export default function WeeklyRecordsTable({
   employee,
+  timeOffRequests = [],
   selectedYear,
   selectedMonth,
   selectedWeekRange,
@@ -41,6 +44,51 @@ export default function WeeklyRecordsTable({
   const [selectedAllOverdueRecord, setSelectedAllOverdueRecord] =
     useState<WeeklyRecord | null>(null);
 
+  const timeOffAdjustmentByRecordKey = useMemo(() => {
+    const weeklyRecordWindows: WeeklyRecordWindow[] = employee.weeklyRecords
+      .map((record) => ({
+        id: record.recordId || `${record.startDate}-${record.endDate}`,
+        startDate: new Date(`${record.startDate}T12:00:00Z`),
+        endDate: new Date(`${record.endDate}T12:00:00Z`),
+        plannedWorkHours: record.plannedWorkHours,
+      }))
+      .sort((left, right) => left.startDate.getTime() - right.startDate.getTime());
+
+    const adjustments = new Map<string, number>();
+
+    for (const request of timeOffRequests) {
+      if (
+        request.status !== "APPROVED" ||
+        !request.plannedHoursAdjustedAt ||
+        request.hours == null ||
+        request.hours <= 0
+      ) {
+        continue;
+      }
+
+      const { overlaps, isFullyCovered } = getFullyCoveredOverlaps(
+        new Date(`${request.startDate}T12:00:00Z`),
+        new Date(`${request.endDate}T12:00:00Z`),
+        weeklyRecordWindows
+      );
+
+      if (!isFullyCovered || overlaps.length === 0) {
+        continue;
+      }
+
+      const deductions = allocateHoursAcrossOverlaps(Number(request.hours), overlaps);
+
+      for (const entry of deductions) {
+        adjustments.set(
+          entry.record.id,
+          Math.round(((adjustments.get(entry.record.id) || 0) + entry.allocatedHours) * 100) / 100
+        );
+      }
+    }
+
+    return adjustments;
+  }, [employee.weeklyRecords, timeOffRequests]);
+
   const getPerformanceStatus = (record: WeeklyRecord) => {
     const hoursStatus =
       record.actualWorkHours >= record.plannedWorkHours ? "good" : "poor";
@@ -57,7 +105,7 @@ export default function WeeklyRecordsTable({
     setShowOverdueManager(true);
   };
 
-  const handleUpdateOverdue = (details: any[]) => {
+  const handleUpdateOverdue = (details: OverdueTaskDetail[]) => {
     if (selectedRecord && selectedRecord.recordId && onUpdateOverdueTasks) {
       onUpdateOverdueTasks(selectedRecord.recordId, details);
     }
@@ -68,7 +116,7 @@ export default function WeeklyRecordsTable({
     setShowAssignedManager(true);
   };
 
-  const handleUpdateAssigned = (details: any[]) => {
+  const handleUpdateAssigned = (details: AssignedTaskDetail[]) => {
     if (
       selectedAssignedRecord &&
       selectedAssignedRecord.recordId &&
@@ -83,7 +131,7 @@ export default function WeeklyRecordsTable({
     setShowAllOverdueManager(true);
   };
 
-  const handleUpdateAllOverdue = (details: any[]) => {
+  const handleUpdateAllOverdue = (details: OverdueTaskDetail[]) => {
     if (
       selectedAllOverdueRecord &&
       selectedAllOverdueRecord.recordId &&
@@ -227,7 +275,20 @@ export default function WeeklyRecordsTable({
                         : "text-red-600"
                     }`}
                   >
-                    {record.actualWorkHours}/{record.plannedWorkHours}
+                    <div>
+                      <div>{record.actualWorkHours}/{record.plannedWorkHours}</div>
+                      {timeOffAdjustmentByRecordKey.get(
+                        record.recordId || `${record.startDate}-${record.endDate}`
+                      ) ? (
+                        <div className="text-xs font-semibold text-amber-700 mt-1 whitespace-normal">
+                          Adjusted for approved time off: -
+                          {timeOffAdjustmentByRecordKey.get(
+                            record.recordId || `${record.startDate}-${record.endDate}`
+                          )}
+                          h
+                        </div>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                     <div className="flex items-center gap-3">
