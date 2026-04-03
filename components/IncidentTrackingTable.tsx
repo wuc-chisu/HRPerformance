@@ -569,7 +569,11 @@ Human Resources`,
     return index + 1;
   };
 
-  const handleOpenFollowUpEmail = (record: IncidentRecord, warningLevel: 1 | 2) => {
+  const handleOpenFollowUpEmail = (
+    record: IncidentRecord,
+    warningLevel: 1 | 2 | 3,
+    finalAction?: FinalAction
+  ) => {
     const employee = sortedEmployees.find((entry) => entry.id === record.employeeId);
     if (!employee?.email) {
       setMessage(`Unable to email: employee email for ${record.name} was not found.`);
@@ -589,7 +593,9 @@ Human Resources`,
     const subject =
       warningLevel === 1
         ? `Follow-Up: Written Improvement Plan Request (1st Confirmed Warning) - ${record.name} (${record.employeeId})`
-        : `Follow-Up: Written Response Request (2nd Confirmed Warning) - ${record.name} (${record.employeeId})`;
+        : warningLevel === 2
+        ? `Follow-Up: Written Response Request (2nd Confirmed Warning) - ${record.name} (${record.employeeId})`
+        : `Meeting Notice: 3rd Confirmed Warning - ${record.name} (${record.employeeId})`;
 
     const body =
       warningLevel === 1
@@ -605,7 +611,8 @@ If you have any questions or need clarification, please feel free to reach out.
 
 Sincerely,
 Human Resource`
-        : `Dear ${record.name},
+        : warningLevel === 2
+        ? `Dear ${record.name},
 
 Following your recent meeting with your direct manager and Human Resources regarding the confirmed warning, this is a request for your written response.
 
@@ -620,7 +627,19 @@ Kindly submit your response via email within one (1) week from the date of this 
 If you have any questions or need clarification, please feel free to contact Human Resources.
 
 Sincerely,
-Human Resources`;
+Human Resources`
+        : `Dear ${record.name},
+
+      You have reached a 3rd confirmed warning regarding the recent incident of: [please fill out].
+
+      You are scheduled to meet with your direct manager, Human Resources, and executive leadership on [date and time] regarding this warning to discuss your future path with the school.
+
+      During this meeting, we will review the recent incident, your overall performance record, expectations moving forward, and any next steps that may be required.
+
+      Please make sure to attend this meeting on time and come prepared to discuss the matter seriously. If you have any scheduling conflict or questions before the meeting, please contact Human Resources as soon as possible.
+
+      Sincerely,
+      Human Resources`;
 
     setEmailDraft({
       incidentId: record.id,
@@ -1303,9 +1322,13 @@ Human Resources`;
                   confirmedWarningLevel === 1 ||
                   confirmedWarningLevel === 2 ||
                   confirmedWarningLevel === 3;
-                const showFollowUpEmail = confirmedWarningLevel === 1 || confirmedWarningLevel === 2;
+                const showFollowUpEmail =
+                  confirmedWarningLevel === 1 ||
+                  confirmedWarningLevel === 2 ||
+                  (confirmedWarningLevel === 3 && draft.finalAction !== "NONE");
                 const showImprovementPlanCheckbox =
-                  showFollowUpEmail && draft.followUpEmailSent;
+                  (confirmedWarningLevel === 1 || confirmedWarningLevel === 2) &&
+                  draft.followUpEmailSent;
                 const isMeetingChecked = !!draft.meetingCompleted;
                 const showFinalActionInline = confirmedWarningLevel === 3 && isMeetingChecked;
                 const meetingLabel =
@@ -1467,7 +1490,15 @@ Human Resources`;
                         {showFollowUpEmail && isMeetingChecked && (
                           <button
                             onClick={() =>
-                              handleOpenFollowUpEmail(record, confirmedWarningLevel === 1 ? 1 : 2)
+                              handleOpenFollowUpEmail(
+                                record,
+                                confirmedWarningLevel === 1
+                                  ? 1
+                                  : confirmedWarningLevel === 2
+                                  ? 2
+                                  : 3,
+                                draft.finalAction
+                              )
                             }
                             disabled={draft.followUpEmailSent}
                             className={`text-white text-xs px-2 py-1 rounded ${
