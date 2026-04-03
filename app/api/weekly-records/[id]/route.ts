@@ -157,12 +157,21 @@ export async function PUT(
 
 // DELETE weekly record
 export async function DELETE(
-  request: Request,
+  _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const params = await context.params;
     const recordId = params.id;
+
+    const existing = await prisma.weeklyRecord.findUnique({
+      where: { id: recordId },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ success: true, message: "Record already deleted" });
+    }
 
     await prisma.weeklyRecord.delete({
       where: { id: recordId },

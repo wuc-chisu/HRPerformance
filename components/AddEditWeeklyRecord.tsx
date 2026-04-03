@@ -8,7 +8,7 @@ interface AddEditWeeklyRecordProps {
   record?: WeeklyRecord;
   employeeType?: string;
   contractWorkHours?: number | null;
-  onSave: (record: WeeklyRecord) => void;
+  onSave: (record: WeeklyRecord) => Promise<void> | void;
   onCancel: () => void;
 }
 
@@ -38,6 +38,7 @@ export default function AddEditWeeklyRecord({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -70,10 +71,16 @@ export default function AddEditWeeklyRecord({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      onSave(formData);
+    if (isSubmitting) return;
+    if (!validateForm()) return;
+
+    try {
+      setIsSubmitting(true);
+      await onSave(formData);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -289,9 +296,10 @@ export default function AddEditWeeklyRecord({
           <div className="flex gap-4 pt-4 border-t">
             <button
               type="submit"
-              className="flex-1 bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+              disabled={isSubmitting}
+              className={isSubmitting ? "flex-1 bg-purple-400 cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors" : "flex-1 bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"}
             >
-              {record ? "Update Record" : "Add Record"}
+              {isSubmitting ? "Saving..." : record ? "Update Record" : "Add Record"}
             </button>
             <button
               type="button"

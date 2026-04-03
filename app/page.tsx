@@ -656,10 +656,9 @@ export default function Home() {
       setEditingWeeklyRecord(null);
     } catch (error) {
       console.error("Error saving weekly record:", error);
-      console.error(
-        "Weekly record save failed:",
-        error instanceof Error ? error.message : String(error)
-      );
+      const message =
+        error instanceof Error ? error.message : "Failed to save weekly record";
+      alert(message);
     }
   };
 
@@ -762,30 +761,17 @@ export default function Home() {
                 : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
             }`}
           >
-            Dashboard
+            📊 Dashboard
           </button>
           <button
             onClick={() => setActiveView("employees")}
             className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              activeView === "employees"
+              activeView === "employees" || activeView === "manage"
                 ? "bg-blue-300 text-white shadow-md"
                 : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
             }`}
           >
-            Employees
-          </button>
-          <button
-            onClick={() => {
-              setActiveView("manage");
-              setSelectedEmployeeId(null);
-            }}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              activeView === "manage"
-                ? "bg-blue-300 text-white shadow-md"
-                : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
-            }`}
-          >
-            Manage Employees
+            👥 Employee
           </button>
           <button
             onClick={() => {
@@ -798,7 +784,7 @@ export default function Home() {
                 : "bg-purple-100 text-gray-700 border border-purple-200 hover:bg-purple-50"
             }`}
           >
-            Manage Performance
+            📈 Performance
           </button>
           <button
             onClick={() => {
@@ -811,7 +797,7 @@ export default function Home() {
                 : "bg-cyan-100 text-gray-700 border border-cyan-200 hover:bg-cyan-50"
             }`}
           >
-            Onboarding
+            🧭 Onboarding
           </button>
           <button
             onClick={() => {
@@ -824,7 +810,7 @@ export default function Home() {
                 : "bg-red-100 text-gray-700 border border-red-200 hover:bg-red-50"
             }`}
           >
-            Mistakes & Warnings
+            ⚠️ Mistakes & Warnings
           </button>
           <button
             onClick={() => {
@@ -837,7 +823,7 @@ export default function Home() {
                 : "bg-emerald-100 text-gray-700 border border-emerald-200 hover:bg-emerald-50"
             }`}
           >
-            Time Off & Holidays
+            🗓️ Time Off & Holidays
           </button>
         </div>
 
@@ -849,13 +835,24 @@ export default function Home() {
         {/* Employees View */}
         {activeView === "employees" && (
           <div>
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                All Employees
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Click on any card to view detailed performance records or view weekly reports in the Manage Performance tab
-              </p>
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  All Employees
+                </h2>
+                <p className="text-gray-600 mb-4">
+                  Click on any card to view detailed performance records or view weekly reports in the Manage Performance tab
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setActiveView("manage");
+                  setSelectedEmployeeId(null);
+                }}
+                className="shrink-0 bg-blue-200 text-blue-900 font-semibold py-2 px-4 rounded-lg border border-blue-300 hover:bg-blue-300 transition-colors"
+              >
+                🛠️ Manage Employee
+              </button>
             </div>
 
             {/* Employee Cards */}
@@ -1180,6 +1177,7 @@ export default function Home() {
                         timeOffRequests={timeOffRequests.filter(
                           (request) => request.employeeId === selectedEmployeeForPerformance
                         )}
+                        holidays={holidays}
                         selectedYear={selectedYear}
                         selectedMonth={selectedMonth}
                         selectedWeekRange={selectedWeekFilter}

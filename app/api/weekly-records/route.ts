@@ -117,6 +117,30 @@ export async function POST(request: Request) {
     const parsedStartDate = parseDateForDatabase(startDate);
     const parsedEndDate = parseDateForDatabase(endDate);
 
+    const duplicateRecord = await prisma.weeklyRecord.findFirst({
+      where: {
+        employeeId: employee.id,
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+      },
+    });
+
+    if (duplicateRecord) {
+      return NextResponse.json(
+        {
+          error: "Weekly record already exists for this employee and week",
+          record: {
+            recordId: duplicateRecord.id,
+            startDate: duplicateRecord.startDate.toISOString().split("T")[0],
+            endDate: duplicateRecord.endDate.toISOString().split("T")[0],
+            plannedWorkHours: duplicateRecord.plannedWorkHours,
+            actualWorkHours: duplicateRecord.actualWorkHours,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     const record = await prisma.$transaction(async (rawTx) => {
       const tx = rawTx as unknown as TransactionClient;
 
@@ -168,16 +192,46 @@ export async function POST(request: Request) {
         });
       });
 
-      if (pendingApprovedRequests.length === 0) {
-        return createdRecord;
-      }
-
       const employeeWeeklyRecords = await tx.weeklyRecord.findMany({
         where: { employeeId: employee.id },
         orderBy: [{ startDate: "asc" }],
       });
 
+      const approvedRequestsForCreatedWeek = await tx.timeOffRequest.findMany({
+        where: {
+          employeeId: employee.id,
+          approvedAt: { not: null },
+          status: "APPROVED",
+          startDate: { lte: parsedEndDate },
+          endDate: { gte: parsedStartDate },
+        },
+        orderBy: [{ startDate: "asc" }],
+      });
+
       let adjustedPlannedWorkHours = Number(createdRecord.plannedWorkHours);
+
+      for (const request of approvedRequestsForCreatedWeek) {
+        if (request.hours == null || request.hours <= 0) {
+          continue;
+        }
+
+        const { overlaps, isFullyCovered } = getFullyCoveredOverlaps(
+          request.startDate,
+          request.endDate,
+          employeeWeeklyRecords
+        );
+
+        if (!isFullyCovered || overlaps.length === 0) {
+          continue;
+        }
+
+        const deductions = allocateHoursAcrossOverlaps(Number(request.hours), overlaps);
+        const createdEntry = deductions.find((entry) => entry.record.id === createdRecord.id);
+
+        if (createdEntry) {
+          adjustedPlannedWorkHours = Math.max(0, adjustedPlannedWorkHours - createdEntry.allocatedHours);
+        }
+      }
 
       for (const request of pendingApprovedRequests) {
         if (request.hours == null || request.hours <= 0) {
@@ -198,15 +252,15 @@ export async function POST(request: Request) {
 
         for (const entry of deductions) {
           if (entry.record.id === createdRecord.id) {
-            adjustedPlannedWorkHours = Math.max(0, adjustedPlannedWorkHours - entry.allocatedHours);
-          } else {
-            await tx.weeklyRecord.update({
-              where: { id: entry.record.id },
-              data: {
-                plannedWorkHours: Math.max(0, Number(entry.record.plannedWorkHours) - entry.allocatedHours),
-              },
-            });
+            continue;
           }
+
+          await tx.weeklyRecord.update({
+            where: { id: entry.record.id },
+            data: {
+              plannedWorkHours: Math.max(0, Number(entry.record.plannedWorkHours) - entry.allocatedHours),
+            },
+          });
         }
 
         await tx.timeOffRequest
@@ -219,6 +273,42 @@ export async function POST(request: Request) {
               throw error;
             }
           });
+      }
+
+      // Deduct hours for Taiwan holidays if employee is in Taiwan
+      if (employee.staffWorkLocation === "Taiwan") {
+        const taiwanHolidays = await tx.holiday.findMany({
+          where: {
+            workLocation: "Taiwan",
+            date: {
+              gte: parsedStartDate,
+              lte: parsedEndDate,
+            },
+          },
+        });
+
+        if (taiwanHolidays.length > 0) {
+          for (const h of taiwanHolidays) {
+          }
+        }
+
+        if (taiwanHolidays.length > 0) {
+          let holidayDeduction = 0;
+          for (const holiday of taiwanHolidays) {
+            const holidayDate = new Date(holiday.date);
+            const dayOfWeek = holidayDate.getUTCDay();
+            // Only deduct for workdays (Mon=1 to Fri=5, not Sat=6 or Sun=0)
+            if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+              // Assume 8 hours per workday
+              holidayDeduction += 8;
+            } else {
+            }
+          }
+
+          if (holidayDeduction > 0) {
+            adjustedPlannedWorkHours = Math.max(0, adjustedPlannedWorkHours - holidayDeduction);
+          }
+        }
       }
 
       if (adjustedPlannedWorkHours !== Number(createdRecord.plannedWorkHours)) {

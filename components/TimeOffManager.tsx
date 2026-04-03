@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Employee, HolidayRecord, TimeOffRequest, TimeOffStatus, TimeOffType } from "@/lib/employees";
 
 const TIME_OFF_LABELS: Record<TimeOffType, string> = {
@@ -17,6 +17,18 @@ const STATUS_COLORS: Record<TimeOffStatus, string> = {
   REJECTED: "bg-rose-100 text-rose-800 border border-rose-200",
   CANCELLED: "bg-slate-100 text-slate-700 border border-slate-200",
 };
+
+function parseLocalDate(dateString: string): Date {
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
+  if (dateOnlyMatch) {
+    const year = Number(dateOnlyMatch[1]);
+    const month = Number(dateOnlyMatch[2]);
+    const day = Number(dateOnlyMatch[3]);
+    return new Date(year, month - 1, day, 12, 0, 0);
+  }
+
+  return new Date(dateString);
+}
 
 interface TimeOffManagerProps {
   employees: Employee[];
@@ -70,6 +82,7 @@ export default function TimeOffManager({
     notes: "",
   });
   const [managerNotes, setManagerNotes] = useState<Record<string, string>>({});
+  const [editingManagerNoteId, setEditingManagerNoteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [requestNotice, setRequestNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [holidayNotice, setHolidayNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -78,6 +91,18 @@ export default function TimeOffManager({
   const [filterMode, setFilterMode] = useState<"all" | "month">("month");
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+  const [showHolidayCalendar, setShowHolidayCalendar] = useState(false);
+  const [holidayCalendarTab, setHolidayCalendarTab] = useState<"USA" | "Taiwan">("USA");
+
+  const openHolidayCalendar = () => {
+    const usaCount = filteredHolidays.filter((h) => h.workLocation === "USA").length;
+    const taiwanCount = filteredHolidays.filter((h) => h.workLocation === "Taiwan").length;
+    if (usaCount === 0 && taiwanCount > 0) setHolidayCalendarTab("Taiwan");
+    else setHolidayCalendarTab("USA");
+    setShowHolidayCalendar(true);
+  };
 
   const sortedEmployees = useMemo(
     () => [...employees].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: "base" })),
@@ -87,6 +112,21 @@ export default function TimeOffManager({
   const filteredHolidays = useMemo(
     () => holidays.filter((holiday) => holiday.year === selectedYear).sort((a, b) => a.date.localeCompare(b.date)),
     [holidays, selectedYear]
+  );
+
+  const nextHolidayByLocation = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const usaHolidays = filteredHolidays.filter((h) => h.workLocation === "USA" && h.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+    const taiwanHolidays = filteredHolidays.filter((h) => h.workLocation === "Taiwan" && h.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+    return {
+      USA: usaHolidays[0] || null,
+      Taiwan: taiwanHolidays[0] || null,
+    };
+  }, [filteredHolidays]);
+
+  const holidaysByLocationForTab = useMemo(
+    () => filteredHolidays.filter((h) => h.workLocation === holidayCalendarTab).sort((a, b) => a.date.localeCompare(b.date)),
+    [filteredHolidays, holidayCalendarTab]
   );
 
   const sortedRequests = useMemo(
@@ -108,14 +148,25 @@ export default function TimeOffManager({
       if (filterEmployeeId && request.employeeId !== filterEmployeeId) return false;
       if (filterMode === "month") {
         const monthStart = new Date(filterYear, filterMonth - 1, 1);
-        const monthEnd = new Date(filterYear, filterMonth, 0);
-        const reqStart = new Date(request.startDate);
-        const reqEnd = new Date(request.endDate);
+        const monthEnd = new Date(filterYear, filterMonth, 0, 23, 59, 59, 999);
+        const reqStart = parseLocalDate(request.startDate);
+        const reqEnd = parseLocalDate(request.endDate);
         if (reqStart > monthEnd || reqEnd < monthStart) return false;
       }
       return true;
     });
   }, [sortedRequests, filterEmployeeId, filterMode, filterMonth, filterYear]);
+
+  const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE);
+  const paginatedRequests = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredRequests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredRequests, currentPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterEmployeeId, filterMode, filterMonth, filterYear]);
 
   const submitRequest = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -358,27 +409,116 @@ export default function TimeOffManager({
             </button>
           </form>
 
-          <div className="space-y-3 max-h-90 overflow-y-auto pr-1">
-            {filteredHolidays.length === 0 ? (
-              <p className="text-sm text-gray-500">No holidays entered for {selectedYear} yet.</p>
-            ) : (
-              filteredHolidays.map((holiday) => (
-                <div key={holiday.id} className="flex items-start justify-between gap-4 border border-amber-100 rounded-xl p-3 bg-amber-50/60">
-                  <div>
-                    <p className="font-semibold text-gray-900">{holiday.name}</p>
-                    <p className="text-sm text-gray-600">{holiday.date} • {holiday.workLocation} {holiday.isPaid ? "• Paid" : "• Unpaid"}</p>
-                    {holiday.notes ? <p className="text-sm text-gray-500 mt-1">{holiday.notes}</p> : null}
-                  </div>
-                  <button
-                    onClick={() => onDeleteHoliday(holiday.id)}
-                    className="text-sm font-semibold text-rose-600 hover:text-rose-700"
-                  >
-                    Delete
-                  </button>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {nextHolidayByLocation.USA ? (
+                <div className="border border-amber-100 rounded-xl p-3 bg-amber-50/60">
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Next USA Holiday</p>
+                  <p className="font-semibold text-gray-900 mt-1">{nextHolidayByLocation.USA.name}</p>
+                  <p className={`text-sm mt-1 ${nextHolidayByLocation.USA.isPaid ? "text-red-600 font-semibold" : "text-gray-600"}`}>
+                    {nextHolidayByLocation.USA.date}
+                  </p>
                 </div>
-              ))
-            )}
+              ) : (
+                <div className="border border-amber-100 rounded-xl p-3 bg-amber-50/60">
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Next USA Holiday</p>
+                  <p className="text-sm text-gray-500 mt-1">No upcoming USA holidays</p>
+                </div>
+              )}
+              {nextHolidayByLocation.Taiwan ? (
+                <div className="border border-amber-100 rounded-xl p-3 bg-amber-50/60">
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Next Taiwan Holiday</p>
+                  <p className="font-semibold text-gray-900 mt-1">{nextHolidayByLocation.Taiwan.name}</p>
+                  <p className={`text-sm mt-1 ${nextHolidayByLocation.Taiwan.isPaid ? "text-red-600 font-semibold" : "text-gray-600"}`}>
+                    {nextHolidayByLocation.Taiwan.date}
+                  </p>
+                </div>
+              ) : (
+                <div className="border border-amber-100 rounded-xl p-3 bg-amber-50/60">
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Next Taiwan Holiday</p>
+                  <p className="text-sm text-gray-500 mt-1">No upcoming Taiwan holidays</p>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={openHolidayCalendar}
+              className="w-full px-4 py-2 rounded-lg bg-amber-100 text-amber-700 text-sm font-semibold hover:bg-amber-200 border border-amber-200"
+            >
+              View Full Calendar
+            </button>
           </div>
+          
+          {showHolidayCalendar && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="sticky top-0 bg-white border-b border-slate-200 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-bold text-gray-900">Holiday Calendar {selectedYear}</h3>
+                    <button
+                      onClick={() => setShowHolidayCalendar(false)}
+                      className="text-2xl text-gray-400 hover:text-gray-600"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setHolidayCalendarTab("USA")}
+                      className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                        holidayCalendarTab === "USA"
+                          ? "bg-amber-500 text-white"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      }`}
+                    >
+                      USA Holidays ({filteredHolidays.filter((h) => h.workLocation === "USA").length})
+                    </button>
+                    <button
+                      onClick={() => setHolidayCalendarTab("Taiwan")}
+                      className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                        holidayCalendarTab === "Taiwan"
+                          ? "bg-amber-500 text-white"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      }`}
+                    >
+                      Taiwan Holidays ({filteredHolidays.filter((h) => h.workLocation === "Taiwan").length})
+                    </button>
+                  </div>
+                </div>
+                <div className="p-6 space-y-3">
+                  {holidaysByLocationForTab.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-8">No {holidayCalendarTab} holidays for {selectedYear}.</p>
+                  ) : (
+                    holidaysByLocationForTab.map((holiday) => (
+                      <div
+                        key={holiday.id}
+                        className={`flex items-start justify-between gap-4 border rounded-xl p-3 ${
+                          holidayCalendarTab === "USA"
+                            ? "border-sky-200 bg-sky-50"
+                            : "border-emerald-200 bg-emerald-50"
+                        }`}
+                      >
+                        <div>
+                          <p className={`font-semibold ${holidayCalendarTab === "USA" ? "text-sky-800" : "text-emerald-800"}`}>
+                            {holiday.name}
+                          </p>
+                          <p className={`text-sm mt-1 ${holidayCalendarTab === "USA" ? "text-sky-700" : "text-emerald-700"}`}>
+                            {holiday.date} {holiday.isPaid ? "• Paid Holiday" : "• Unpaid Holiday"}
+                          </p>
+                          {holiday.notes ? <p className="text-sm text-gray-500 mt-1">{holiday.notes}</p> : null}
+                        </div>
+                        <button
+                          onClick={() => onDeleteHoliday(holiday.id)}
+                          className="text-sm font-semibold text-rose-600 hover:text-rose-700 shrink-0"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -471,7 +611,8 @@ export default function TimeOffManager({
               <p className="text-sm font-medium">No time-off records match the current filters.</p>
             </div>
           ) : (
-            filteredRequests.map((request) => (
+            <>
+            {paginatedRequests.map((request) => (
               <div key={request.id} className="rounded-2xl border border-slate-200 p-4 bg-slate-50">
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                   <div className="space-y-1">
@@ -524,21 +665,94 @@ export default function TimeOffManager({
                     >
                       Delete
                     </button>
+                    <button
+                      onClick={() => {
+                        setManagerNotes((prev) => ({
+                          ...prev,
+                          [request.id]: prev[request.id] ?? request.managerNote ?? "",
+                        }));
+                        setEditingManagerNoteId(request.id);
+                      }}
+                      className="px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700 text-sm font-semibold hover:bg-indigo-200"
+                    >
+                      Edit Manager Note
+                    </button>
                   </div>
                 </div>
-                <div className="mt-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Manager Note</label>
-                  <textarea
-                    rows={2}
-                    value={managerNotes[request.id] ?? request.managerNote ?? ""}
-                    onChange={(e) => setManagerNotes((prev) => ({ ...prev, [request.id]: e.target.value }))}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg bg-white text-gray-900"
-                  />
-                </div>
+                {editingManagerNoteId === request.id ? (
+                  <div className="mt-4 border border-slate-200 rounded-xl bg-white p-3">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Manager Note</label>
+                    <textarea
+                      rows={2}
+                      value={managerNotes[request.id] ?? ""}
+                      onChange={(e) => setManagerNotes((prev) => ({ ...prev, [request.id]: e.target.value }))}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg bg-white text-gray-900"
+                    />
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={async () => {
+                          await onUpdateRequest(request.id, { managerNote: managerNotes[request.id] ?? "" });
+                          setEditingManagerNoteId(null);
+                        }}
+                        className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+                      >
+                        Save Note
+                      </button>
+                      <button
+                        onClick={() => {
+                          setManagerNotes((prev) => {
+                            const next = { ...prev };
+                            delete next[request.id];
+                            return next;
+                          });
+                          setEditingManagerNoteId(null);
+                        }}
+                        className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ))
+            }
+            </>
           )}
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-slate-200">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ← Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    page === currentPage
+                      ? "bg-slate-700 text-white"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

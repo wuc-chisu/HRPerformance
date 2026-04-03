@@ -187,6 +187,7 @@ enum IncidentAppealDecision {
 enum IncidentFinalAction {
   NONE
   HOUR_REDUCTION
+  SALARY_CUT
   TERMINATION
 }
 

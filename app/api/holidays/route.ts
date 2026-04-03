@@ -73,8 +73,10 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { name, date, isPaid, notes, workLocation } = body;
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+    const normalizedNotes = typeof notes === "string" ? notes.trim() : "";
 
-    if (!name || !date) {
+    if (!normalizedName || !date) {
       return NextResponse.json({ error: "Name and date are required" }, { status: 400 });
     }
 
@@ -84,12 +86,12 @@ export async function POST(request: Request) {
 
     const created = await holidayModel.create({
       data: {
-        name,
+        name: normalizedName,
         date: dateObj,
         year: dateObj.getUTCFullYear(),
         workLocation: normalizedWorkLocation,
         isPaid: Boolean(isPaid),
-        notes: notes || null,
+        notes: normalizedNotes || null,
       },
     });
 
@@ -106,6 +108,13 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+      return NextResponse.json(
+        { error: "Holiday already exists for the selected date and location" },
+        { status: 409 }
+      );
+    }
+
     console.error("Error creating holiday:", error);
     return NextResponse.json(
       { error: "Failed to create holiday", details: String(error) },

@@ -1,6 +1,6 @@
 "use client";
 
-import { AssignedTaskDetail, Employee, OverdueTaskDetail, TimeOffRequest, WeeklyRecord } from "@/lib/employees";
+import { AssignedTaskDetail, Employee, HolidayRecord, OverdueTaskDetail, TimeOffRequest, WeeklyRecord } from "@/lib/employees";
 import { allocateHoursAcrossOverlaps, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
 import { calculateWeeklyPerformanceScore } from "@/lib/performanceScoring";
 import { formatDateInPacific } from "@/lib/dateUtils";
@@ -11,6 +11,7 @@ import OverdueTaskManager from "./OverdueTaskManager";
 interface WeeklyRecordsTableProps {
   employee: Employee;
   timeOffRequests?: TimeOffRequest[];
+  holidays?: HolidayRecord[];
   selectedYear?: number;
   selectedMonth?: number;
   selectedWeekRange?: string | null;
@@ -25,6 +26,7 @@ interface WeeklyRecordsTableProps {
 export default function WeeklyRecordsTable({
   employee,
   timeOffRequests = [],
+  holidays = [],
   selectedYear,
   selectedMonth,
   selectedWeekRange,
@@ -43,6 +45,9 @@ export default function WeeklyRecordsTable({
   const [showAllOverdueManager, setShowAllOverdueManager] = useState(false);
   const [selectedAllOverdueRecord, setSelectedAllOverdueRecord] =
     useState<WeeklyRecord | null>(null);
+
+  const getRecordKey = (record: WeeklyRecord) =>
+    record.recordId || `${record.startDate}-${record.endDate}`;
 
   const timeOffAdjustmentByRecordKey = useMemo(() => {
     const weeklyRecordWindows: WeeklyRecordWindow[] = employee.weeklyRecords
@@ -88,6 +93,35 @@ export default function WeeklyRecordsTable({
 
     return adjustments;
   }, [employee.weeklyRecords, timeOffRequests]);
+
+  const holidayAdjustmentByRecordKey = useMemo(() => {
+    const adjustments = new Map<string, number>();
+    const location = employee.staffWorkLocation === "Taiwan" ? "Taiwan" : "USA";
+    const locationHolidays = holidays.filter((holiday) => holiday.workLocation === location);
+
+    for (const record of employee.weeklyRecords) {
+      const recordKey = getRecordKey(record);
+      const weekStart = new Date(`${record.startDate}T12:00:00Z`);
+      const weekEnd = new Date(`${record.endDate}T12:00:00Z`);
+
+      let deductionHours = 0;
+      for (const holiday of locationHolidays) {
+        const holidayDate = new Date(`${holiday.date}T12:00:00Z`);
+        if (holidayDate >= weekStart && holidayDate <= weekEnd) {
+          const day = holidayDate.getUTCDay();
+          if (day >= 1 && day <= 5) {
+            deductionHours += 8;
+          }
+        }
+      }
+
+      if (deductionHours > 0) {
+        adjustments.set(recordKey, deductionHours);
+      }
+    }
+
+    return adjustments;
+  }, [employee.weeklyRecords, employee.staffWorkLocation, holidays]);
 
   const getPerformanceStatus = (record: WeeklyRecord) => {
     const hoursStatus =
@@ -276,18 +310,33 @@ export default function WeeklyRecordsTable({
                     }`}
                   >
                     <div>
-                      <div>{record.actualWorkHours}/{record.plannedWorkHours}</div>
-                      {timeOffAdjustmentByRecordKey.get(
-                        record.recordId || `${record.startDate}-${record.endDate}`
-                      ) ? (
-                        <div className="text-xs font-semibold text-amber-700 mt-1 whitespace-normal">
-                          Adjusted for approved time off: -
-                          {timeOffAdjustmentByRecordKey.get(
-                            record.recordId || `${record.startDate}-${record.endDate}`
-                          )}
-                          h
-                        </div>
-                      ) : null}
+                      <div className="relative inline-block group">
+                        {record.actualWorkHours}/
+                        <span
+                          className="underline decoration-dotted underline-offset-2 cursor-help hover:text-amber-700 transition-colors"
+                          title="Hover for deduction details"
+                        >
+                          {record.plannedWorkHours}
+                        </span>
+                        {(() => {
+                          const timeOff = timeOffAdjustmentByRecordKey.get(getRecordKey(record)) || 0;
+                          const holidays = holidayAdjustmentByRecordKey.get(getRecordKey(record)) || 0;
+                          const total = timeOff + holidays;
+                          let tooltipText = "No deductions";
+                          if (total > 0) {
+                            const parts = [];
+                            if (timeOff > 0) parts.push(`Time Off: -${timeOff}h`);
+                            if (holidays > 0) parts.push(`Holidays: -${holidays}h`);
+                            parts.push(`Total: -${total}h`);
+                            tooltipText = parts.join(" | ");
+                          }
+                          return (
+                            <div className="absolute hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-900 text-white text-xs rounded px-2 py-1 z-10 pointer-events-none whitespace-nowrap">
+                              {tooltipText}
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">

@@ -7,7 +7,7 @@ import { formatCompactDate, formatShortDate } from "@/lib/dateUtils";
 type RecordType = "MISTAKE" | "WARNING";
 type RecordStatus = "PENDING" | "CONFIRMED" | "REJECTED";
 type AppealDecision = "PENDING" | "APPROVED" | "DECLINED";
-type FinalAction = "NONE" | "HOUR_REDUCTION" | "TERMINATION";
+type FinalAction = "NONE" | "HOUR_REDUCTION" | "SALARY_CUT" | "TERMINATION";
 
 type IncidentRecord = {
   id: string;
@@ -486,7 +486,7 @@ Following the meeting, a final decision will be made:
 • Approved: Warning will be canceled
 • Declined: Warning will be confirmed
 
-Please note that confirmation of a third warning may result in disciplinary action, including reduction of work hours or termination of employment.
+Please note that confirmation of a third warning may result in disciplinary action, including reduction of work hours, salary cut, or termination of employment.
 
 We encourage you to prepare for this meeting carefully and reflect on your performance and future plans.
 
@@ -1188,6 +1188,7 @@ Human Resources`;
               >
                 <option value="NONE">NONE</option>
                 <option value="HOUR_REDUCTION">HOUR_REDUCTION</option>
+                <option value="SALARY_CUT">SALARY_CUT</option>
                 <option value="TERMINATION">TERMINATION</option>
               </select>
             </div>
@@ -1413,6 +1414,7 @@ Human Resources`;
                           >
                             <option value="NONE">NONE</option>
                             <option value="HOUR_REDUCTION">HOUR_REDUCTION</option>
+                            <option value="SALARY_CUT">SALARY_CUT</option>
                             <option value="TERMINATION">TERMINATION</option>
                           </select>
                         </div>

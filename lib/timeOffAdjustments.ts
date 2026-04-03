@@ -72,3 +72,23 @@ export function allocateHoursAcrossOverlaps(totalHours: number, overlaps: Weekly
     };
   });
 }
+
+export function countWorkdaysInRange(startDate: Date, endDate: Date): number {
+  let count = 0;
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+  // Normalize to start of day for comparison
+  current.setUTCHours(0, 0, 0, 0);
+  end.setUTCHours(23, 59, 59, 999);
+
+  while (current <= end) {
+    const dayOfWeek = current.getUTCDay();
+    // Count only Monday (1) through Friday (5), not Saturday (6) or Sunday (0)
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      count++;
+    }
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+
+  return count;
+}
