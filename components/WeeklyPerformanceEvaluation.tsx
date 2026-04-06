@@ -516,7 +516,6 @@ Whitewater University of California
       const normalized = appendWarning(generated);
       setCommentText(normalized);
       await handleSaveComment(normalized, { silent: true });
-      setGenerateMessage("AI comment generated successfully.");
     } catch (error) {
       console.error("Error generating overall comment:", error);
       setGenerateMessage("AI generation failed. Please try again later.");
