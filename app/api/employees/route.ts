@@ -8,7 +8,9 @@ function buildDefaultStep2Forms(joinDate: Date, completed: boolean) {
     name,
     status: completed ? "Approved" : "Pending",
     dateCompleted: completed ? joinDate.toISOString().split("T")[0] : null,
-    verifiedBy: completed ? "System" : "",
+    verifiedBy: completed ? "System" : "HR",
+    url: "",
+    extraUrls: [],
   }));
 }
 
@@ -29,7 +31,11 @@ function normalizeStep2Forms(step2Forms: unknown, joinDate: Date, completed: boo
             ? item.status
             : "Pending",
         dateCompleted: item?.dateCompleted || null,
-        verifiedBy: item?.verifiedBy || "",
+        verifiedBy: item?.verifiedBy || "HR",
+        url: typeof item?.url === "string" ? item.url : "",
+        extraUrls: Array.isArray(item?.extraUrls)
+          ? item.extraUrls.filter((entry: unknown) => typeof entry === "string")
+          : [],
       };
     });
   }
@@ -102,6 +108,7 @@ export async function GET() {
       staffWorkLocation: emp.staffWorkLocation || "USA",
       employeeType: emp.employeeType || "Full time",
       contractWorkHours: emp.contractWorkHours ?? null,
+      officeSchedule: emp.officeSchedule ?? null,
       overallOverdueTasks: emp.overallOverdueTasks,
       onboarding: formatOnboarding(emp),
       weeklyRecords: emp.weeklyRecords.map((record: any) => ({
@@ -134,7 +141,21 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { employeeId, name, email, department, manager, position, joinDate, workAuthorizationStatus, staffWorkLocation, employeeType, contractWorkHours, overallOverdueTasks } = body;
+    const {
+      employeeId,
+      name,
+      email,
+      department,
+      manager,
+      position,
+      joinDate,
+      workAuthorizationStatus,
+      staffWorkLocation,
+      employeeType,
+      contractWorkHours,
+      officeSchedule,
+      overallOverdueTasks,
+    } = body;
 
     if (!employeeId || !name || !email || !department || !manager || !position || !joinDate) {
       return NextResponse.json(
@@ -156,6 +177,7 @@ export async function POST(request: Request) {
         staffWorkLocation: staffWorkLocation || "USA",
         employeeType: employeeType || "Full time",
         contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
+        officeSchedule: officeSchedule ?? null,
         overallOverdueTasks: overallOverdueTasks || 0,
         onboardingChecklistAssigned: false,
         systemAccessGmail: false,
@@ -192,6 +214,7 @@ export async function POST(request: Request) {
       staffWorkLocation: employee.staffWorkLocation || "USA",
       employeeType: (employee as any).employeeType || "Full time",
       contractWorkHours: (employee as any).contractWorkHours ?? null,
+      officeSchedule: (employee as any).officeSchedule ?? null,
       overallOverdueTasks: employee.overallOverdueTasks,
       onboarding: formatOnboarding(employee),
       weeklyRecords: [],

@@ -168,6 +168,7 @@ export function formatIncidentRecord(
     emailSent: record.emailSent ?? false,
     followUpEmailSent: record.followUpEmailSent ?? false,
     improvementPlanReceived: record.improvementPlanReceived ?? false,
+    pipAdjustmentAgreementSent: record.pipAdjustmentAgreementSent ?? false,
     totals,
     histories: record.histories.map((history: any) => ({
       id: history.id,

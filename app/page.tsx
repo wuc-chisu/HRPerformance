@@ -12,6 +12,7 @@ import DepartmentManager from "@/components/DepartmentManager";
 import MonthlyPerformanceReport from "@/components/MonthlyPerformanceReport";
 import IncidentTrackingTable from "@/components/IncidentTrackingTable";
 import OnboardingModule from "@/components/OnboardingModule";
+import OffboardingModule from "@/components/OffboardingModule";
 import TimeOffManager from "@/components/TimeOffManager";
 
 export default function Home() {
@@ -21,7 +22,7 @@ export default function Home() {
     null
   );
   const [activeView, setActiveView] = useState<
-    "dashboard" | "employees" | "manage" | "manage-performance" | "onboarding" | "incident-tracking" | "time-off"
+    "dashboard" | "employees" | "manage" | "manage-performance" | "onboarding" | "offboarding" | "incident-tracking" | "time-off"
   >("dashboard");
   const [selectedEmployeeForPerformance, setSelectedEmployeeForPerformance] =
     useState<string | null>(null);
@@ -162,6 +163,7 @@ export default function Home() {
           staffWorkLocation: employee.staffWorkLocation,
           employeeType: employee.employeeType,
           contractWorkHours: employee.contractWorkHours,
+          officeSchedule: employee.officeSchedule,
           overallOverdueTasks: employee.overallOverdueTasks,
         };
         const response = await fetch("/api/employees", {
@@ -788,19 +790,6 @@ export default function Home() {
           </button>
           <button
             onClick={() => {
-              setActiveView("onboarding");
-              setSelectedEmployeeId(null);
-            }}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              activeView === "onboarding"
-                ? "bg-cyan-400 text-white shadow-md"
-                : "bg-cyan-100 text-gray-700 border border-cyan-200 hover:bg-cyan-50"
-            }`}
-          >
-            🧭 Onboarding
-          </button>
-          <button
-            onClick={() => {
               setActiveView("incident-tracking");
               setSelectedEmployeeId(null);
             }}
@@ -827,6 +816,42 @@ export default function Home() {
           </button>
         </div>
 
+        {(activeView === "employees" || activeView === "manage") && (
+          <div className="mb-8 rounded-xl border border-blue-200 bg-white/90 shadow-sm p-3 sm:p-4">
+            <div className="text-xs font-semibold tracking-wide text-blue-700 uppercase mb-3">
+              Employee Sub-Menu
+            </div>
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={() => {
+                  setActiveView("employees");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "employees"
+                    ? "bg-blue-500 text-white shadow"
+                    : "bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100"
+                }`}
+              >
+                Employee Cards
+              </button>
+              <button
+                onClick={() => {
+                  setActiveView("manage");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "manage"
+                    ? "bg-indigo-500 text-white shadow"
+                    : "bg-indigo-50 text-indigo-800 border border-indigo-200 hover:bg-indigo-100"
+                }`}
+              >
+                Employee Management
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Dashboard View */}
         {activeView === "dashboard" && (
           <PerformanceDashboard employees={employees} />
@@ -835,24 +860,15 @@ export default function Home() {
         {/* Employees View */}
         {activeView === "employees" && (
           <div>
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
                   All Employees
                 </h2>
                 <p className="text-gray-600 mb-4">
-                  Click on any card to view detailed performance records or view weekly reports in the Manage Performance tab
+                  Click on any card to view employee details and office schedule information
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  setActiveView("manage");
-                  setSelectedEmployeeId(null);
-                }}
-                className="shrink-0 bg-blue-200 text-blue-900 font-semibold py-2 px-4 rounded-lg border border-blue-300 hover:bg-blue-300 transition-colors"
-              >
-                🛠️ Manage Employee
-              </button>
             </div>
 
             {/* Employee Cards */}
@@ -862,14 +878,23 @@ export default function Home() {
               </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {employees.map((employee) => (
+              {[...employees]
+                .sort((a, b) =>
+                  a.id.localeCompare(b.id, undefined, {
+                    numeric: true,
+                    sensitivity: "base",
+                  })
+                )
+                .map((employee) => (
                 <EmployeeCard
                   key={employee.id}
                   employee={employee}
-                  onSelect={setSelectedEmployeeId}
-                  onViewPerformance={(employeeId: string) => {
-                    setSelectedEmployeeForPerformance(employeeId);
-                    setActiveView("manage-performance");
+                  onSelect={(employeeId: string) => {
+                    setSelectedEmployeeId(employeeId);
+                    const selected = employees.find((item) => item.id === employeeId);
+                    if (selected) {
+                      handleEditEmployee(selected);
+                    }
                   }}
                 />
               ))}
@@ -895,6 +920,24 @@ export default function Home() {
                   className="bg-green-300 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-400 transition-colors"
                 >
                   + Add New Employee
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveView("onboarding");
+                    setSelectedEmployeeId(null);
+                  }}
+                  className="bg-cyan-400 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-500 transition-colors"
+                >
+                  🧭 Onboarding
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveView("offboarding");
+                    setSelectedEmployeeId(null);
+                  }}
+                  className="bg-rose-400 text-white font-semibold py-2 px-6 rounded-lg hover:bg-rose-500 transition-colors"
+                >
+                  🚪 Off-boarding
                 </button>
                 <button
                   onClick={() => setShowDepartmentManager(true)}
@@ -1216,6 +1259,10 @@ export default function Home() {
             onSaveStep1={handleSaveOnboardingStep1}
             onSaveStep2={handleSaveOnboardingStep2}
           />
+        )}
+
+        {activeView === "offboarding" && (
+          <OffboardingModule employees={employees} />
         )}
 
         {activeView === "incident-tracking" && (

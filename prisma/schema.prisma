@@ -29,6 +29,7 @@ model Employee {
   staffWorkLocation             String                      @default("USA")
   employeeType                  String                      @default("Full time")
   contractWorkHours             Int?
+  officeSchedule                Json?
   overallOverdueTasks           Int                         @default(0)
   onboardingChecklistAssigned   Boolean                     @default(true)
   systemAccessGmail             Boolean                     @default(true)
@@ -56,8 +57,33 @@ model Employee {
   monthlyComments               MonthlyPerformanceComment[]
   incidentRecords               IncidentRecord[]
   timeOffRequests               TimeOffRequest[]
+  offboardingRecord             OffboardingRecord?
   createdAt                     DateTime                    @default(now())
   updatedAt                     DateTime                    @updatedAt
+}
+
+model OffboardingRecord {
+  id                String   @id @default(cuid())
+  employeeId        String   @unique
+  employee          Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
+  separationType    String   @default("Resignation")
+  noticeDate        DateTime?
+  lastWorkingDate   DateTime?
+  hrResponsible     String   @default("")
+  itResponsible     String   @default("")
+  step1             Json     @default("{}")
+  step2             Json     @default("{}")
+  step3             Json     @default("{}")
+  step4             Json     @default("{}")
+  step5             Json     @default("{}")
+  step6             Json     @default("{}")
+  step7             Json     @default("{}")
+  step8             Json     @default("{}")
+  completionPercent Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([updatedAt])
 }
 
 enum TimeOffType {
@@ -219,6 +245,7 @@ model IncidentRecord {
   emailSent               Boolean                @default(false)
   followUpEmailSent       Boolean                @default(false)
   improvementPlanReceived Boolean                @default(false)
+  pipAdjustmentAgreementSent Boolean             @default(false)
   histories               IncidentHistory[]
   createdAt               DateTime               @default(now())
   updatedAt               DateTime               @updatedAt

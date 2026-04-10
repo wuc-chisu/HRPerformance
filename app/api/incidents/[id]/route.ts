@@ -23,6 +23,7 @@ export async function PATCH(
       emailSent,
       followUpEmailSent,
       improvementPlanReceived,
+      pipAdjustmentAgreementSent,
       manager,
       recordType,
       issuedBy,
@@ -86,6 +87,10 @@ export async function PATCH(
           improvementPlanReceived:
             typeof improvementPlanReceived === "boolean"
               ? improvementPlanReceived
+              : undefined,
+          pipAdjustmentAgreementSent:
+            typeof pipAdjustmentAgreementSent === "boolean"
+              ? pipAdjustmentAgreementSent
               : undefined,
           manager: manager ?? undefined,
           recordType: recordType ?? undefined,

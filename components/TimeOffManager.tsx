@@ -129,6 +129,26 @@ export default function TimeOffManager({
     [filteredHolidays, holidayCalendarTab]
   );
 
+  const todayDate = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const { upcomingHolidays, passedHolidays } = useMemo(() => {
+    const upcoming: HolidayRecord[] = [];
+    const passed: HolidayRecord[] = [];
+
+    holidaysByLocationForTab.forEach((holiday) => {
+      const holidayDate = parseLocalDate(holiday.date);
+      holidayDate.setHours(0, 0, 0, 0);
+      if (holidayDate < todayDate) passed.push(holiday);
+      else upcoming.push(holiday);
+    });
+
+    return { upcomingHolidays: upcoming, passedHolidays: passed };
+  }, [holidaysByLocationForTab, todayDate]);
+
   const sortedRequests = useMemo(
     () => [...requests].sort((a, b) => `${b.startDate}-${b.createdAt}`.localeCompare(`${a.startDate}-${a.createdAt}`)),
     [requests]
@@ -488,32 +508,64 @@ export default function TimeOffManager({
                   {holidaysByLocationForTab.length === 0 ? (
                     <p className="text-sm text-gray-500 text-center py-8">No {holidayCalendarTab} holidays for {selectedYear}.</p>
                   ) : (
-                    holidaysByLocationForTab.map((holiday) => (
-                      <div
-                        key={holiday.id}
-                        className={`flex items-start justify-between gap-4 border rounded-xl p-3 ${
-                          holidayCalendarTab === "USA"
-                            ? "border-sky-200 bg-sky-50"
-                            : "border-emerald-200 bg-emerald-50"
-                        }`}
-                      >
-                        <div>
-                          <p className={`font-semibold ${holidayCalendarTab === "USA" ? "text-sky-800" : "text-emerald-800"}`}>
-                            {holiday.name}
-                          </p>
-                          <p className={`text-sm mt-1 ${holidayCalendarTab === "USA" ? "text-sky-700" : "text-emerald-700"}`}>
-                            {holiday.date} {holiday.isPaid ? "• Paid Holiday" : "• Unpaid Holiday"}
-                          </p>
-                          {holiday.notes ? <p className="text-sm text-gray-500 mt-1">{holiday.notes}</p> : null}
-                        </div>
-                        <button
-                          onClick={() => onDeleteHoliday(holiday.id)}
-                          className="text-sm font-semibold text-rose-600 hover:text-rose-700 shrink-0"
+                    <>
+                      {upcomingHolidays.length > 0 && upcomingHolidays.map((holiday) => (
+                        <div
+                          key={holiday.id}
+                          className={`flex items-start justify-between gap-4 border rounded-xl p-3 ${
+                            holidayCalendarTab === "USA"
+                              ? "border-sky-200 bg-sky-50"
+                              : "border-emerald-200 bg-emerald-50"
+                          }`}
                         >
-                          Delete
-                        </button>
-                      </div>
-                    ))
+                          <div>
+                            <p className={`font-semibold ${holidayCalendarTab === "USA" ? "text-sky-800" : "text-emerald-800"}`}>
+                              {holiday.name}
+                            </p>
+                            <p className={`text-sm mt-1 ${holidayCalendarTab === "USA" ? "text-sky-700" : "text-emerald-700"}`}>
+                              {holiday.date} {holiday.isPaid ? "• Paid Holiday" : "• Unpaid Holiday"}
+                            </p>
+                            {holiday.notes ? <p className="text-sm mt-1 text-gray-500">{holiday.notes}</p> : null}
+                          </div>
+                          <button
+                            onClick={() => onDeleteHoliday(holiday.id)}
+                            className="text-sm font-semibold text-rose-600 hover:text-rose-700 shrink-0"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ))}
+
+                      {passedHolidays.length > 0 && (
+                        <details className="rounded-xl border border-slate-200 bg-slate-50 p-3" open={false}>
+                          <summary className="cursor-pointer text-sm font-semibold text-slate-600">
+                            Passed Holidays ({passedHolidays.length})
+                          </summary>
+                          <div className="mt-3 space-y-3">
+                            {passedHolidays.map((holiday) => (
+                              <div
+                                key={holiday.id}
+                                className="flex items-start justify-between gap-4 border border-slate-200 rounded-xl p-3 bg-slate-100"
+                              >
+                                <div>
+                                  <p className="font-semibold text-slate-500">{holiday.name}</p>
+                                  <p className="text-sm mt-1 text-slate-500">
+                                    {holiday.date} {holiday.isPaid ? "• Paid Holiday" : "• Unpaid Holiday"} • Passed
+                                  </p>
+                                  {holiday.notes ? <p className="text-sm mt-1 text-slate-400">{holiday.notes}</p> : null}
+                                </div>
+                                <button
+                                  onClick={() => onDeleteHoliday(holiday.id)}
+                                  className="text-sm font-semibold text-slate-400 hover:text-slate-500 shrink-0"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

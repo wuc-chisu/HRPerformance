@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Employee } from "@/lib/employees";
+import { Employee, OfficeDay } from "@/lib/employees";
+
+const OFFICE_DAYS: OfficeDay[] = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 interface AddEditEmployeeProps {
   employee?: Employee;
@@ -38,6 +47,7 @@ export default function AddEditEmployee({
     staffWorkLocation: employee?.staffWorkLocation || "USA",
     employeeType: employee?.employeeType || "Full time",
     contractWorkHours: employee?.contractWorkHours || 0,
+    officeSchedule: employee?.officeSchedule || null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -83,10 +93,51 @@ export default function AddEditEmployee({
         ...formData,
         staffWorkLocation: formData.staffWorkLocation,
         contractWorkHours: formData.employeeType === "Contract" ? formData.contractWorkHours : undefined,
+        officeSchedule: formData.officeSchedule,
         weeklyRecords: employee?.weeklyRecords || [],
       };
       onSave(newEmployee);
     }
+  };
+
+  const toggleOfficeDay = (day: OfficeDay, checked: boolean) => {
+    setFormData((prev) => {
+      const currentSchedule = prev.officeSchedule;
+      const currentDays = currentSchedule?.days || [];
+      const nextDays = checked
+        ? Array.from(new Set([...currentDays, day]))
+        : currentDays.filter((item) => item !== day);
+
+      if (nextDays.length === 0) {
+        return {
+          ...prev,
+          officeSchedule: null,
+        };
+      }
+
+      return {
+        ...prev,
+        officeSchedule: {
+          days: nextDays,
+          startTime: currentSchedule?.startTime || "09:00",
+          endTime: currentSchedule?.endTime || "17:00",
+        },
+      };
+    });
+  };
+
+  const updateOfficeTime = (field: "startTime" | "endTime", value: string) => {
+    setFormData((prev) => {
+      if (!prev.officeSchedule) return prev;
+
+      return {
+        ...prev,
+        officeSchedule: {
+          ...prev.officeSchedule,
+          [field]: value,
+        },
+      };
+    });
   };
 
   const handleChange = (
@@ -360,8 +411,56 @@ export default function AddEditEmployee({
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
               />
               <p className="text-gray-500 text-xs mt-1">Hours per week</p>
+              <p className="text-gray-500 text-xs mt-1">Contract work hours are separate from office in-person schedule.</p>
             </div>
           )}
+
+          {/* Office Work Schedule */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Office Work Schedule
+            </label>
+            <div className="flex flex-wrap gap-3 mb-3">
+              {OFFICE_DAYS.map((day) => {
+                const checked = formData.officeSchedule?.days.includes(day) || false;
+                return (
+                  <label key={day} className="flex items-center gap-2 text-sm text-gray-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => toggleOfficeDay(day, e.target.checked)}
+                      className="rounded border-gray-300 text-blue-500 focus:ring-blue-400"
+                    />
+                    {day.slice(0, 3)}
+                  </label>
+                );
+              })}
+            </div>
+
+            {formData.officeSchedule && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    value={formData.officeSchedule.startTime}
+                    onChange={(e) => updateOfficeTime("startTime", e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">End Time</label>
+                  <input
+                    type="time"
+                    value={formData.officeSchedule.endTime}
+                    onChange={(e) => updateOfficeTime("endTime", e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+                  />
+                </div>
+              </div>
+            )}
+            <p className="text-gray-500 text-xs mt-1">Select in-office days and local office time window (does not change contract work hours).</p>
+          </div>
 
           {/* Form Actions */}
           <div className="flex gap-4 pt-4 border-t">

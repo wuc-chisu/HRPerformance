@@ -29,6 +29,7 @@ type IncidentRecord = {
   emailSent: boolean;
   followUpEmailSent: boolean;
   improvementPlanReceived: boolean;
+  pipAdjustmentAgreementSent: boolean;
   totals: {
     confirmedMistakes: number;
     confirmedWarnings: number;
@@ -81,6 +82,7 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
       emailSent: boolean;
       followUpEmailSent: boolean;
       improvementPlanReceived: boolean;
+      pipAdjustmentAgreementSent: boolean;
       reviewedBy: string;
       decisionDate: string;
       note: string;
@@ -135,6 +137,7 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
               emailSent: record.emailSent,
               followUpEmailSent: record.followUpEmailSent,
               improvementPlanReceived: record.improvementPlanReceived,
+              pipAdjustmentAgreementSent: record.pipAdjustmentAgreementSent,
               reviewedBy: record.reviewedBy || "",
               decisionDate: record.decisionDate || "",
               note: latestMemo,
@@ -241,6 +244,7 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
       emailSent: boolean;
       followUpEmailSent: boolean;
       improvementPlanReceived: boolean;
+      pipAdjustmentAgreementSent: boolean;
       reviewedBy: string;
       decisionDate: string;
       note: string;
@@ -268,6 +272,7 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
           emailSent: draft.emailSent,
           followUpEmailSent: draft.followUpEmailSent,
           improvementPlanReceived: draft.improvementPlanReceived,
+          pipAdjustmentAgreementSent: draft.pipAdjustmentAgreementSent,
           reviewedBy: draft.reviewedBy || null,
           decisionDate: draft.decisionDate || null,
           historyMemo: draft.note || undefined,
@@ -833,7 +838,7 @@ Human Resources`
         continue;
       }
 
-      const signature = `${warningLevel}|${draft.meetingCompleted}|${draft.appealDecision}|${draft.finalAction}|${draft.decisionDate}|${draft.emailSent}|${draft.followUpEmailSent}|${draft.improvementPlanReceived}`;
+      const signature = `${warningLevel}|${draft.meetingCompleted}|${draft.appealDecision}|${draft.finalAction}|${draft.decisionDate}|${draft.emailSent}|${draft.followUpEmailSent}|${draft.improvementPlanReceived}|${draft.pipAdjustmentAgreementSent}`;
       const previousSignature = autoSavedPendingWarning[record.id];
 
       if (!previousSignature) {
@@ -1312,6 +1317,7 @@ Human Resources`
                   emailSent: record.emailSent,
                   followUpEmailSent: record.followUpEmailSent,
                   improvementPlanReceived: record.improvementPlanReceived,
+                  pipAdjustmentAgreementSent: record.pipAdjustmentAgreementSent,
                   reviewedBy: record.reviewedBy,
                   decisionDate: record.decisionDate,
                   note: "",
@@ -1329,6 +1335,8 @@ Human Resources`
                 const showImprovementPlanCheckbox =
                   (confirmedWarningLevel === 1 || confirmedWarningLevel === 2) &&
                   draft.followUpEmailSent;
+                const showPipAdjustmentAgreementCheckbox =
+                  confirmedWarningLevel === 3;
                 const isMeetingChecked = !!draft.meetingCompleted;
                 const showFinalActionInline = confirmedWarningLevel === 3 && isMeetingChecked;
                 const meetingLabel =
@@ -1459,6 +1467,25 @@ Human Resources`
                             }
                           />
                           Received employee improvement plan
+                        </label>
+                      )}
+
+                      {showPipAdjustmentAgreementCheckbox && (
+                        <label className="mb-2 flex items-center gap-2 text-xs text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={!!draft.pipAdjustmentAgreementSent}
+                            onChange={(event) =>
+                              setReviewDrafts((previous) => ({
+                                ...previous,
+                                [record.id]: {
+                                  ...draft,
+                                  pipAdjustmentAgreementSent: event.target.checked,
+                                },
+                              }))
+                            }
+                          />
+                          PIP & Hour/Salary Adjustment agreement sent to employee
                         </label>
                       )}
 

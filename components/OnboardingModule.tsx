@@ -25,12 +25,87 @@ const stepLabels = [
   "6. Annual Tracking",
 ];
 
+type Step2ChecklistItem = {
+  name: string;
+  urlFieldLabels?: string[];
+};
+
+const STEP2_SECTIONS: Array<{ title: string; items: Step2ChecklistItem[] }> = [
+  {
+    title: "Sub-step 1: Staff to fill out",
+    items: [
+      { name: "Application Form" },
+      { name: "Direct Deposit Form" },
+      { name: "Self-Identification Form" },
+      { name: "Background Check Form" },
+      { name: "Copyright Releasing Authorization Form" },
+      { name: "Portrait Right Authorization Form" },
+      { name: "Acknowledgement of Drug and Alcohol-Free Form" },
+      { name: "Emergency Contact Form" },
+      { name: "Faculty Handbook Signature Form" },
+      { name: "Form W-4" },
+      { name: "Form I-9 (Work Authorization)" },
+      { name: "Verification Form" },
+      { name: "Form W-9" },
+    ],
+  },
+  {
+    title: "Sub-step 2: Collect from staff",
+    items: [
+      { name: "ID Copy (U.S. Passport or Green Card)" },
+      { name: "Current Resume" },
+      { name: "Copy of Diplomas or Degrees" },
+      { name: "Official Transcripts" },
+      { name: "Recent Photo (2x3)" },
+      { name: "PD Training Certification", urlFieldLabels: ["PD Training Certification URL"] },
+      { name: "Faculty/Staff DE Exam", urlFieldLabels: ["Faculty/Staff DE Exam URL"] },
+    ],
+  },
+  {
+    title: "Sub-step 3: Follow-up actions",
+    items: [
+      { name: "Generate Orientation Certificate" },
+      { name: "Notify Admin Assistant: Generate Staff Contract" },
+      { name: "Notify Compliance Dept: Generate Personnel Report" },
+    ],
+  },
+  {
+    title: "Sub-step 4: Required orientation for new staff",
+    items: [
+      { name: "Read through employee manual", urlFieldLabels: ["Employee Manual URL"] },
+      { name: "Read catalog and signed", urlFieldLabels: ["Catalog URL", "Signed Catalog URL"] },
+      { name: "Pass orientation exam (70% or higher)", urlFieldLabels: ["Orientation Exam URL"] },
+    ],
+  },
+  {
+    title: "Sub-step 5: Annual renewal items",
+    items: [
+      { name: "Annual: PD/CEU Training Certification" },
+      { name: "Annual: Personnel Report" },
+      { name: "Annual: FERPA training completed certificate", urlFieldLabels: ["FERPA Certificate URL"] },
+      {
+        name: "Annual: Training exam 1/year",
+        urlFieldLabels: [
+          "Training Exam URL",
+          "Part 1 Reference URL #1",
+          "Part 1 Reference URL #2",
+          "Part 2 Reference URL #1",
+          "Part 2 Reference URL #2",
+          "Part 2 Reference URL #3",
+          "Part 3 Reference URL",
+          "Part 4 Reference URL",
+        ],
+      },
+    ],
+  },
+];
+
 function getDefaultStep2Forms(completed: boolean): OnboardingFormItem[] {
   return REQUIRED_ONBOARDING_FORMS.map((name) => ({
     name,
     status: completed ? "Approved" : "Pending",
     dateCompleted: null,
-    verifiedBy: completed ? "System" : "",
+    verifiedBy: completed ? "System" : "HR",
   }));
 }
 
@@ -105,6 +180,17 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
     },
   });
   const [step2Forms, setStep2Forms] = useState<OnboardingFormItem[]>(getDefaultStep2Forms(true));
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    () => new Set([STEP2_SECTIONS[0].title])
+  );
+
+  const toggleSection = (title: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      next.has(title) ? next.delete(title) : next.add(title);
+      return next;
+    });
+  };
 
   const sortedEmployees = useMemo(
     () =>
@@ -141,7 +227,7 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
     });
     setStep2Forms(onboarding.step2Forms);
     setActiveStep(1);
-  }, [selectedEmployee]);
+  }, [selectedEmployeeId]);
 
   const completedSteps = [
     onboarding.step1Completed,
@@ -171,7 +257,7 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
     try {
       setSaving(true);
       await onSaveStep1(selectedEmployee.id, formState);
-      alert("Pre-onboarding setup saved.");
+      setActiveStep(2);
     } catch (error) {
       console.error("Failed to save onboarding step 1:", error);
       alert("Failed to save onboarding step 1.");
@@ -197,13 +283,40 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
             ...form,
             status,
             dateCompleted: status === "Pending" ? null : form.dateCompleted,
-            verifiedBy: status === "Pending" ? "" : form.verifiedBy,
+            verifiedBy: status === "Pending" ? "HR" : form.verifiedBy,
           };
+        }
+
+        if (field === "extraUrls") {
+          return form;
         }
 
         return {
           ...form,
           [field]: value,
+        };
+      })
+    );
+  };
+
+  const handleStep2UrlChange = (formName: string, index: number, value: string) => {
+    setStep2Forms((prev) =>
+      prev.map((form) => {
+        if (form.name !== formName) return form;
+
+        if (index === 0) {
+          return {
+            ...form,
+            url: value,
+          };
+        }
+
+        const current = form.extraUrls || [];
+        const next = [...current];
+        next[index - 1] = value;
+        return {
+          ...form,
+          extraUrls: next,
         };
       })
     );
@@ -342,6 +455,7 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
 
     if (activeStep === 2) {
       const approvedCount = step2Forms.filter((form) => form.status === "Approved").length;
+      const formMap = new Map(step2Forms.map((form) => [form.name, form]));
 
       return (
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -357,54 +471,95 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table style={{ minWidth: "820px" }} className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Form</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date Completed</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Verified By</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {step2Forms.map((form) => (
-                  <tr key={form.name} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{form.name}</td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={form.status}
-                        onChange={(e) => handleStep2FieldChange(form.name, "status", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Submitted">Submitted</option>
-                        <option value="Approved">Approved</option>
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="date"
-                        value={form.dateCompleted || ""}
-                        onChange={(e) =>
-                          handleStep2FieldChange(form.name, "dateCompleted", e.target.value)
-                        }
-                        className="w-full px-3 py-2 rounded-lg border border-gray-300"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        value={form.verifiedBy}
-                        onChange={(e) => handleStep2FieldChange(form.name, "verifiedBy", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-300"
-                        placeholder="HR verifier"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-5">
+            {STEP2_SECTIONS.map((section) => {
+              const isOpen = openSections.has(section.title);
+              return (
+                <div key={section.title} className="rounded-lg border border-cyan-100">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.title)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-cyan-50 border-b border-cyan-100 hover:bg-cyan-100 transition-colors"
+                  >
+                    <h5 className="font-semibold text-gray-900">{section.title}</h5>
+                    <span className="text-gray-500 text-lg select-none">{isOpen ? "▲" : "▼"}</span>
+                  </button>
+                  {isOpen && (
+                    <div className="p-4 space-y-4">
+                      {section.items.map((item) => {
+                        const form = formMap.get(item.name) || {
+                          name: item.name,
+                          status: "Pending",
+                          dateCompleted: null,
+                          verifiedBy: "HR",
+                          url: "",
+                          extraUrls: [],
+                        };
+
+                        return (
+                          <div key={item.name} className="rounded-lg border border-gray-200 p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start">
+                              <div className="md:col-span-2">
+                                <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+                              </div>
+                              <div>
+                                <select
+                                  value={form.status}
+                                  onChange={(e) => handleStep2FieldChange(form.name, "status", e.target.value)}
+                                  className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm"
+                                >
+                                  <option value="Pending">Pending</option>
+                                  <option value="Submitted">Submitted</option>
+                                  <option value="Approved">Approved</option>
+                                </select>
+                              </div>
+                              <div>
+                                <input
+                                  type="date"
+                                  value={form.dateCompleted || ""}
+                                  onChange={(e) => handleStep2FieldChange(form.name, "dateCompleted", e.target.value)}
+                                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="mt-3">
+                              <input
+                                type="text"
+                                value={form.verifiedBy}
+                                onChange={(e) => handleStep2FieldChange(form.name, "verifiedBy", e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                                placeholder="Verified by"
+                              />
+                            </div>
+
+                            {item.urlFieldLabels && item.urlFieldLabels.length > 0 && (
+                              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {item.urlFieldLabels.map((label, index) => {
+                                  const urlValue = index === 0 ? form.url || "" : form.extraUrls?.[index - 1] || "";
+                                  return (
+                                    <div key={`${item.name}-${label}`}>
+                                      <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
+                                      <input
+                                        type="url"
+                                        value={urlValue}
+                                        onChange={(e) => handleStep2UrlChange(form.name, index, e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                                        placeholder="https://..."
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <div className="mt-6 flex items-center justify-between gap-4">

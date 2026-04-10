@@ -74,22 +74,45 @@ export interface OnboardingFormItem {
   status: OnboardingFormStatus;
   dateCompleted?: string | null;
   verifiedBy: string;
+  url?: string;
+  extraUrls?: string[];
 }
 
 export const REQUIRED_ONBOARDING_FORMS: string[] = [
   "Application Form",
   "Direct Deposit Form",
   "Self-Identification Form",
-  "Background Check Authorization",
-  "Copyright Release Authorization",
-  "Portrait Rights Authorization",
-  "Drug & Alcohol-Free Workplace Acknowledgment",
+  "Background Check Form",
+  "Copyright Releasing Authorization Form",
+  "Portrait Right Authorization Form",
+  "Acknowledgement of Drug and Alcohol-Free Form",
   "Emergency Contact Form",
-  "Faculty Handbook Acknowledgment",
+  "Faculty Handbook Signature Form",
   "Form W-4",
-  "Form I-9",
-  "Form W-9",
+  "Form I-9 (Work Authorization)",
   "Verification Form",
+  "Form W-9",
+  "ID Copy (U.S. Passport or Green Card)",
+  "Current Resume",
+  "Copy of Diplomas or Degrees",
+  "Official Transcripts",
+  "Recent Photo (2x3)",
+  "PD Training Certification",
+  "Faculty/Staff DE Exam",
+  "Generate Orientation Certificate",
+  "Notify Admin Assistant: Generate Staff Contract",
+  "Notify Compliance Dept: Generate Personnel Report",
+  "Read through employee manual",
+  "Read catalog and signed",
+  "Pass orientation exam (70% or higher)",
+  "Annual: PD/CEU Training Certification",
+  "Annual: Personnel Report",
+  "Annual: FERPA training completed certificate",
+  "Annual: Training exam 1/year",
+  "Annual: Training exam part 1 reference info",
+  "Annual: Training exam part 2 reference info",
+  "Annual: Training exam part 3 reference info",
+  "Annual: Training exam part 4 reference info",
 ];
 
 export interface OnboardingState {
@@ -125,6 +148,20 @@ export interface OnboardingStep2Update {
   forms: OnboardingFormItem[];
 }
 
+export type OfficeDay =
+  | "Monday"
+  | "Tuesday"
+  | "Wednesday"
+  | "Thursday"
+  | "Friday"
+  | "Saturday";
+
+export interface OfficeSchedule {
+  days: OfficeDay[];
+  startTime: string;
+  endTime: string;
+}
+
 export interface Employee {
   id: string;
   name: string;
@@ -137,6 +174,7 @@ export interface Employee {
   staffWorkLocation?: string;
   employeeType?: "Full time" | "Contract";
   contractWorkHours?: number;
+  officeSchedule?: OfficeSchedule | null;
   overallOverdueTasks?: number;
   onboarding?: OnboardingState;
   weeklyRecords: WeeklyRecord[];
