@@ -26,69 +26,33 @@ export function calculateWorkHoursFulfillment(
 
 /**
  * Calculate Task Priority Handling score (20% weight)
- * Evaluates how well the employee handles high-priority tasks (urgent and high only)
- * 
- * Task weights:
- * - Urgent: 3 points per task
- * - High: 2 points per task
- * 
- * Calculation:
- * 1. Calculate weighted assigned high-priority workload (urgent + high only)
- * 2. If no high-priority tasks assigned, return full score (nothing to fail on)
- * 3. Calculate weighted overdue high-priority workload from weekly records
- * 4. Calculate failure rate = overdue weighted / assigned weighted
- * 5. Convert failure rate to score: score = 20 * (1 - failureRate)
- * 6. Clamp score between 0 and 20
- * 
+ *
+ * Deduction per overdue task:
+ * - Urgent:      -4 points each
+ * - High:        -3 points each
+ * - No Priority: -2 points each
+ *
+ * Formula:
+ *   totalDeduction = (overdueUrgent × 4) + (overdueHigh × 3) + (overdueNoPriority × 2)
+ *   finalScore     = max(0, 20 − totalDeduction)
+ *
  * Returns: Numeric score (0–20)
  */
 export function calculateTaskPriorityHandling(
   record: WeeklyRecord
 ): number {
-  const assignedDetails = record.assignedTasksDetails || [];
   const weeklyOverdueDetails = record.overdueTasksDetails || [];
 
-  // Step 1: Calculate weighted assigned priority workload
-  // Only count urgent and high priority tasks
-  const assignedUrgent = assignedDetails.find(
-    (detail) => detail.priority === "urgent"
-  )?.count || 0;
-  const assignedHigh = assignedDetails.find(
-    (detail) => detail.priority === "high"
-  )?.count || 0;
-  
-  const hiAssignedW = assignedUrgent * 3 + assignedHigh * 2;
+  const overdueUrgent =
+    weeklyOverdueDetails.find((d) => d.priority === "urgent")?.count || 0;
+  const overdueHigh =
+    weeklyOverdueDetails.find((d) => d.priority === "high")?.count || 0;
+  const overdueNoPriority =
+    weeklyOverdueDetails.find((d) => d.priority === "no priority")?.count || 0;
 
-  // Step 2: If no high-priority tasks assigned, return full score
-  // (because there were no priority tasks to fail on)
-  if (hiAssignedW === 0) {
-    return 20;
-  }
+  const totalDeduction = overdueUrgent * 4 + overdueHigh * 3 + overdueNoPriority * 2;
 
-  // Step 3: Calculate weighted overdue priority workload
-  // Only count urgent and high priority tasks that went overdue this week
-  const weeklyOverdueUrgent = weeklyOverdueDetails.find(
-    (detail) => detail.priority === "urgent"
-  )?.count || 0;
-  const weeklyOverdueHigh = weeklyOverdueDetails.find(
-    (detail) => detail.priority === "high"
-  )?.count || 0;
-  
-  const hiOverdueW = weeklyOverdueUrgent * 3 + weeklyOverdueHigh * 2;
-
-  // Step 4: Calculate priority failure rate
-  const failureRate = hiOverdueW / hiAssignedW;
-
-  // Step 5: Convert failure rate into score
-  // score = 20 * (1 - failureRate)
-  // Full score (20) when failureRate is 0 (no overdue high-priority tasks)
-  // Zero score (0) when failureRate is 1 (all high-priority tasks are overdue)
-  let score = 20 * (1 - failureRate);
-
-  // Step 6: Clamp score between 0 and 20
-  score = Math.max(0, Math.min(20, score));
-
-  return score;
+  return Math.max(0, 20 - totalDeduction);
 }
 
 /**

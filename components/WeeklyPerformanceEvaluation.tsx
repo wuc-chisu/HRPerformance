@@ -19,44 +19,23 @@ interface WeeklyPerformanceEvaluationProps {
 }
 
 function getTaskPriorityBreakdown(record: WeeklyRecord): {
-  highPriorityTasks: number;
-  totalAssignedTasks: number;
-  failureRate: number;
   urgentOverdue: number;
   highOverdue: number;
+  noPriorityOverdue: number;
+  totalDeduction: number;
 } {
-  const assignedDetails = record.assignedTasksDetails || [];
   const weeklyOverdueDetails = record.overdueTasksDetails || [];
-  const totalAssignedTasks = record.assignedTasks;
 
-  // Count only urgent and high priority tasks
-  const assignedUrgent = assignedDetails.find(
-    (detail) => detail.priority === "urgent"
-  )?.count || 0;
-  const assignedHigh = assignedDetails.find(
-    (detail) => detail.priority === "high"
-  )?.count || 0;
-  const highPriorityTasks = assignedUrgent + assignedHigh;
+  const urgentOverdue =
+    weeklyOverdueDetails.find((d) => d.priority === "urgent")?.count || 0;
+  const highOverdue =
+    weeklyOverdueDetails.find((d) => d.priority === "high")?.count || 0;
+  const noPriorityOverdue =
+    weeklyOverdueDetails.find((d) => d.priority === "no priority")?.count || 0;
 
-  // Calculate failure rate based on weighted overdue high-priority tasks
-  const hiAssignedW = assignedUrgent * 3 + assignedHigh * 2;
-  
-  const weeklyOverdueUrgent = weeklyOverdueDetails.find(
-    (detail) => detail.priority === "urgent"
-  )?.count || 0;
-  const weeklyOverdueHigh = weeklyOverdueDetails.find(
-    (detail) => detail.priority === "high"
-  )?.count || 0;
-  
-  if (hiAssignedW === 0) {
-    // No high-priority tasks assigned
-    return { highPriorityTasks: 0, totalAssignedTasks, failureRate: 0, urgentOverdue: 0, highOverdue: 0 };
-  }
+  const totalDeduction = urgentOverdue * 4 + highOverdue * 3 + noPriorityOverdue * 2;
 
-  const hiOverdueW = weeklyOverdueUrgent * 3 + weeklyOverdueHigh * 2;
-  const failureRate = hiOverdueW / hiAssignedW;
-
-  return { highPriorityTasks, totalAssignedTasks, failureRate, urgentOverdue: weeklyOverdueUrgent, highOverdue: weeklyOverdueHigh };
+  return { urgentOverdue, highOverdue, noPriorityOverdue, totalDeduction };
 }
 
 function getTaskCompletionBreakdown(record: WeeklyRecord): {
@@ -755,7 +734,7 @@ Whitewater University of California
                 const breakdown = getTaskPriorityBreakdown(record);
                 return (
                   <p className="text-xs text-gray-600 mt-1">
-                    20% weight • {breakdown.urgentOverdue} urgent & {breakdown.highOverdue} high tasks overdue
+                    20% weight • overdue: {breakdown.urgentOverdue} urgent (−{breakdown.urgentOverdue * 4}), {breakdown.highOverdue} high (−{breakdown.highOverdue * 3}), {breakdown.noPriorityOverdue} no-priority (−{breakdown.noPriorityOverdue * 2})
                   </p>
                 );
               })()}
@@ -774,10 +753,9 @@ Whitewater University of California
           </div>
           {(() => {
             const breakdown = getTaskPriorityBreakdown(record);
-            const failurePercentage = (breakdown.failureRate * 100).toFixed(1);
             return (
               <p className="text-xs text-gray-500 mt-2">
-                max 20 points • {failurePercentage}% failure rate on urgent/high priority tasks
+                max 20 points • total deduction: −{breakdown.totalDeduction} → score: max(0, 20 − {breakdown.totalDeduction}) = {Math.max(0, 20 - breakdown.totalDeduction)}
               </p>
             );
           })()}
