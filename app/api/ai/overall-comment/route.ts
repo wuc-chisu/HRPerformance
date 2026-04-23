@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { WeeklyRecord } from "@/lib/employees";
 import {
   calculateWeeklyPerformanceScore,
+  getTaskPriorityHandlingBreakdown,
   getPerformanceRating,
 } from "@/lib/performanceScoring";
 
@@ -147,6 +148,7 @@ export async function POST(request: Request) {
 
     const score = calculateWeeklyPerformanceScore(record);
     const rating = getPerformanceRating(score.totalScore);
+    const priorityBreakdown = getTaskPriorityHandlingBreakdown(record);
 
     const assignedDetails = record.assignedTasksDetails || [];
     const overdueDetails = record.overdueTasksDetails || [];
@@ -192,6 +194,11 @@ export async function POST(request: Request) {
     const allOverdueCount = record.allOverdueTasks ?? 0;
     const weeklyOverdueCount = record.weeklyOverdueTasks ?? 0;
     const isExcellentPerformance = lowAreas.length === 0 && allOverdueCount === 0 && weeklyOverdueCount === 0;
+    const taskPriorityDeductionSummary =
+      priorityBreakdown.totalDeduction > 0
+        ? `Task Priority Handling direct deduction = -${priorityBreakdown.totalDeduction} points from ${priorityBreakdown.urgentOverdue} urgent overdue task(s), ${priorityBreakdown.highOverdue} high overdue task(s), and ${priorityBreakdown.noPriorityAssigned} assigned task(s) with no priority.`
+        : "Task Priority Handling direct deduction = 0 because there were no urgent overdue tasks, no high overdue tasks, and no assigned tasks with no priority.";
+    const hasTaskPriorityDeduction = priorityBreakdown.totalDeduction > 0;
 
     const promptBase = `You are a professional HR performance evaluation assistant.
 
@@ -216,6 +223,8 @@ ${isExcellentPerformance ? `- Structure requirement: Use exactly 2 paragraphs se
 - For each LOW category, include one concrete action with timing/ownership detail (for example: daily planning, end-of-day review, weekly target).
 - IMPORTANT: If there are ANY overdue tasks (All overdue tasks > 0), it MUST be mentioned as an area requiring immediate attention and improvement.
 - CRITICAL: If any category is marked LOW, you MUST explicitly mention EACH low category by exact name and explain one concrete improvement action for each.
+- CRITICAL: If Task Priority Handling direct deduction is greater than 0, you MUST explicitly mention the deduction amount and cause in paragraph 2 or 3 using the provided deduction summary.
+- When Task Priority Handling is discussed, explain the actual direct deduction reason using the provided deduction summary. Make clear that assigned tasks with no priority do cause a deduction even if completed.
 - Structure requirement (must follow):
   1) Paragraph 1: what is good (strengths and positive outcomes),
   2) Paragraph 2: critical areas needing immediate correction,
@@ -233,6 +242,7 @@ Weekly performance metrics:
 - Total score: ${score.totalScore} (${rating})
 - Work hours: ${record.actualWorkHours}h actual / ${record.plannedWorkHours}h planned (Work Hours Fulfillment: ${score.workHoursFulfillment}/25)
 - Task priority handling score: ${score.taskPriorityHandling}/20
+- Task priority handling deduction summary: ${taskPriorityDeductionSummary}
 - Task completion score: ${score.taskCompletionRate}/25
 - Past due management score: ${score.pastDueTaskManagement}/30
 - Assigned tasks: ${record.assignedTasks}
@@ -395,6 +405,8 @@ Return the full evaluation comment only.`;
         totalScore: score.totalScore,
         rating,
         record,
+        taskPriorityDeductionSummary,
+        hasTaskPriorityDeduction,
         score: {
           workHoursFulfillment: score.workHoursFulfillment,
           taskPriorityHandling: score.taskPriorityHandling,

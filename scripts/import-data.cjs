@@ -90,10 +90,13 @@ async function importRecords(client, tableName, records, parentFkCol, parentFkVa
   const now = new Date().toISOString();
 
   for (const record of records) {
-    const colValues = {
-      id:        genId(tableName.slice(0, 3).toLowerCase()),
-      updatedAt: now,
-    };
+    const colValues = {};
+    if ('id' in schema) {
+      colValues.id = genId(tableName.slice(0, 3).toLowerCase());
+    }
+    if ('updatedAt' in schema) {
+      colValues.updatedAt = now;
+    }
 
     // FK to parent
     if (parentFkCol && parentFkVal) {
@@ -244,7 +247,13 @@ async function main() {
           const schema = dbSchema['Department'] || {};
           const now = new Date().toISOString();
           for (const dept of records) {
-            const colValues = { id: genId('dpt'), updatedAt: now };
+            const colValues = {};
+            if ('id' in schema) {
+              colValues.id = genId('dpt');
+            }
+            if ('updatedAt' in schema) {
+              colValues.updatedAt = now;
+            }
             for (const [k, v] of Object.entries(dept)) {
               if (k in schema && k !== 'id' && k !== 'updatedAt') colValues[k] = v;
             }

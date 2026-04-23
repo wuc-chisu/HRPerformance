@@ -3,6 +3,7 @@
 import { Employee } from "@/lib/employees";
 import {
   calculateWeeklyPerformanceScore,
+  getTaskPriorityHandlingBreakdown,
   getPerformanceRating,
   getPerformanceColor,
   getPerformanceBgColor,
@@ -55,11 +56,13 @@ export default function MonthlyPerformanceReport({
 
   const weeklyScores = monthlyRecords.map((record) => {
     const score = calculateWeeklyPerformanceScore(record);
+    const taskPriorityBreakdown = getTaskPriorityHandlingBreakdown(record);
     return {
       record,
       totalScore: score.totalScore,
       rating: getPerformanceRating(score.totalScore),
       breakdown: score,
+      taskPriorityBreakdown,
     };
   });
 
@@ -238,6 +241,7 @@ San Jose, CA 95118`;
             totalScore: ws.totalScore,
             rating: ws.rating,
             breakdown: ws.breakdown,
+            taskPriorityBreakdown: ws.taskPriorityBreakdown,
           })),
           monthlyAverage,
           monthlyRating,
@@ -581,6 +585,9 @@ San Jose, CA 95118`;
 
         <div className="bg-white rounded-lg p-6 mb-6 print:border print:border-gray-300 print-avoid-break">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Weekly Score Breakdown</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            Task Priority Handling direct deductions apply to urgent overdue tasks, high overdue tasks, and assigned tasks left with no priority. A no-priority task still deducts points even if it was completed.
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-100 border-b">

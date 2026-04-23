@@ -4,6 +4,16 @@
 # Usage: ./scripts/restore-db.sh [backup_file]
 
 BACKUP_DIR="backups"
+REQUIRED_FLAG="ALLOW_DB_REPLACE"
+REQUIRED_VALUE="yes"
+
+if [ "${ALLOW_DB_REPLACE}" != "$REQUIRED_VALUE" ]; then
+  echo "❌ Restore blocked to protect live data."
+  echo ""
+  echo "To continue intentionally, run:"
+  echo "  ALLOW_DB_REPLACE=yes ./scripts/restore-db.sh <backup_file>"
+  exit 1
+fi
 
 # Use PostgreSQL 15 tools (explicit path to avoid version mismatch)
 PSQL="/usr/local/Cellar/postgresql@15/15.15_1/bin/psql"
@@ -21,6 +31,8 @@ if [ ! -x "$PSQL" ]; then
     fi
   fi
 fi
+
+if [ -z "$1" ]; then
     echo "Available backups:"
     ls -lh "$BACKUP_DIR"/*.sql 2>/dev/null || echo "No backups found"
     echo ""

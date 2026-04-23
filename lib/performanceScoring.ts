@@ -8,6 +8,13 @@ export interface PerformanceScore {
   totalScore: number;
 }
 
+export interface TaskPriorityHandlingBreakdown {
+  urgentOverdue: number;
+  highOverdue: number;
+  noPriorityAssigned: number;
+  totalDeduction: number;
+}
+
 /**
  * Calculate Work Hours Fulfillment score (25% weight)
  * Formula: min((actualHours / plannedHours) * 25, 25)
@@ -28,29 +35,44 @@ export function calculateWorkHoursFulfillment(
  * Calculate Task Priority Handling score (20% weight)
  *
  * Deduction per overdue task:
- * - Urgent:      -4 points each
- * - High:        -3 points each
+ * - Urgent: -4 points each
+ * - High:   -3 points each
+ * Deduction per assigned task with no priority:
  * - No Priority: -2 points each
  *
  * Formula:
- *   totalDeduction = (overdueUrgent × 4) + (overdueHigh × 3) + (overdueNoPriority × 2)
+ *   totalDeduction = (overdueUrgent × 4) + (overdueHigh × 3) + (assignedNoPriority × 2)
  *   finalScore     = max(0, 20 − totalDeduction)
  *
  * Returns: Numeric score (0–20)
  */
-export function calculateTaskPriorityHandling(
+export function getTaskPriorityHandlingBreakdown(
   record: WeeklyRecord
-): number {
+): TaskPriorityHandlingBreakdown {
   const weeklyOverdueDetails = record.overdueTasksDetails || [];
+  const assignedDetails = record.assignedTasksDetails || [];
 
   const overdueUrgent =
     weeklyOverdueDetails.find((d) => d.priority === "urgent")?.count || 0;
   const overdueHigh =
     weeklyOverdueDetails.find((d) => d.priority === "high")?.count || 0;
-  const overdueNoPriority =
-    weeklyOverdueDetails.find((d) => d.priority === "no priority")?.count || 0;
+  const noPriorityAssigned =
+    assignedDetails.find((d) => d.priority === "no priority")?.count || 0;
 
-  const totalDeduction = overdueUrgent * 4 + overdueHigh * 3 + overdueNoPriority * 2;
+  const totalDeduction = overdueUrgent * 4 + overdueHigh * 3 + noPriorityAssigned * 2;
+
+  return {
+    urgentOverdue: overdueUrgent,
+    highOverdue: overdueHigh,
+    noPriorityAssigned,
+    totalDeduction,
+  };
+}
+
+export function calculateTaskPriorityHandling(
+  record: WeeklyRecord
+): number {
+  const { totalDeduction } = getTaskPriorityHandlingBreakdown(record);
 
   return Math.max(0, 20 - totalDeduction);
 }

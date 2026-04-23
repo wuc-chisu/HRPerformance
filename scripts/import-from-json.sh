@@ -5,6 +5,16 @@
 
 EXPORT_DIR="data-exports"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REQUIRED_FLAG="ALLOW_DB_REPLACE"
+REQUIRED_VALUE="yes"
+
+if [ "${ALLOW_DB_REPLACE}" != "$REQUIRED_VALUE" ]; then
+    echo "❌ Import blocked to protect live data."
+    echo ""
+    echo "To continue intentionally, run:"
+    echo "  ALLOW_DB_REPLACE=yes ./scripts/import-from-json.sh <json_file>"
+    exit 1
+fi
 
 if [ -z "$1" ]; then
     echo "Available exports:"

@@ -5,6 +5,7 @@ import { WeeklyRecord } from "@/lib/employees";
 import { formatDateInPacific } from "@/lib/dateUtils";
 import {
   calculateWeeklyPerformanceScore,
+  getTaskPriorityHandlingBreakdown as getSharedTaskPriorityBreakdown,
   getPerformanceRating,
   getPerformanceColor,
   getPerformanceBgColor,
@@ -21,21 +22,10 @@ interface WeeklyPerformanceEvaluationProps {
 function getTaskPriorityBreakdown(record: WeeklyRecord): {
   urgentOverdue: number;
   highOverdue: number;
-  noPriorityOverdue: number;
+  noPriorityAssigned: number;
   totalDeduction: number;
 } {
-  const weeklyOverdueDetails = record.overdueTasksDetails || [];
-
-  const urgentOverdue =
-    weeklyOverdueDetails.find((d) => d.priority === "urgent")?.count || 0;
-  const highOverdue =
-    weeklyOverdueDetails.find((d) => d.priority === "high")?.count || 0;
-  const noPriorityOverdue =
-    weeklyOverdueDetails.find((d) => d.priority === "no priority")?.count || 0;
-
-  const totalDeduction = urgentOverdue * 4 + highOverdue * 3 + noPriorityOverdue * 2;
-
-  return { urgentOverdue, highOverdue, noPriorityOverdue, totalDeduction };
+  return getSharedTaskPriorityBreakdown(record);
 }
 
 function getTaskCompletionBreakdown(record: WeeklyRecord): {
@@ -369,6 +359,11 @@ Whitewater University of California
     const overdueCount = record.weeklyOverdueTasks;
     const allOverdueCount = record.allOverdueTasks ?? 0;
     const noWorkHoursEntered = record.actualWorkHours === 0;
+    const taskPriorityBreakdown = getTaskPriorityBreakdown(record);
+    const priorityDeductionSummary =
+      taskPriorityBreakdown.totalDeduction > 0
+        ? `Task priority handling lost ${taskPriorityBreakdown.totalDeduction} points because ${taskPriorityBreakdown.urgentOverdue} urgent overdue task(s) count as -${taskPriorityBreakdown.urgentOverdue * 4}, ${taskPriorityBreakdown.highOverdue} high overdue task(s) count as -${taskPriorityBreakdown.highOverdue * 3}, and ${taskPriorityBreakdown.noPriorityAssigned} assigned task(s) with no priority count as -${taskPriorityBreakdown.noPriorityAssigned * 2}.`
+        : "Task priority handling had no direct deduction this week because there were no urgent overdue tasks, no high overdue tasks, and no assigned tasks left with no priority.";
     
     // Check if employee fulfilled work hours requirement
     const workHoursFulfilled = record.actualWorkHours >= record.plannedWorkHours;
@@ -378,7 +373,7 @@ Whitewater University of California
     if (noWorkHoursEntered) {
       return (
         `IMPORTANT: You must enter and track your work hours in the time tracking system. Failure to record work hours will result in performance evaluation issues and may affect your employment status.\n\n` +
-        `Your total score is ${scoreValue}. No work hours were recorded this week (0h / ${record.plannedWorkHours}h planned). You recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25.\n\n` +
+        `Your total score is ${scoreValue}. No work hours were recorded this week (0h / ${record.plannedWorkHours}h planned). You recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25. ${priorityDeductionSummary}\n\n` +
         `Immediate action required: 1) Enter all work hours in the time tracking system immediately, 2) Ensure daily time tracking going forward, 3) Contact your manager if you need assistance with the time tracking system.`
       );
     }
@@ -388,7 +383,7 @@ Whitewater University of California
         return (
           `Your total score is ${scoreValue}, which is ${scoreLabel}. ` +
           `You ${workHoursStatus} assigned work hours and recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). ` +
-          `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, which are pulling the total score down.\n\n` +
+          `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, which are pulling the total score down. ${priorityDeductionSummary}\n\n` +
           `Strengths are limited this week; the focus should be on stabilizing execution and reducing overdue work. Past due management is ${score.pastDueTaskManagement.toFixed(2)}/30, which indicates overdue items are accumulating.\n\n` +
           `Act now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks.`
         );
@@ -397,7 +392,7 @@ Whitewater University of California
       return (
         `Your total score is ${scoreValue}, which is ${scoreLabel}. ` +
         `Work hours (${workRatio}) and task results need immediate improvement, and you recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). ` +
-        `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, which are pulling the total score down.\n\n` +
+        `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, which are pulling the total score down. ${priorityDeductionSummary}\n\n` +
         `Strengths are limited this week; the focus should be on stabilizing execution and reducing overdue work. Past due management is ${score.pastDueTaskManagement.toFixed(2)}/30, which indicates overdue items are accumulating.\n\n` +
         `Act now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks.`
       );
@@ -734,7 +729,7 @@ Whitewater University of California
                 const breakdown = getTaskPriorityBreakdown(record);
                 return (
                   <p className="text-xs text-gray-600 mt-1">
-                    20% weight • overdue: {breakdown.urgentOverdue} urgent (−{breakdown.urgentOverdue * 4}), {breakdown.highOverdue} high (−{breakdown.highOverdue * 3}), {breakdown.noPriorityOverdue} no-priority (−{breakdown.noPriorityOverdue * 2})
+                    20% weight • direct deductions: {breakdown.urgentOverdue} urgent (−{breakdown.urgentOverdue * 4}), {breakdown.highOverdue} high (−{breakdown.highOverdue * 3}), {breakdown.noPriorityAssigned} no-priority assigned (−{breakdown.noPriorityAssigned * 2})
                   </p>
                 );
               })()}
@@ -880,10 +875,10 @@ Whitewater University of California
       <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200 print-avoid-break">
         <p className="text-xs font-semibold text-gray-600 mb-3">Task Priority Handling Scoring Formula</p>
         <div className="text-xs text-gray-600 space-y-2">
-          <p><span className="font-semibold">Focuses on:</span> Urgent and High priority tasks only</p>
-          <p><span className="font-semibold">Weights:</span> Urgent = 3 points, High = 2 points</p>
-          <p><span className="font-semibold">Calculation:</span> Score = 20 × (1 − failure rate)</p>
-          <p><span className="font-semibold">Example:</span> 0% failure = 20 pts • 50% failure = 10 pts • 100% failure = 0 pts</p>
+          <p><span className="font-semibold">Focuses on:</span> overdue urgency and priority-setting compliance</p>
+          <p><span className="font-semibold">Direct deductions:</span> Urgent overdue = -4 points each, High overdue = -3 points each, Assigned with no priority = -2 points each</p>
+          <p><span className="font-semibold">Calculation:</span> Score = max(0, 20 - total direct deduction)</p>
+          <p><span className="font-semibold">No-priority rule:</span> A task without a priority still causes a deduction even if the task was completed.</p>
         </div>
       </div>
 

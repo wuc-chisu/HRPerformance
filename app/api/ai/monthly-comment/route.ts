@@ -17,6 +17,12 @@ interface MonthlyCommentRequest {
       taskCompletionRate: number;
       pastDueTaskManagement: number;
     };
+    taskPriorityBreakdown?: {
+      urgentOverdue: number;
+      highOverdue: number;
+      noPriorityAssigned: number;
+      totalDeduction: number;
+    };
   }>;
   monthlyAverage: number;
   monthlyRating: string;
@@ -183,6 +189,19 @@ export async function POST(request: Request) {
     const avgPriority = weeklyScores.reduce((sum, ws) => sum + ws.breakdown.taskPriorityHandling, 0) / weeklyScores.length;
     const avgCompletion = weeklyScores.reduce((sum, ws) => sum + ws.breakdown.taskCompletionRate, 0) / weeklyScores.length;
     const avgPastDue = weeklyScores.reduce((sum, ws) => sum + ws.breakdown.pastDueTaskManagement, 0) / weeklyScores.length;
+    const priorityDeductionSummary = weeklyScores
+      .map((ws) => {
+        const breakdown = ws.taskPriorityBreakdown;
+        if (!breakdown) {
+          return `${ws.startDate}: direct deduction details unavailable`;
+        }
+
+        return `${ws.startDate}: -${breakdown.totalDeduction} direct deduction (${breakdown.urgentOverdue} urgent overdue, ${breakdown.highOverdue} high overdue, ${breakdown.noPriorityAssigned} assigned with no priority)`;
+      })
+      .join("; ");
+    const hasTaskPriorityDeduction = weeklyScores.some(
+      (ws) => (ws.taskPriorityBreakdown?.totalDeduction || 0) > 0
+    );
 
     const needsUrgentImprovement = monthlyAverage < 70;
     const workHoursThreshold = 17.5;
@@ -226,6 +245,8 @@ ${isExcellentPerformance ? `- Structure requirement: Use exactly 2 paragraphs se
 - Provide practical guidance (4-6 clear, actionable steps).
 - For each LOW category, include one concrete action with timing/ownership detail (for example: daily planning, end-of-day review, weekly target).
 - CRITICAL: If any category is marked LOW in the input, you MUST explicitly mention EACH low category by exact name and provide one concrete improvement action for each. Do not skip any LOW category.
+- CRITICAL: If any weekly Task Priority Handling direct deduction is greater than 0, you MUST explicitly mention the deduction amount and cause in paragraph 2 or 3 using the provided weekly deduction summary.
+- When discussing Task Priority Handling, explain direct deductions using the provided weekly deduction summary. Make clear that assigned tasks with no priority do cause a deduction even if they were completed.
 - Structure requirement (must follow):
   1) Paragraph 1: what is good (monthly strengths),
   2) Paragraph 2: critical areas needing immediate correction,
@@ -243,6 +264,8 @@ Monthly performance data for ${monthName} ${year}:
 Average scores by category:
 - Work Hours Fulfillment: ${avgWorkHours.toFixed(1)}/25
 - Task Priority Handling: ${avgPriority.toFixed(1)}/20
+- Task Priority Handling direct deduction rule: urgent overdue tasks, high overdue tasks, and assigned tasks with no priority create direct deductions.
+- Weekly task priority direct deduction summary: ${priorityDeductionSummary}
 - Task Completion Rate: ${avgCompletion.toFixed(1)}/25
 - Past Due Task Management: ${avgPastDue.toFixed(1)}/30
 
@@ -405,6 +428,8 @@ Return only the monthly summary comment.`;
         avgPastDue,
         trend,
         lowAreas,
+        priorityDeductionSummary,
+        hasTaskPriorityDeduction,
         isExcellentPerformance,
       });
     }
