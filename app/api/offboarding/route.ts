@@ -203,3 +203,64 @@ export async function PUT(request: Request) {
     );
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { employeeId, confirmedOffboard } = body || {};
+
+    if (!employeeId) {
+      return NextResponse.json({ error: "employeeId is required" }, { status: 400 });
+    }
+
+    const existing = await (prisma as any).offboardingRecord.findUnique({
+      where: { employeeId },
+      select: { step8: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Offboarding record not found" }, { status: 404 });
+    }
+
+    const step8 = {
+      ...(existing.step8 || {}),
+      confirmedOffboard: Boolean(confirmedOffboard),
+    };
+
+    const updated = await (prisma as any).offboardingRecord.update({
+      where: { employeeId },
+      data: { step8 },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("Error updating offboarding confirmation:", error);
+    return NextResponse.json(
+      { error: "Failed to update offboarding confirmation", details: String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const employeeId = searchParams.get("employeeId");
+
+    if (!employeeId) {
+      return NextResponse.json({ error: "employeeId is required" }, { status: 400 });
+    }
+
+    await (prisma as any).offboardingRecord.delete({
+      where: { employeeId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting offboarding record:", error);
+    return NextResponse.json(
+      { error: "Failed to delete offboarding record", details: String(error) },
+      { status: 500 }
+    );
+  }
+}

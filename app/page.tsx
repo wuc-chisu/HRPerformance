@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Employee, HolidayRecord, OnboardingStep1Update, OnboardingStep2Update, TimeOffRequest, TimeOffStatus, TimeOffType } from "@/lib/employees";
 import { formatCompactDate, formatShortDate, parseDateInPacific } from "@/lib/dateUtils";
 import EmployeeCard from "@/components/EmployeeCard";
@@ -17,6 +17,7 @@ import TimeOffManager from "@/components/TimeOffManager";
 
 export default function Home() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [offboardingRecords, setOffboardingRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(
     null
@@ -66,6 +67,7 @@ export default function Home() {
   // Load employees and departments from API on mount
   useEffect(() => {
     fetchEmployees();
+    fetchOffboardingRecords();
     fetchDepartments();
     fetchTimeOffRequests();
     fetchHolidays(selectedYear);
@@ -102,6 +104,17 @@ export default function Home() {
     }
   };
 
+  const fetchOffboardingRecords = async () => {
+    try {
+      const response = await fetch("/api/offboarding");
+      if (!response.ok) throw new Error("Failed to fetch offboarding records");
+      const data = await response.json();
+      setOffboardingRecords(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching offboarding records:", error);
+    }
+  };
+
   const fetchTimeOffRequests = async () => {
     try {
       const response = await fetch("/api/time-off");
@@ -124,7 +137,42 @@ export default function Home() {
     }
   };
 
-  const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId);
+  const confirmedOffboardEmployeeIds = useMemo(() => {
+    return new Set(
+      offboardingRecords
+        .filter((record) => Boolean(record?.step8?.confirmedOffboard))
+        .map((record) => record.employeeId)
+    );
+  }, [offboardingRecords]);
+
+  const activeEmployees = useMemo(
+    () => employees.filter((employee) => !confirmedOffboardEmployeeIds.has(employee.id)),
+    [employees, confirmedOffboardEmployeeIds]
+  );
+
+  const activeEmployeeIds = useMemo(
+    () => new Set(activeEmployees.map((employee) => employee.id)),
+    [activeEmployees]
+  );
+
+  const activeTimeOffRequests = useMemo(
+    () => timeOffRequests.filter((request) => activeEmployeeIds.has(request.employeeId)),
+    [timeOffRequests, activeEmployeeIds]
+  );
+
+  const selectedEmployee = activeEmployees.find((e) => e.id === selectedEmployeeId);
+
+  useEffect(() => {
+    if (selectedEmployeeId && !activeEmployeeIds.has(selectedEmployeeId)) {
+      setSelectedEmployeeId(null);
+    }
+  }, [selectedEmployeeId, activeEmployeeIds]);
+
+  useEffect(() => {
+    if (selectedEmployeeForPerformance && !activeEmployeeIds.has(selectedEmployeeForPerformance)) {
+      setSelectedEmployeeForPerformance(null);
+    }
+  }, [selectedEmployeeForPerformance, activeEmployeeIds]);
 
   const handleAddEmployee = () => {
     setEditingEmployee(null);
@@ -667,7 +715,7 @@ export default function Home() {
   // Get all unique week ranges from all employees
   const getAllWeekRanges = () => {
     const weekRangesByStart = new Map<string, { start: string; end: string; score: number }>();
-    employees.forEach((emp) => {
+    activeEmployees.forEach((emp) => {
       emp.weeklyRecords.forEach((record) => {
         const startDate = parseDateInPacific(record.startDate);
         const endDate = parseDateInPacific(record.endDate);
@@ -854,7 +902,7 @@ export default function Home() {
 
         {/* Dashboard View */}
         {activeView === "dashboard" && (
-          <PerformanceDashboard employees={employees} />
+          <PerformanceDashboard employees={activeEmployees} />
         )}
 
         {/* Employees View */}
@@ -878,7 +926,7 @@ export default function Home() {
               </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...employees]
+              {[...activeEmployees]
                 .sort((a, b) =>
                   a.id.localeCompare(b.id, undefined, {
                     numeric: true,
@@ -891,7 +939,7 @@ export default function Home() {
                   employee={employee}
                   onSelect={(employeeId: string) => {
                     setSelectedEmployeeId(employeeId);
-                    const selected = employees.find((item) => item.id === employeeId);
+                    const selected = activeEmployees.find((item) => item.id === employeeId);
                     if (selected) {
                       handleEditEmployee(selected);
                     }
@@ -981,7 +1029,7 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {employees.map((employee) => (
+                    {activeEmployees.map((employee) => (
                       <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {employee.id}
@@ -1024,7 +1072,7 @@ export default function Home() {
                 </table>
               </div>
 
-              {employees.length === 0 && (
+              {activeEmployees.length === 0 && (
                 <div className="text-center py-12">
                   <p className="text-gray-600 text-lg">
                     No employees found. Add one to get started!
@@ -1149,7 +1197,7 @@ export default function Home() {
                   className="w-full px-4 py-2 border border-blue-300 rounded-lg bg-blue-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
                   <option value="">Choose an employee...</option>
-                  {[...employees]
+                  {[...activeEmployees]
                     .sort((a, b) =>
                       a.id.localeCompare(b.id, undefined, {
                         numeric: true,
@@ -1166,14 +1214,14 @@ export default function Home() {
 
               {/* If employee selected, show their performance management */}
               {selectedEmployeeForPerformance &&
-                employees.find((e) => e.id === selectedEmployeeForPerformance) && (
+                activeEmployees.find((e) => e.id === selectedEmployeeForPerformance) && (
                   <div className="space-y-6">
                     <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 print:hidden">
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">
                             {
-                              employees.find(
+                              activeEmployees.find(
                                 (e) => e.id === selectedEmployeeForPerformance
                               )?.name
                             }
@@ -1210,14 +1258,14 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {performanceView === "weekly" && employees.find((e) => e.id === selectedEmployeeForPerformance) && (
+                    {performanceView === "weekly" && activeEmployees.find((e) => e.id === selectedEmployeeForPerformance) && (
                       <WeeklyRecordsTable
                         employee={
-                          employees.find(
+                          activeEmployees.find(
                             (e) => e.id === selectedEmployeeForPerformance
                           )!
                         }
-                        timeOffRequests={timeOffRequests.filter(
+                        timeOffRequests={activeTimeOffRequests.filter(
                           (request) => request.employeeId === selectedEmployeeForPerformance
                         )}
                         holidays={holidays}
@@ -1236,10 +1284,10 @@ export default function Home() {
                       />
                     )}
 
-                    {performanceView === "monthly" && employees.find((e) => e.id === selectedEmployeeForPerformance) && (
+                    {performanceView === "monthly" && activeEmployees.find((e) => e.id === selectedEmployeeForPerformance) && (
                       <MonthlyPerformanceReport
                         employee={
-                          employees.find(
+                          activeEmployees.find(
                             (e) => e.id === selectedEmployeeForPerformance
                           )!
                         }
@@ -1262,17 +1310,17 @@ export default function Home() {
         )}
 
         {activeView === "offboarding" && (
-          <OffboardingModule employees={employees} />
+          <OffboardingModule employees={employees} onRecordsChanged={fetchOffboardingRecords} />
         )}
 
         {activeView === "incident-tracking" && (
-          <IncidentTrackingTable employees={employees} />
+          <IncidentTrackingTable employees={activeEmployees} />
         )}
 
         {activeView === "time-off" && (
           <TimeOffManager
-            employees={employees}
-            requests={timeOffRequests}
+            employees={activeEmployees}
+            requests={activeTimeOffRequests}
             holidays={holidays}
             selectedYear={selectedYear}
             onCreateRequest={handleCreateTimeOffRequest}
@@ -1303,7 +1351,7 @@ export default function Home() {
             setEditingEmployee(null);
           }}
           departments={departments}
-          employees={employees}
+          employees={activeEmployees}
         />
       )}
 

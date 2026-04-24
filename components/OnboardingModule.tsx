@@ -337,6 +337,21 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
     }
   };
 
+  const handleSaveStep5 = async () => {
+    if (!selectedEmployee) return;
+
+    try {
+      setSaving(true);
+      await onSaveStep1(selectedEmployee.id, formState);
+      alert("Enrollment status saved.");
+    } catch (error) {
+      console.error("Failed to save onboarding step 5:", error);
+      alert("Failed to save enrollment status.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const renderStepContent = () => {
     if (activeStep === 1) {
       return (
@@ -412,12 +427,6 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
                 className="w-full px-3 py-2 rounded-lg border border-gray-300"
                 placeholder="HR Manager"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Current Enrollment Status</label>
-              <div className="px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-800">
-                {formState.checklistAssigned ? "Enrolled" : "Not enrolled"}
-              </div>
             </div>
           </div>
 
@@ -572,6 +581,44 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
               className="bg-cyan-500 text-white font-semibold py-2 px-5 rounded-lg hover:bg-cyan-600 disabled:bg-cyan-300"
             >
               {saving ? "Saving..." : "Save Step 2"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeStep === 5) {
+      return (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h4 className="text-lg font-bold text-gray-900 mb-1">Step 5: Activated</h4>
+          <p className="text-sm text-gray-600 mb-5">
+            Set and save the employee&apos;s current enrollment status.
+          </p>
+
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Current Enrollment Status</label>
+            <select
+              value={formState.checklistAssigned ? "Enrolled" : "In Progress"}
+              onChange={(e) =>
+                setFormState((prev) => ({
+                  ...prev,
+                  checklistAssigned: e.target.value === "Enrolled",
+                }))
+              }
+              className="w-full md:w-80 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm"
+            >
+              <option value="Enrolled">Enrolled</option>
+              <option value="In Progress">In Progress</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-end">
+            <button
+              onClick={handleSaveStep5}
+              disabled={saving}
+              className="bg-cyan-500 text-white font-semibold py-2 px-5 rounded-lg hover:bg-cyan-600 disabled:bg-cyan-300"
+            >
+              {saving ? "Saving..." : "Save Step 5"}
             </button>
           </div>
         </div>
