@@ -30,6 +30,24 @@ type Step2ChecklistItem = {
   urlFieldLabels?: string[];
 };
 
+const STEP2_VERIFIER_ROLE_CONFIG: Record<
+  string,
+  { label: string; roleKeywords: string[] }
+> = {
+  "Generate Orientation Certificate": {
+    label: "Registrar",
+    roleKeywords: ["registrar"],
+  },
+  "Notify Admin Assistant: Generate Staff Contract": {
+    label: "Administrative Specialist",
+    roleKeywords: ["administrative specialist"],
+  },
+  "Notify Compliance Dept: Generate Personnel Report": {
+    label: "Compliance Specialist",
+    roleKeywords: ["compliance specialist"],
+  },
+};
+
 const STEP2_SECTIONS: Array<{ title: string; items: Step2ChecklistItem[] }> = [
   {
     title: "Sub-step 1: Staff to fill out",
@@ -107,6 +125,68 @@ function getDefaultStep2Forms(completed: boolean): OnboardingFormItem[] {
     dateCompleted: null,
     verifiedBy: completed ? "System" : "HR",
   }));
+}
+
+function findCurrentRoleEmployeeName(
+  employees: Employee[],
+  roleKeywords: string[]
+): string | null {
+  const matches = employees.filter((employee) => {
+    const position = (employee.position || "").toLowerCase();
+    return roleKeywords.some((keyword) => position.includes(keyword));
+  });
+
+  if (matches.length === 0) {
+    return null;
+  }
+
+  matches.sort((left, right) => {
+    const leftJoin = Date.parse(left.joinDate || "");
+    const rightJoin = Date.parse(right.joinDate || "");
+    return (Number.isNaN(rightJoin) ? 0 : rightJoin) - (Number.isNaN(leftJoin) ? 0 : leftJoin);
+  });
+
+  return matches[0].name;
+}
+
+function buildRoleVerifierLookup(employees: Employee[]): Record<string, string> {
+  const lookup: Record<string, string> = {};
+
+  Object.entries(STEP2_VERIFIER_ROLE_CONFIG).forEach(([formName, config]) => {
+    const matchedName = findCurrentRoleEmployeeName(employees, config.roleKeywords);
+    lookup[formName] = matchedName ? `${config.label}: ${matchedName}` : config.label;
+  });
+
+  return lookup;
+}
+
+function getDefaultVerifierForForm(
+  formName: string,
+  roleVerifierLookup: Record<string, string>
+): string {
+  return roleVerifierLookup[formName] || "HR";
+}
+
+function applyStep2VerifierDefaults(
+  forms: OnboardingFormItem[],
+  roleVerifierLookup: Record<string, string>
+): OnboardingFormItem[] {
+  return forms.map((form) => {
+    const roleDefault = roleVerifierLookup[form.name];
+    if (!roleDefault) {
+      return form;
+    }
+
+    const normalized = (form.verifiedBy || "").trim();
+    if (!normalized || normalized === "HR" || normalized === "System") {
+      return {
+        ...form,
+        verifiedBy: roleDefault,
+      };
+    }
+
+    return form;
+  });
 }
 
 function getDefaultOnboarding(): OnboardingState {
@@ -203,6 +283,11 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
     [employees]
   );
 
+  const roleVerifierLookup = useMemo(
+    () => buildRoleVerifierLookup(sortedEmployees),
+    [sortedEmployees]
+  );
+
   useEffect(() => {
     if (!selectedEmployeeId && sortedEmployees.length > 0) {
       setSelectedEmployeeId(sortedEmployees[0].id);
@@ -225,9 +310,9 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
         googleDrive: onboarding.systemAccess.googleDrive,
       },
     });
-    setStep2Forms(onboarding.step2Forms);
+    setStep2Forms(applyStep2VerifierDefaults(onboarding.step2Forms, roleVerifierLookup));
     setActiveStep(1);
-  }, [selectedEmployeeId]);
+  }, [selectedEmployeeId, roleVerifierLookup]);
 
   const completedSteps = [
     onboarding.step1Completed,
@@ -283,7 +368,10 @@ export default function OnboardingModule({ employees, onSaveStep1, onSaveStep2 }
             ...form,
             status,
             dateCompleted: status === "Pending" ? null : form.dateCompleted,
-            verifiedBy: status === "Pending" ? "HR" : form.verifiedBy,
+            verifiedBy:
+              status === "Pending"
+                ? getDefaultVerifierForForm(form.name, roleVerifierLookup)
+                : form.verifiedBy,
           };
         }
 

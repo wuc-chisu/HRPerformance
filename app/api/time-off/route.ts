@@ -1,5 +1,9 @@
 import prisma from "@/lib/prisma";
-import { parseDateForDatabase } from "@/lib/dateUtils";
+import {
+  formatDateForResponse,
+  formatDateTimeForResponse,
+  parseDateForDatabase,
+} from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 
 type EmployeeSummary = {
@@ -85,14 +89,14 @@ export async function GET() {
         department: request.employee?.department,
         requestType: request.requestType,
         status: request.status,
-        startDate: request.startDate.toISOString().split("T")[0],
-        endDate: request.endDate.toISOString().split("T")[0],
+        startDate: formatDateForResponse(request.startDate),
+        endDate: formatDateForResponse(request.endDate),
         hours: request.hours,
         reason: request.reason || "",
         managerNote: request.managerNote || "",
-        approvedAt: request.approvedAt?.toISOString() || null,
-        plannedHoursAdjustedAt: request.plannedHoursAdjustedAt?.toISOString() || null,
-        createdAt: request.createdAt.toISOString(),
+        approvedAt: formatDateTimeForResponse(request.approvedAt),
+        plannedHoursAdjustedAt: formatDateTimeForResponse(request.plannedHoursAdjustedAt),
+        createdAt: formatDateTimeForResponse(request.createdAt),
       }))
     );
   } catch (error) {
@@ -171,14 +175,14 @@ export async function POST(request: Request) {
         department: created.employee?.department,
         requestType: created.requestType,
         status: created.status,
-        startDate: created.startDate.toISOString().split("T")[0],
-        endDate: created.endDate.toISOString().split("T")[0],
+        startDate: formatDateForResponse(created.startDate),
+        endDate: formatDateForResponse(created.endDate),
         hours: created.hours,
         reason: created.reason || "",
         managerNote: created.managerNote || "",
-        approvedAt: created.approvedAt?.toISOString() || null,
-        plannedHoursAdjustedAt: created.plannedHoursAdjustedAt?.toISOString() || null,
-        createdAt: created.createdAt.toISOString(),
+        approvedAt: formatDateTimeForResponse(created.approvedAt),
+        plannedHoursAdjustedAt: formatDateTimeForResponse(created.plannedHoursAdjustedAt),
+        createdAt: formatDateTimeForResponse(created.createdAt),
       },
       { status: 201 }
     );

@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { parseDateForDatabase } from "@/lib/dateUtils";
+import { formatDateForResponse, parseDateForDatabase } from "@/lib/dateUtils";
 import { allocateHoursAcrossOverlaps, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
 import { NextResponse } from "next/server";
 
@@ -131,8 +131,8 @@ export async function POST(request: Request) {
           error: "Weekly record already exists for this employee and week",
           record: {
             recordId: duplicateRecord.id,
-            startDate: duplicateRecord.startDate.toISOString().split("T")[0],
-            endDate: duplicateRecord.endDate.toISOString().split("T")[0],
+            startDate: formatDateForResponse(duplicateRecord.startDate),
+            endDate: formatDateForResponse(duplicateRecord.endDate),
             plannedWorkHours: duplicateRecord.plannedWorkHours,
             actualWorkHours: duplicateRecord.actualWorkHours,
           },
@@ -328,8 +328,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       recordId: record.id,
-      startDate: record.startDate.toISOString().split("T")[0],
-      endDate: record.endDate.toISOString().split("T")[0],
+      startDate: formatDateForResponse(record.startDate),
+      endDate: formatDateForResponse(record.endDate),
       plannedWorkHours: record.plannedWorkHours,
       actualWorkHours: record.actualWorkHours,
       assignedTasks: record.assignedTasks,

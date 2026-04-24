@@ -1,5 +1,9 @@
 import prisma from "@/lib/prisma";
-import { parseDateForDatabase } from "@/lib/dateUtils";
+import {
+  formatDateForResponse,
+  formatDateTimeForResponse,
+  parseDateForDatabase,
+} from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 import { REQUIRED_ONBOARDING_FORMS } from "@/lib/employees";
 
@@ -7,7 +11,7 @@ function buildDefaultStep2Forms(joinDate: Date, completed: boolean) {
   return REQUIRED_ONBOARDING_FORMS.map((name) => ({
     name,
     status: completed ? "Approved" : "Pending",
-    dateCompleted: completed ? joinDate.toISOString().split("T")[0] : null,
+    dateCompleted: completed ? formatDateForResponse(joinDate) : null,
     verifiedBy: completed ? "System" : "HR",
     url: "",
     extraUrls: [],
@@ -70,14 +74,14 @@ function formatOnboarding(emp: any) {
     step4Completed: Boolean(emp.onboardingStep4Completed),
     step5Completed: Boolean(emp.onboardingStep5Completed),
     step6AnnualTracking: Boolean(emp.onboardingStep6AnnualTracking),
-    step2CompletedAt: emp.onboardingStep2CompletedAt?.toISOString() || null,
-    step3CompletedAt: emp.onboardingStep3CompletedAt?.toISOString() || null,
-    step4CompletedAt: emp.onboardingStep4CompletedAt?.toISOString() || null,
-    step5CompletedAt: emp.onboardingStep5CompletedAt?.toISOString() || null,
-    step6StartedAt: emp.onboardingStep6StartedAt?.toISOString() || null,
-    step6LastReviewAt: emp.onboardingStep6LastReviewAt?.toISOString() || null,
+    step2CompletedAt: formatDateTimeForResponse(emp.onboardingStep2CompletedAt),
+    step3CompletedAt: formatDateTimeForResponse(emp.onboardingStep3CompletedAt),
+    step4CompletedAt: formatDateTimeForResponse(emp.onboardingStep4CompletedAt),
+    step5CompletedAt: formatDateTimeForResponse(emp.onboardingStep5CompletedAt),
+    step6StartedAt: formatDateTimeForResponse(emp.onboardingStep6StartedAt),
+    step6LastReviewAt: formatDateTimeForResponse(emp.onboardingStep6LastReviewAt),
     updatedBy: emp.onboardingStep1UpdatedBy || "System",
-    updatedAt: emp.onboardingStep1UpdatedAt?.toISOString() || null,
+    updatedAt: formatDateTimeForResponse(emp.onboardingStep1UpdatedAt),
     notes: emp.onboardingStep1Notes || "",
   };
 }
@@ -103,7 +107,7 @@ export async function GET() {
       department: emp.department,
       manager: emp.manager,
       position: emp.position,
-      joinDate: emp.joinDate.toISOString().split("T")[0],
+      joinDate: formatDateForResponse(emp.joinDate),
       workAuthorizationStatus: emp.workAuthorizationStatus,
       staffWorkLocation: emp.staffWorkLocation || "USA",
       employeeType: emp.employeeType || "Full time",
@@ -113,8 +117,8 @@ export async function GET() {
       onboarding: formatOnboarding(emp),
       weeklyRecords: emp.weeklyRecords.map((record: any) => ({
         recordId: record.id,
-        startDate: record.startDate.toISOString().split("T")[0],
-        endDate: record.endDate.toISOString().split("T")[0],
+        startDate: formatDateForResponse(record.startDate),
+        endDate: formatDateForResponse(record.endDate),
         plannedWorkHours: record.plannedWorkHours,
         actualWorkHours: record.actualWorkHours,
         assignedTasks: record.assignedTasks,
@@ -209,7 +213,7 @@ export async function POST(request: Request) {
       department: employee.department,
       manager: employee.manager,
       position: employee.position,
-      joinDate: employee.joinDate.toISOString().split("T")[0],
+      joinDate: formatDateForResponse(employee.joinDate),
       workAuthorizationStatus: employee.workAuthorizationStatus,
       staffWorkLocation: employee.staffWorkLocation || "USA",
       employeeType: (employee as any).employeeType || "Full time",

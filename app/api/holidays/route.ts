@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { parseDateForDatabase } from "@/lib/dateUtils";
+import { formatDateForResponse, parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 
 type HolidayLocation = "USA" | "Taiwan";
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
       holidays.map((holiday) => ({
         id: holiday.id,
         name: holiday.name,
-        date: holiday.date.toISOString().split("T")[0],
+        date: formatDateForResponse(holiday.date),
         year: holiday.year,
         workLocation: holiday.workLocation || "USA",
         isPaid: holiday.isPaid,
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       {
         id: created.id,
         name: created.name,
-        date: created.date.toISOString().split("T")[0],
+        date: formatDateForResponse(created.date),
         year: created.year,
         workLocation: created.workLocation || "USA",
         isPaid: created.isPaid,

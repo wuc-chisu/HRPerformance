@@ -16,6 +16,89 @@ const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
+const PACIFIC_TIMEZONE = 'America/Los_Angeles';
+
+const DATE_ONLY_COLUMNS = new Set([
+  'joinDate',
+  'startDate',
+  'endDate',
+  'date',
+  'periodStart',
+  'periodEnd',
+  'occurrenceDate',
+  'decisionDate',
+  'noticeDate',
+  'lastWorkingDate',
+  'dateCompleted',
+]);
+
+function extractPacificParts(date, includeTime) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: PACIFIC_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    ...(includeTime
+      ? {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          fractionalSecondDigits: 3,
+          hour12: false,
+          timeZoneName: 'shortOffset',
+        }
+      : {}),
+  });
+
+  const parts = formatter.formatToParts(date);
+  const byType = new Map(parts.map((part) => [part.type, part.value]));
+
+  return {
+    year: byType.get('year') || '0000',
+    month: byType.get('month') || '01',
+    day: byType.get('day') || '01',
+    hour: byType.get('hour') || '00',
+    minute: byType.get('minute') || '00',
+    second: byType.get('second') || '00',
+    fractionalSecond: byType.get('fractionalSecond') || '000',
+    offsetLabel: byType.get('timeZoneName') || 'GMT+0',
+  };
+}
+
+function parseOffsetLabelToIso(offsetLabel) {
+  const match = offsetLabel.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+  if (!match) {
+    return 'Z';
+  }
+
+  const sign = match[1];
+  const hours = match[2].padStart(2, '0');
+  const minutes = (match[3] || '00').padStart(2, '0');
+  return `${sign}${hours}:${minutes}`;
+}
+
+function formatDateInPacific(date) {
+  const parts = extractPacificParts(date, false);
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function formatDateTimeInPacific(date) {
+  const parts = extractPacificParts(date, true);
+  const offset = parseOffsetLabelToIso(parts.offsetLabel);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}.${parts.fractionalSecond}${offset}`;
+}
+
+function serializeFieldValue(columnName, value) {
+  if (value instanceof Date) {
+    if (DATE_ONLY_COLUMNS.has(columnName)) {
+      return formatDateInPacific(value);
+    }
+    return formatDateTimeInPacific(value);
+  }
+
+  return value;
+}
+
 const outputFile = process.argv[2];
 if (!outputFile) {
   console.error('Usage: node export-data.cjs <output-file>');
@@ -75,7 +158,7 @@ async function buildTree(client, tableName, whereCol, whereVal, childrenOf, fkCo
     const out = {};
     for (const [col, val] of Object.entries(row)) {
       if (!STRIP_COLS.has(col) && !fkCols.has(col)) {
-        out[col] = val;
+        out[col] = serializeFieldValue(col, val);
       }
     }
     // Recursively attach children (row.id is available from SELECT * even though it's not in `out`)

@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { parseDateForDatabase } from "@/lib/dateUtils";
+import { formatDateForResponse, parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 
 // GET single weekly record by id
@@ -21,8 +21,8 @@ export async function GET(
 
     return NextResponse.json({
       recordId: record.id,
-      startDate: record.startDate.toISOString().split("T")[0],
-      endDate: record.endDate.toISOString().split("T")[0],
+      startDate: formatDateForResponse(record.startDate),
+      endDate: formatDateForResponse(record.endDate),
       plannedWorkHours: record.plannedWorkHours,
       actualWorkHours: record.actualWorkHours,
       assignedTasks: record.assignedTasks,

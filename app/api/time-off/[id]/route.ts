@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { formatDateForResponse, formatDateTimeForResponse } from "@/lib/dateUtils";
 import { allocateHoursAcrossOverlaps, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
 import { NextResponse } from "next/server";
 
@@ -203,14 +204,14 @@ export async function PATCH(
       department: response.employee?.department,
       requestType: response.requestType,
       status: response.status,
-      startDate: response.startDate.toISOString().split("T")[0],
-      endDate: response.endDate.toISOString().split("T")[0],
+      startDate: formatDateForResponse(response.startDate),
+      endDate: formatDateForResponse(response.endDate),
       hours: response.hours,
       reason: response.reason || "",
       managerNote: response.managerNote || "",
-      approvedAt: response.approvedAt?.toISOString() || null,
-      plannedHoursAdjustedAt: response.plannedHoursAdjustedAt?.toISOString() || null,
-      createdAt: response.createdAt.toISOString(),
+      approvedAt: formatDateTimeForResponse(response.approvedAt),
+      plannedHoursAdjustedAt: formatDateTimeForResponse(response.plannedHoursAdjustedAt),
+      createdAt: formatDateTimeForResponse(response.createdAt),
     });
   } catch (error) {
     console.error("Error updating time-off request:", error);
