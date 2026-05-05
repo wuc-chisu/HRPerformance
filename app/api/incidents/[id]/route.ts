@@ -5,7 +5,6 @@ import {
   syncAutomaticWarningsForEmployee,
 } from "@/lib/incidentTracking";
 import { parseDateForDatabase } from "@/lib/dateUtils";
-import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function PATCH(
@@ -56,7 +55,7 @@ export async function PATCH(
       );
     }
 
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await prisma.$transaction(async (tx: any) => {
       const transaction = tx as any;
 
       const updatedRecord = await transaction.incidentRecord.update({
