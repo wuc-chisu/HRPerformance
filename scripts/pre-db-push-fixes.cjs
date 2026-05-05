@@ -11,12 +11,28 @@ async function dedupeHolidayUniqueKey(client) {
       return;
     }
 
+    const cols = await client.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'Holiday';
+    `);
+    const colSet = new Set(cols.rows.map((r) => r.column_name));
+
+    const hasWorkLocation = colSet.has("workLocation");
+    const hasCreatedAt = colSet.has("createdAt");
+
+    const partitionBy = hasWorkLocation
+      ? '"name", "date", "workLocation"'
+      : '"name", "date"';
+    const orderBy = hasCreatedAt ? '"createdAt" ASC, id ASC' : 'id ASC';
+
     const duplicateCountResult = await client.query(`
       SELECT COUNT(*)::int AS duplicate_rows
       FROM (
-        SELECT "name", "date", "workLocation", COUNT(*)
+        SELECT ${partitionBy}, COUNT(*)
         FROM "Holiday"
-        GROUP BY "name", "date", "workLocation"
+        GROUP BY ${partitionBy}
         HAVING COUNT(*) > 1
       ) d;
     `);
@@ -32,8 +48,8 @@ async function dedupeHolidayUniqueKey(client) {
         SELECT
           id,
           ROW_NUMBER() OVER (
-            PARTITION BY "name", "date", "workLocation"
-            ORDER BY "createdAt" ASC, id ASC
+            PARTITION BY ${partitionBy}
+            ORDER BY ${orderBy}
           ) AS rn
         FROM "Holiday"
       )
@@ -43,7 +59,9 @@ async function dedupeHolidayUniqueKey(client) {
         AND r.rn > 1;
     `);
 
-    console.log(`⚠️  Removed ${deleted.rowCount || 0} duplicate Holiday rows before db push.`);
+    console.log(
+      `⚠️  Removed ${deleted.rowCount || 0} duplicate Holiday rows before db push (${hasWorkLocation ? "name/date/workLocation" : "name/date"} key).`
+    );
   } catch (error) {
     console.error("❌ Pre-sync Holiday dedupe failed:", error);
     throw error;
