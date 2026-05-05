@@ -1,12 +1,14 @@
 {
   "name": "hr-app",
   "engines": {
-    "node": ">=22.12.0"
+    "node": "22.x"
   },
   "type": "module",
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
+    "prebuild": "prisma generate",
     "dev": "bash scripts/verify-db-setup.sh && next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
