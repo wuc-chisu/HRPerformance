@@ -500,7 +500,18 @@ export async function PUT(
         (employee as any).professionalDevelopmentRecords
       ),
       onboarding: formatOnboarding(employee),
-      weeklyRecords: employee.weeklyRecords.map((record) => ({
+      weeklyRecords: (employee.weeklyRecords as any[]).map((record: {
+        startDate: Date;
+        endDate: Date;
+        plannedWorkHours: number;
+        actualWorkHours: number;
+        assignedTasks: number;
+        assignedTasksDetails?: unknown;
+        weeklyOverdueTasks: number;
+        overdueTasksDetails?: unknown;
+        allOverdueTasks?: number;
+        allOverdueTasksDetails?: unknown;
+      }) => ({
         startDate: formatDateForResponse(record.startDate),
         endDate: formatDateForResponse(record.endDate),
         plannedWorkHours: record.plannedWorkHours,

@@ -10,6 +10,8 @@
     "dev": "bash scripts/verify-db-setup.sh && next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
+    "start:production": "bash scripts/setup-production-db.sh && next start -p 3001",
+    "db:setup": "bash scripts/setup-production-db.sh",
     "lint": "eslint",
     "setup-db": "npx prisma migrate deploy && node prisma/seed-departments.cjs",
     "seed": "node scripts/safe-seed.cjs",
