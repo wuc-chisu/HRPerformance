@@ -151,7 +151,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const record = await prisma.$transaction(async (rawTx) => {
+    const record = await prisma.$transaction(async (rawTx: any) => {
       const tx = rawTx as unknown as TransactionClient;
 
       const createdRecord = await tx.weeklyRecord.create({

@@ -121,7 +121,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    const updated = await prisma.$transaction(async (rawTx) => {
+    const updated = await prisma.$transaction(async (rawTx: any) => {
       const tx = rawTx as unknown as TransactionClient;
       const existing = await tx.timeOffRequest.findUnique({
         where: { id },
