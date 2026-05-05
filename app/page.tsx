@@ -95,7 +95,20 @@ export default function Home() {
       const response = await fetch("/api/employees");
       if (!response.ok) throw new Error("Failed to fetch employees");
       const data = await response.json();
-      setEmployees(data);
+      const normalizedEmployees = Array.isArray(data)
+        ? data.map((employee: any) => ({
+            ...employee,
+            weeklyRecords: Array.isArray(employee?.weeklyRecords)
+              ? employee.weeklyRecords
+              : [],
+            professionalDevelopmentRecords: Array.isArray(
+              employee?.professionalDevelopmentRecords
+            )
+              ? employee.professionalDevelopmentRecords
+              : [],
+          }))
+        : [];
+      setEmployees(normalizedEmployees);
     } catch (error) {
       console.error("Error fetching employees:", error);
       alert("Failed to load employees");
