@@ -15,6 +15,11 @@ fi
 echo "📦 Running Prisma migrations..."
 npx prisma migrate deploy
 
+# Safety sync: if schema changes were added without migrations,
+# ensure production DB still matches current Prisma schema.
+echo "🧩 Syncing Prisma schema (db push)..."
+npx prisma db push
+
 # Regenerate Prisma client to match current schema.
 echo "⚙️  Generating Prisma client..."
 npx prisma generate
