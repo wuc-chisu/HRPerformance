@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma";
 import { employees as sampleEmployees } from "../lib/employees";
+import type { Prisma } from "@prisma/client";
 
 async function main() {
   // Check if database already has data
@@ -29,11 +30,11 @@ async function main() {
             plannedWorkHours: r.plannedWorkHours,
             actualWorkHours: r.actualWorkHours,
             assignedTasks: r.assignedTasks,
-            assignedTasksDetails: r.assignedTasksDetails || [],
+            assignedTasksDetails: (r.assignedTasksDetails || []) as unknown as Prisma.InputJsonValue,
             weeklyOverdueTasks: r.weeklyOverdueTasks,
-            overdueTasksDetails: r.overdueTasksDetails || [],
+            overdueTasksDetails: (r.overdueTasksDetails || []) as unknown as Prisma.InputJsonValue,
             allOverdueTasks: r.allOverdueTasks || 0,
-            allOverdueTasksDetails: r.allOverdueTasksDetails || [],
+            allOverdueTasksDetails: (r.allOverdueTasksDetails || []) as unknown as Prisma.InputJsonValue,
             managerComment: null,
           })),
         },

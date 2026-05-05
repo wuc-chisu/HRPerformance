@@ -62,7 +62,17 @@ type WeeklyRecordModel = {
   }) => Promise<unknown>;
 };
 
+type HolidayModel = {
+  findMany: (args: {
+    where: {
+      workLocation?: string;
+      date?: { gte?: Date; lte?: Date };
+    };
+  }) => Promise<Array<{ id: string; date: Date; workLocation: string }>>;
+};
+
 type TransactionClient = {
+  holiday: HolidayModel;
   timeOffRequest: PendingTimeOffModel;
   weeklyRecord: WeeklyRecordModel;
 };

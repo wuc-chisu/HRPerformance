@@ -1,6 +1,6 @@
 "use client";
 
-import { Employee, WeeklyRecord } from "@/data/employees";
+import { Employee, WeeklyRecord } from "@/src/data/employees";
 
 interface WeeklyRecordsTableProps {
   employee: Employee;

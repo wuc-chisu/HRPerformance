@@ -1,6 +1,6 @@
 "use client";
 
-import { employees, Employee } from "@/data/employees";
+import { employees, Employee } from "@/src/data/employees";
 
 export default function PerformanceDashboard() {
   const stats = {

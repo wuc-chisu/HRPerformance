@@ -4,11 +4,11 @@ import { NextResponse } from "next/server";
 // PUT - Update a department
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { name } = await request.json();
-    const { id } = params;
+    const { id } = await context.params;
 
     if (!name || typeof name !== "string" || name.trim() === "") {
       return NextResponse.json(
@@ -49,10 +49,10 @@ export async function PUT(
 // DELETE - Delete a department
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
 
     // Check if any employees have this department
     const employeeCount = await prisma.employee.count({

@@ -1,6 +1,6 @@
 "use client";
 
-import { Employee } from "@/data/employees";
+import { Employee } from "@/src/data/employees";
 
 interface EmployeeCardProps {
   employee: Employee;

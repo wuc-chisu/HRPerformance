@@ -41,6 +41,8 @@ function buildMonthlyFallbackComment(params: {
   avgPastDue: number;
   trend: string;
   lowAreas: string[];
+  priorityDeductionSummary?: string;
+  hasTaskPriorityDeduction?: boolean;
   isExcellentPerformance?: boolean;
 }) {
   const {

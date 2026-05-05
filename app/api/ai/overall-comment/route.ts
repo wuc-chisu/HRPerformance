@@ -25,6 +25,8 @@ function buildWeeklyFallbackComment(params: {
   };
   lowAreas: string[];
   workAuthorizationStatus?: string;
+  taskPriorityDeductionSummary?: string;
+  hasTaskPriorityDeduction?: boolean;
   isExcellentPerformance?: boolean;
 }) {
   const {
