@@ -39,8 +39,11 @@ model Employee {
   onboardingStep2Completed      Boolean                     @default(true)
   onboardingStep2Forms          Json                        @default("[]")
   onboardingStep3Completed      Boolean                     @default(true)
+  onboardingStep3Forms          Json                        @default("[]")
   onboardingStep4Completed      Boolean                     @default(true)
+  onboardingStep4Forms          Json                        @default("[]")
   onboardingStep5Completed      Boolean                     @default(true)
+  professionalDevelopmentRecords Json                       @default("[]")
   onboardingStep6AnnualTracking Boolean                     @default(false)
   onboardingStep1UpdatedBy      String                      @default("System")
   onboardingStep1UpdatedAt      DateTime?

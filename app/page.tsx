@@ -1,7 +1,18 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Employee, HolidayRecord, OnboardingStep1Update, OnboardingStep2Update, TimeOffRequest, TimeOffStatus, TimeOffType } from "@/lib/employees";
+import {
+  Employee,
+  HolidayRecord,
+  OnboardingStep1Update,
+  OnboardingStep2Update,
+  OnboardingStep3Update,
+  OnboardingStep4Update,
+  ProfessionalDevelopmentRecord,
+  TimeOffRequest,
+  TimeOffStatus,
+  TimeOffType,
+} from "@/lib/employees";
 import { formatCompactDate, formatShortDate, parseDateInPacific } from "@/lib/dateUtils";
 import EmployeeCard from "@/components/EmployeeCard";
 import WeeklyRecordsTable from "@/components/WeeklyRecordsTable";
@@ -13,6 +24,7 @@ import MonthlyPerformanceReport from "@/components/MonthlyPerformanceReport";
 import IncidentTrackingTable from "@/components/IncidentTrackingTable";
 import OnboardingModule from "@/components/OnboardingModule";
 import OffboardingModule from "@/components/OffboardingModule";
+import ProfessionalDevelopmentManager from "@/components/ProfessionalDevelopmentManager";
 import TimeOffManager from "@/components/TimeOffManager";
 
 export default function Home() {
@@ -23,7 +35,7 @@ export default function Home() {
     null
   );
   const [activeView, setActiveView] = useState<
-    "dashboard" | "employees" | "manage" | "manage-performance" | "onboarding" | "offboarding" | "incident-tracking" | "time-off"
+    "dashboard" | "employees" | "manage" | "manage-performance" | "onboarding" | "offboarding" | "professional-development" | "incident-tracking" | "time-off"
   >("dashboard");
   const [selectedEmployeeForPerformance, setSelectedEmployeeForPerformance] =
     useState<string | null>(null);
@@ -339,42 +351,15 @@ export default function Home() {
     employeeId: string,
     payload: OnboardingStep1Update
   ) => {
-    const employee = employees.find((entry) => entry.id === employeeId);
-    if (!employee) {
-      alert("Unable to save onboarding: Employee not found");
-      return;
-    }
-
-    const currentOnboarding = employee.onboarding;
-    const step1Completed =
-      payload.systemAccess.gmail &&
-      payload.systemAccess.clickup &&
-      payload.systemAccess.moodle &&
-      payload.systemAccess.googleDrive;
-
-    const response = await fetch(`/api/employees/${employeeId}`, {
-      method: "PUT",
+    const response = await fetch(`/api/employees/${employeeId}/onboarding`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...employee,
-        onboarding: {
+        step: 1,
+        payload: {
           checklistAssigned: payload.checklistAssigned,
-          enrolled: payload.checklistAssigned,
-          step1Completed,
           systemAccess: payload.systemAccess,
-          step2Completed: currentOnboarding?.step2Completed || false,
-          step3Completed: currentOnboarding?.step3Completed || false,
-          step4Completed: currentOnboarding?.step4Completed || false,
-          step5Completed: currentOnboarding?.step5Completed || false,
-          step6AnnualTracking: currentOnboarding?.step6AnnualTracking || false,
-          step2CompletedAt: currentOnboarding?.step2CompletedAt || null,
-          step3CompletedAt: currentOnboarding?.step3CompletedAt || null,
-          step4CompletedAt: currentOnboarding?.step4CompletedAt || null,
-          step5CompletedAt: currentOnboarding?.step5CompletedAt || null,
-          step6StartedAt: currentOnboarding?.step6StartedAt || null,
-          step6LastReviewAt: currentOnboarding?.step6LastReviewAt || null,
           updatedBy: payload.updatedBy,
-          updatedAt: new Date().toISOString(),
           notes: payload.notes || "",
         },
       }),
@@ -392,47 +377,13 @@ export default function Home() {
     employeeId: string,
     payload: OnboardingStep2Update
   ) => {
-    const employee = employees.find((entry) => entry.id === employeeId);
-    if (!employee) {
-      alert("Unable to save forms: Employee not found");
-      return;
-    }
-
-    const currentOnboarding = employee.onboarding;
-    const step2Completed = payload.forms.every((form) => form.status === "Approved");
-
-    const response = await fetch(`/api/employees/${employeeId}`, {
-      method: "PUT",
+    const response = await fetch(`/api/employees/${employeeId}/onboarding`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...employee,
-        onboarding: {
-          checklistAssigned: currentOnboarding?.checklistAssigned || false,
-          enrolled: currentOnboarding?.checklistAssigned || false,
-          step1Completed: currentOnboarding?.step1Completed || false,
-          systemAccess: currentOnboarding?.systemAccess || {
-            gmail: false,
-            clickup: false,
-            moodle: false,
-            googleDrive: false,
-          },
-          step2Completed,
-          step2Forms: payload.forms,
-          step3Completed: currentOnboarding?.step3Completed || false,
-          step4Completed: currentOnboarding?.step4Completed || false,
-          step5Completed: currentOnboarding?.step5Completed || false,
-          step6AnnualTracking: currentOnboarding?.step6AnnualTracking || false,
-          step2CompletedAt: step2Completed
-            ? currentOnboarding?.step2CompletedAt || new Date().toISOString()
-            : null,
-          step3CompletedAt: currentOnboarding?.step3CompletedAt || null,
-          step4CompletedAt: currentOnboarding?.step4CompletedAt || null,
-          step5CompletedAt: currentOnboarding?.step5CompletedAt || null,
-          step6StartedAt: currentOnboarding?.step6StartedAt || null,
-          step6LastReviewAt: currentOnboarding?.step6LastReviewAt || null,
-          updatedBy: currentOnboarding?.updatedBy || "HR Manager",
-          updatedAt: currentOnboarding?.updatedAt || new Date().toISOString(),
-          notes: currentOnboarding?.notes || "",
+        step: 2,
+        payload: {
+          forms: payload.forms,
         },
       }),
     });
@@ -440,6 +391,105 @@ export default function Home() {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.details || errorData.error || "Failed to update forms");
+    }
+
+    await fetchEmployees();
+  };
+
+  const handleSaveOnboardingStep3 = async (
+    employeeId: string,
+    payload: OnboardingStep3Update
+  ) => {
+    const response = await fetch(`/api/employees/${employeeId}/onboarding`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        step: 3,
+        payload: {
+          forms: payload.forms,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.details || errorData.error || "Failed to update HR policy sign-off");
+    }
+
+    await fetchEmployees();
+  };
+
+  const handleSaveOnboardingStep4 = async (
+    employeeId: string,
+    payload: OnboardingStep4Update
+  ) => {
+    const response = await fetch(`/api/employees/${employeeId}/onboarding`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        step: 4,
+        payload: {
+          forms: payload.forms,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.details || errorData.error || "Failed to update trainings");
+    }
+
+    await fetchEmployees();
+  };
+
+  const handleSaveOnboardingStep5 = async (
+    employeeId: string,
+    activated: boolean
+  ) => {
+    const response = await fetch(`/api/employees/${employeeId}/onboarding`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        step: 5,
+        payload: {
+          activated,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.details || errorData.error || "Failed to update activation status");
+    }
+
+    await fetchEmployees();
+  };
+
+  const handleSaveProfessionalDevelopment = async (
+    employeeId: string,
+    records: ProfessionalDevelopmentRecord[]
+  ) => {
+    const employee = employees.find((entry) => entry.id === employeeId);
+    if (!employee) {
+      throw new Error("Employee not found");
+    }
+
+    const response = await fetch(`/api/employees/${employeeId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...employee,
+        professionalDevelopmentRecords: records,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.details ||
+          errorData.error ||
+          "Failed to update professional development records"
+      );
     }
 
     await fetchEmployees();
@@ -848,6 +898,19 @@ export default function Home() {
             }`}
           >
             ⚠️ Mistakes & Warnings
+          </button>
+          <button
+            onClick={() => {
+              setActiveView("professional-development");
+              setSelectedEmployeeId(null);
+            }}
+            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              activeView === "professional-development"
+                ? "bg-amber-400 text-white shadow-md"
+                : "bg-amber-100 text-gray-700 border border-amber-200 hover:bg-amber-50"
+            }`}
+          >
+            🎓 Professional Development
           </button>
           <button
             onClick={() => {
@@ -1306,11 +1369,21 @@ export default function Home() {
             employees={employees}
             onSaveStep1={handleSaveOnboardingStep1}
             onSaveStep2={handleSaveOnboardingStep2}
+            onSaveStep3={handleSaveOnboardingStep3}
+            onSaveStep4={handleSaveOnboardingStep4}
+            onSaveStep5={handleSaveOnboardingStep5}
           />
         )}
 
         {activeView === "offboarding" && (
           <OffboardingModule employees={employees} onRecordsChanged={fetchOffboardingRecords} />
+        )}
+
+        {activeView === "professional-development" && (
+          <ProfessionalDevelopmentManager
+            employees={activeEmployees}
+            onSaveRecords={handleSaveProfessionalDevelopment}
+          />
         )}
 
         {activeView === "incident-tracking" && (

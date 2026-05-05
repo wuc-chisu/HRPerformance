@@ -24,6 +24,14 @@ export interface WeeklyRecord {
   managerComment?: string; // Optional manager comment for performance evaluation
 }
 
+export interface ProfessionalDevelopmentRecord {
+  id: string;
+  title: string;
+  date: string; // ISO date format YYYY-MM-DD
+  hours: number;
+  createdAt?: string;
+}
+
 export type TimeOffType =
   | "PTO"
   | "SICK_LEAVE"
@@ -67,7 +75,7 @@ export interface OnboardingSystemAccess {
   googleDrive: boolean;
 }
 
-export type OnboardingFormStatus = "Pending" | "Submitted" | "Approved";
+export type OnboardingFormStatus = "Pending" | "Submitted" | "Approved" | "N/A";
 
 export interface OnboardingFormItem {
   name: string;
@@ -77,6 +85,18 @@ export interface OnboardingFormItem {
   url?: string;
   extraUrls?: string[];
 }
+
+export const REQUIRED_HR_POLICY_SIGNOFFS: string[] = [
+  "HR Policy",
+  "Progressive Discipline & Performance Warning Policy",
+  "Click Up Useage Acknowledgement",
+];
+
+export const REQUIRED_TRAINING_ITEMS: string[] = [
+  "Annual: PD/CEU Training Certification",
+  "Annual: FERPA training completed certificate",
+  "Annual: Training exam 1/year",
+];
 
 export const REQUIRED_ONBOARDING_FORMS: string[] = [
   "Application Form",
@@ -91,28 +111,16 @@ export const REQUIRED_ONBOARDING_FORMS: string[] = [
   "Form W-4",
   "Form I-9 (Work Authorization)",
   "Verification Form",
-  "Form W-9",
+  "Form W-2 (Employee)",
+  "Form W-9 (Contractor)",
   "ID Copy (U.S. Passport or Green Card)",
   "Current Resume",
   "Copy of Diplomas or Degrees",
   "Official Transcripts",
   "Recent Photo (2x3)",
-  "PD Training Certification",
-  "Faculty/Staff DE Exam",
   "Generate Orientation Certificate",
   "Notify Admin Assistant: Generate Staff Contract",
-  "Notify Compliance Dept: Generate Personnel Report",
-  "Read through employee manual",
-  "Read catalog and signed",
-  "Pass orientation exam (70% or higher)",
-  "Annual: PD/CEU Training Certification",
-  "Annual: Personnel Report",
-  "Annual: FERPA training completed certificate",
-  "Annual: Training exam 1/year",
-  "Annual: Training exam part 1 reference info",
-  "Annual: Training exam part 2 reference info",
-  "Annual: Training exam part 3 reference info",
-  "Annual: Training exam part 4 reference info",
+  "Annual: Notify Compliance Dept: Generate Personnel Report",
 ];
 
 export interface OnboardingState {
@@ -123,7 +131,9 @@ export interface OnboardingState {
   step2Completed: boolean;
   step2Forms: OnboardingFormItem[];
   step3Completed: boolean;
+  step3Forms: OnboardingFormItem[];
   step4Completed: boolean;
+  step4Forms: OnboardingFormItem[];
   step5Completed: boolean;
   step6AnnualTracking: boolean;
   step2CompletedAt?: string | null;
@@ -145,6 +155,14 @@ export interface OnboardingStep1Update {
 }
 
 export interface OnboardingStep2Update {
+  forms: OnboardingFormItem[];
+}
+
+export interface OnboardingStep3Update {
+  forms: OnboardingFormItem[];
+}
+
+export interface OnboardingStep4Update {
   forms: OnboardingFormItem[];
 }
 
@@ -177,6 +195,7 @@ export interface Employee {
   officeSchedule?: OfficeSchedule | null;
   overallOverdueTasks?: number;
   onboarding?: OnboardingState;
+  professionalDevelopmentRecords?: ProfessionalDevelopmentRecord[];
   weeklyRecords: WeeklyRecord[];
   timeOffRequests?: TimeOffRequest[];
 }
