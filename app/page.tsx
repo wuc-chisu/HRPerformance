@@ -68,6 +68,12 @@ export default function Home() {
   const [performanceView, setPerformanceView] = useState<"weekly" | "monthly">("weekly");
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [holidays, setHolidays] = useState<HolidayRecord[]>([]);
+  const [dbInfo, setDbInfo] = useState<{
+    database: string;
+    user: string;
+    server: string;
+    port: number | null;
+  } | null>(null);
 
   // Generate available years (current year ± 5 years)
   const currentYear = new Date().getFullYear();
@@ -83,6 +89,7 @@ export default function Home() {
     fetchDepartments();
     fetchTimeOffRequests();
     fetchHolidays(selectedYear);
+    fetchDbInfo();
   }, []);
 
   useEffect(() => {
@@ -159,6 +166,24 @@ export default function Home() {
       setHolidays(data);
     } catch (error) {
       console.error("Error fetching holidays:", error);
+    }
+  };
+
+  const fetchDbInfo = async () => {
+    try {
+      const response = await fetch("/api/system/db-info");
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data?.ok) {
+        setDbInfo({
+          database: data.database,
+          user: data.user,
+          server: data.server,
+          port: data.port,
+        });
+      }
+    } catch {
+      // Keep UI running even if db info endpoint fails.
     }
   };
 
@@ -856,6 +881,12 @@ export default function Home() {
           <p className="text-white opacity-90">
             Monitor employee performance, tasks, and work hours
           </p>
+          {dbInfo && (
+            <p className="mt-3 inline-block rounded-md bg-white/20 px-3 py-1 text-xs text-white">
+              DB: {dbInfo.database} @ {dbInfo.server}
+              {dbInfo.port ? `:${dbInfo.port}` : ""} (user: {dbInfo.user})
+            </p>
+          )}
         </div>
       </header>
 
