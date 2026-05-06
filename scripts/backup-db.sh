@@ -7,6 +7,12 @@ BACKUP_DIR="backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="${BACKUP_DIR}/hrperformance_${TIMESTAMP}.sql"
 
+# Resolve DATABASE_URL from environment first, then .env.local.
+DB_URL="${DATABASE_URL}"
+if [ -z "$DB_URL" ] && [ -f ".env.local" ]; then
+  DB_URL=$(grep -E '^DATABASE_URL=' .env.local | head -1 | cut -d'=' -f2- | sed 's/^"//; s/"$//')
+fi
+
 # Create backup directory if it doesn't exist
 mkdir -p "$BACKUP_DIR"
 
@@ -30,9 +36,20 @@ fi
 echo "Creating backup: $BACKUP_FILE"
 echo "Using: $PG_DUMP"
 
-"$PG_DUMP" hrperformance > "$BACKUP_FILE"
+if [ -n "$DB_URL" ]; then
+  echo "Source: DATABASE_URL"
+  "$PG_DUMP" "$DB_URL" > "$BACKUP_FILE"
+else
+  echo "Source: local database name hrperformance"
+  "$PG_DUMP" hrperformance > "$BACKUP_FILE"
+fi
 
 if [ $? -eq 0 ]; then
+    if [ ! -s "$BACKUP_FILE" ]; then
+      echo "❌ Backup file is empty!"
+      rm -f "$BACKUP_FILE"
+      exit 1
+    fi
     echo "✅ Backup created successfully: $BACKUP_FILE"
     
     # Keep only last 30 backups
@@ -46,6 +63,7 @@ if [ $? -eq 0 ]; then
     COUNT=$(ls -1 "$BACKUP_DIR"/*.sql 2>/dev/null | wc -l)
     echo "Total backups: $COUNT"
 else
+  rm -f "$BACKUP_FILE"
     echo "❌ Backup failed!"
     exit 1
 fi

@@ -172,7 +172,10 @@ async function buildTree(client, tableName, whereCol, whereVal, childrenOf, fkCo
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 async function main() {
-  const client = new Client({ database: 'hrperformance' });
+  const connectionString = process.env.DATABASE_URL;
+  const client = connectionString
+    ? new Client({ connectionString })
+    : new Client({ database: 'hrperformance' });
   await client.connect();
 
   try {

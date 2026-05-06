@@ -103,9 +103,16 @@ cd hrperformance
 npm install
 ```
 
-### Step 3 — Create the environment file
+### Step 3 — Create environment files (local vs production)
 
-Create a file named `.env.local` in the project root. This file is **not included in Git** and must be created manually on each new server.
+Keep local and production values separate.
+
+- Local development: copy `.env.local.example` to `.env.local`
+- Production (Ubuntu/Dotploy): use `.env.production.example` values in your deployment environment variables
+
+Do not reuse local `DATABASE_URL` for production.
+
+Create a file named `.env.local` in the project root for local development only.
 
 ```bash
 # .env.local

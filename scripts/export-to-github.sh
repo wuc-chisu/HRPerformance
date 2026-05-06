@@ -8,6 +8,12 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 EXPORT_FILE="${EXPORT_DIR}/employees_${TIMESTAMP}.json"
 LATEST_LINK="${EXPORT_DIR}/employees_latest.json"
 
+# Resolve DATABASE_URL from environment first, then .env.local.
+DB_URL="${DATABASE_URL}"
+if [ -z "$DB_URL" ] && [ -f ".env.local" ]; then
+  DB_URL=$(grep -E '^DATABASE_URL=' .env.local | head -1 | cut -d'=' -f2- | sed 's/^"//; s/"$//')
+fi
+
 # Create export directory if it doesn't exist
 mkdir -p "$EXPORT_DIR"
 
@@ -32,7 +38,11 @@ echo "📤 Exporting employee data from database..."
 
 # Use Node.js script to export all data (avoids COPY format encoding issues)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-NODE_OUTPUT=$(node "$SCRIPT_DIR/export-data.cjs" "$EXPORT_FILE" 2>&1)
+if [ -n "$DB_URL" ]; then
+  NODE_OUTPUT=$(DATABASE_URL="$DB_URL" node "$SCRIPT_DIR/export-data.cjs" "$EXPORT_FILE" 2>&1)
+else
+  NODE_OUTPUT=$(node "$SCRIPT_DIR/export-data.cjs" "$EXPORT_FILE" 2>&1)
+fi
 NODE_EXIT=$?
 
 if [ $NODE_EXIT -ne 0 ]; then
