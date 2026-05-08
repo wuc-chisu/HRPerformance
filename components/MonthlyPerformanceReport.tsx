@@ -284,7 +284,7 @@ San Jose, CA 95118`;
       if (generated) {
         setMonthlyComment(generated);
         setEditedComment(generated);
-        await saveMonthlyComment(generated, "AI comment generated and saved successfully.");
+        await saveMonthlyComment(generated);
         setIsEditing(false);
       }
     } catch (error) {

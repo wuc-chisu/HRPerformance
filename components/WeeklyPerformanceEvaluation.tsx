@@ -188,7 +188,7 @@ export default function WeeklyPerformanceEvaluation({
 
 Please find attached your Weekly Performance Report for the period of ${weekRange}.
 
-As previously announced, the Weekly Performance Evaluation system is now officially in effect beginning the week of February 9, 2026. Weekly reports will be used to calculate monthly performance averages in accordance with the Progressive Discipline & Performance Warning Policy.
+Weekly reports will be used to calculate monthly performance averages in accordance with the Progressive Discipline & Performance Warning Policy.
 
 Please review your report carefully, including:
 
