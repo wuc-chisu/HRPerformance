@@ -784,8 +784,33 @@ Whitewater University of California
           </div>
           {(() => {
             const breakdown = getTaskCompletionBreakdown(record);
+            const assignedDetails = record.assignedTasksDetails || [];
+            const priorityOrder = ["urgent", "high", "normal", "low", "no priority"] as const;
+            const priorityColors: Record<string, string> = {
+              urgent: "bg-red-100 text-red-700",
+              high: "bg-orange-100 text-orange-700",
+              normal: "bg-yellow-100 text-yellow-700",
+              low: "bg-blue-100 text-blue-700",
+              "no priority": "bg-gray-100 text-gray-600",
+            };
             return (
               <div className="text-xs text-gray-500 mt-2 space-y-1">
+                {assignedDetails.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {priorityOrder.map((p) => {
+                      const detail = assignedDetails.find((d) => d.priority === p);
+                      const count = detail?.count ?? 0;
+                      return (
+                        <span
+                          key={p}
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${priorityColors[p]} ${count === 0 ? "opacity-40" : ""}`}
+                        >
+                          {p.charAt(0).toUpperCase() + p.slice(1)}: {count}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
                 <p>
                   Total weighted: {breakdown.totalWeighted.toFixed(1)} | Incomplete: {breakdown.incompleteWeighted.toFixed(1)} | Completed: {breakdown.completedWeighted.toFixed(1)}
                 </p>
@@ -827,17 +852,49 @@ Whitewater University of California
           </div>
           {(() => {
             const breakdown = getPastDueTaskBreakdown(record);
+            const weeklyOverdueDetails = record.overdueTasksDetails || [];
             const allOverdueDetails = record.allOverdueTasksDetails || [];
-            const overdueBreakdown = allOverdueDetails.length
-              ? allOverdueDetails
-                  .map((detail) => `${detail.count} ${detail.priority}`)
-                  .join(", ")
-              : "none";
+            const priorityOrder = ["urgent", "high", "normal", "low", "no priority"] as const;
+            const priorityColors: Record<string, string> = {
+              urgent: "bg-red-100 text-red-700",
+              high: "bg-orange-100 text-orange-700",
+              normal: "bg-yellow-100 text-yellow-700",
+              low: "bg-blue-100 text-blue-700",
+              "no priority": "bg-gray-100 text-gray-600",
+            };
+            const renderPriorityBadges = (details: OverdueTaskDetail[]) => (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {priorityOrder.map((p) => {
+                  const detail = details.find((d) => d.priority === p);
+                  const count = detail?.count ?? 0;
+                  return (
+                    <span
+                      key={p}
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${priorityColors[p]} ${count === 0 ? "opacity-40" : ""}`}
+                    >
+                      {p.charAt(0).toUpperCase() + p.slice(1)}: {count}
+                    </span>
+                  );
+                })}
+              </div>
+            );
             return (
-              <div className="text-xs text-gray-500 mt-2 space-y-1">
-                <p>
-                  Overdue tasks: {overdueBreakdown}
-                </p>
+              <div className="text-xs text-gray-500 mt-2 space-y-2">
+                {weeklyOverdueDetails.length > 0 && (
+                  <div>
+                    <p className="font-medium text-gray-600">New this week:</p>
+                    {renderPriorityBadges(weeklyOverdueDetails)}
+                  </div>
+                )}
+                {allOverdueDetails.length > 0 && (
+                  <div>
+                    <p className="font-medium text-gray-600">All past due:</p>
+                    {renderPriorityBadges(allOverdueDetails)}
+                  </div>
+                )}
+                {weeklyOverdueDetails.length === 0 && allOverdueDetails.length === 0 && (
+                  <p>No overdue task details recorded.</p>
+                )}
                 <p>
                   Overdue weighted: {breakdown.overdueWeighted.toFixed(1)} | Assigned weighted: {breakdown.assignedWeighted.toFixed(1)}
                 </p>
