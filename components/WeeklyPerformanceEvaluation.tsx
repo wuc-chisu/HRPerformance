@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { WeeklyRecord } from "@/lib/employees";
+import { OverdueTaskDetail, WeeklyRecord } from "@/lib/employees";
 import { formatDateInPacific } from "@/lib/dateUtils";
 import {
   calculateWeeklyPerformanceScore,
@@ -384,17 +384,17 @@ Whitewater University of California
           `Your total score is ${scoreValue}, which is ${scoreLabel}. ` +
           `You ${workHoursStatus} assigned work hours and recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). ` +
           `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, which are pulling the total score down. ${priorityDeductionSummary}\n\n` +
-          `Strengths are limited this week; the focus should be on stabilizing execution and reducing overdue work. Past due management is ${score.pastDueTaskManagement.toFixed(2)}/30, which indicates overdue items are accumulating.\n\n` +
-          `Act now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks.`
+          `Critical areas requiring immediate attention: work hours fulfillment, task priority handling, task completion rate, and past due task management. Past due management is ${score.pastDueTaskManagement.toFixed(2)}/30, which indicates overdue items are accumulating.\n\n` +
+          `Act now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks. Manage all task updates in ClickUp every day so overdue work does not continue to build.`
         );
       }
       
       return (
         `Your total score is ${scoreValue}, which is ${scoreLabel}. ` +
-        `Work hours (${workRatio}) and task results need immediate improvement, and you recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). ` +
+        `Work hours (${workRatio}) and task results need immediate correction, and you recorded ${overdueCount} weekly overdue tasks (all overdue: ${allOverdueCount}). ` +
         `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, which are pulling the total score down. ${priorityDeductionSummary}\n\n` +
-        `Strengths are limited this week; the focus should be on stabilizing execution and reducing overdue work. Past due management is ${score.pastDueTaskManagement.toFixed(2)}/30, which indicates overdue items are accumulating.\n\n` +
-        `Act now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks.`
+        `Critical areas requiring immediate attention: work hours fulfillment, task priority handling, task completion rate, and past due task management. Past due management is ${score.pastDueTaskManagement.toFixed(2)}/30, which indicates overdue items are accumulating.\n\n` +
+        `Act now: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks. Manage all task updates in ClickUp every day so overdue work does not continue to build.`
       );
     }
 

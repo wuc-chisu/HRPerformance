@@ -39,6 +39,8 @@ function buildWeeklyFallbackComment(params: {
     isExcellentPerformance,
   } = params;
 
+  const needsUrgentImprovement = totalScore < 70;
+
   const strengthParts: string[] = [];
   if (score.taskPriorityHandling >= 16) {
     strengthParts.push(
@@ -68,6 +70,36 @@ function buildWeeklyFallbackComment(params: {
     );
   }
 
+  if (needsUrgentImprovement) {
+    const prioritySummary =
+      params.hasTaskPriorityDeduction && params.taskPriorityDeductionSummary
+        ? `${params.taskPriorityDeductionSummary} `
+        : "";
+    const paragraphOne =
+      `Your total score is ${totalScore.toFixed(2)} (${rating}), which is below expectation. ` +
+      `${workAuthorizationStatus === "H-1B" ? "You failed to fulfill assigned work hours" : "Work hours and task results need immediate correction"}, and you recorded ${record.weeklyOverdueTasks} weekly overdue tasks (all overdue: ${record.allOverdueTasks ?? 0}). ` +
+      `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20 and task completion is ${score.taskCompletionRate.toFixed(2)}/25, which are pulling the total score down. ${prioritySummary}`;
+
+    const paragraphTwo =
+      `Critical areas requiring immediate attention: ${lowAreas.length ? lowAreas.join(", ") : "Work Hours Fulfillment, Task Priority Handling, Task Completion Rate, and Past Due Task Management"}. ` +
+      `Your current scores are Work Hours Fulfillment ${score.workHoursFulfillment.toFixed(2)}/25, Task Priority Handling ${score.taskPriorityHandling.toFixed(2)}/20, Task Completion Rate ${score.taskCompletionRate.toFixed(2)}/25, and Past Due Task Management ${score.pastDueTaskManagement.toFixed(2)}/30. ` +
+      `Overdue work is accumulating and must be corrected immediately.`;
+
+    const paragraphThree =
+      `Corrective actions: 1) Plan the week using priority tiers before work starts, 2) Close all urgent/high items daily and track completions, 3) Review overdue items every morning and clear at least one before starting new tasks. ` +
+      `Manage all task updates in ClickUp every day so overdue work does not continue to build.`;
+
+    let urgentFallback = `${paragraphOne}\n\n${paragraphTwo}\n\n${paragraphThree}`;
+    if (urgentFallback.length > 1200) {
+      urgentFallback = urgentFallback.slice(0, 1199);
+      if (!/[.!?]$/.test(urgentFallback)) {
+        urgentFallback = `${urgentFallback.trimEnd()}.`;
+      }
+    }
+
+    return urgentFallback;
+  }
+
   if (isExcellentPerformance) {
     const paragraphOne =
       `You achieved an outstanding total score of ${totalScore.toFixed(2)} (${rating}) this week, reflecting excellent performance across all evaluation categories. ` +
@@ -89,14 +121,14 @@ function buildWeeklyFallbackComment(params: {
     return excellentFallback;
   }
 
-  const paragraphOne =
-    `You achieved a total score of ${totalScore.toFixed(2)} (${rating}) this week, and there are clear positives in your performance. ` +
-    `${strengthParts.slice(0, 2).join(". ")}. ` +
-    `These results show that you can deliver quality outcomes when you maintain consistent execution and prioritize key tasks.`;
-
   const lowAreaText = lowAreas.length
     ? lowAreas.join(", ")
     : "Past Due Task Management";
+  const strengthText = strengthParts.slice(0, 2).join(". ");
+  const paragraphOne =
+    `You achieved a total score of ${totalScore.toFixed(2)} (${rating}) this week. ` +
+    `${strengthText ? `${strengthText}. ` : ""}` +
+    `These results show that you can deliver quality outcomes when you maintain consistent execution and prioritize key tasks.`;
   const paragraphTwo =
     `However, critical areas require immediate attention: ${lowAreaText}. ` +
     `Your current scores are Work Hours Fulfillment ${score.workHoursFulfillment.toFixed(2)}/25, Task Priority Handling ${score.taskPriorityHandling.toFixed(2)}/20, Task Completion Rate ${score.taskCompletionRate.toFixed(2)}/25, and Past Due Task Management ${score.pastDueTaskManagement.toFixed(2)}/30. ` +
@@ -219,7 +251,8 @@ Requirements:
 ${isExcellentPerformance ? `- Structure requirement: Use exactly 2 paragraphs separated by a single blank line.
   1) Paragraph 1: celebrate the excellent performance, highlight all strong scoring areas with specific scores.
   2) Paragraph 2: encourage the employee to sustain this level of performance, mention keeping ClickUp tasks up to date and maintaining consistent work habits. Do NOT mention any improvement areas or suggest anything needs fixing.` : `- Use exactly 3 paragraphs separated by a single blank line. Do not add line breaks within a paragraph.
-- Highlight the 1–2 strongest areas.
+- Do NOT include praise, strengths, or positive commentary when the total score is below 70.
+- Paragraph 1 must state the score and directly describe the below-expectation result.
 - Clearly identify the 1–2 most critical performance issues.
 - Provide practical improvement guidance (4–6 clear, specific actions).
 - For each LOW category, include one concrete action with timing/ownership detail (for example: daily planning, end-of-day review, weekly target).
@@ -228,7 +261,7 @@ ${isExcellentPerformance ? `- Structure requirement: Use exactly 2 paragraphs se
 - CRITICAL: If Task Priority Handling direct deduction is greater than 0, you MUST explicitly mention the deduction amount and cause in paragraph 2 or 3 using the provided deduction summary.
 - When Task Priority Handling is discussed, explain the actual direct deduction reason using the provided deduction summary. Make clear that assigned tasks with no priority do cause a deduction even if completed.
 - Structure requirement (must follow):
-  1) Paragraph 1: what is good (strengths and positive outcomes),
+  1) Paragraph 1: below-expectation score and direct impact,
   2) Paragraph 2: critical areas needing immediate correction,
   3) Paragraph 3: detailed improvement plan with concrete next steps.
 - In paragraph 2 or 3, explicitly instruct the employee to manage tasks properly in ClickUp.`}
