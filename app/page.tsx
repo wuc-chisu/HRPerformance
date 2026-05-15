@@ -714,10 +714,16 @@ export default function Home() {
       throw new Error("Unable to save weekly record updates: Record not found");
     }
 
-    const mergedPayload = {
+    const mergedPayload: Record<string, unknown> = {
       ...record,
       ...updates,
     };
+
+    // Save Details to DB is primarily for staged task-detail edits.
+    // If managerComment is not part of staged updates, avoid sending a stale value.
+    if (!Object.prototype.hasOwnProperty.call(updates, "managerComment")) {
+      delete mergedPayload.managerComment;
+    }
 
     console.log("📤 [PUT] Weekly Record Update");
     console.log("   Record ID:", recordId);
@@ -727,6 +733,7 @@ export default function Home() {
     console.log("     - assignedTasksDetails:", mergedPayload.assignedTasksDetails);
     console.log("     - overdueTasksDetails:", mergedPayload.overdueTasksDetails);
     console.log("     - allOverdueTasksDetails:", mergedPayload.allOverdueTasksDetails);
+    console.log("   managerComment included:", "managerComment" in mergedPayload);
 
     const response = await fetch(`/api/weekly-records/${recordId}`, {
       method: "PUT",

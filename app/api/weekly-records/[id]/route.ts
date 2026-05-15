@@ -85,9 +85,13 @@ export async function PUT(
 
     console.log("✅ Record found, proceeding with update");
 
-    // Parse dates for Pacific Time
-    const psd = parseDateForDatabase(startDate);
-    const ped = parseDateForDatabase(endDate);
+    // Parse dates only when provided; otherwise keep existing values.
+    const psd = startDate
+      ? parseDateForDatabase(startDate)
+      : existingRecord.startDate;
+    const ped = endDate
+      ? parseDateForDatabase(endDate)
+      : existingRecord.endDate;
 
     console.log("🗓️ Dates parsed");
 
@@ -99,15 +103,48 @@ export async function PUT(
       data: {
         startDate: psd,
         endDate: ped,
-        plannedWorkHours: Number(plannedWorkHours) || 0,
-        actualWorkHours: Number(actualWorkHours) || 0,
-        assignedTasks: Number(assignedTasks) || 0,
-        assignedTasksDetails: Array.isArray(assignedTasksDetails) ? assignedTasksDetails : [],
-        weeklyOverdueTasks: Number(weeklyOverdueTasks) || 0,
-        overdueTasksDetails: Array.isArray(overdueTasksDetails) ? overdueTasksDetails : [],
-        allOverdueTasks: Number(allOverdueTasks) || 0,
-        allOverdueTasksDetails: Array.isArray(allOverdueTasksDetails) ? allOverdueTasksDetails : [],
-        managerComment: managerComment || null,
+        plannedWorkHours:
+          plannedWorkHours !== undefined
+            ? Number(plannedWorkHours) || 0
+            : existingRecord.plannedWorkHours,
+        actualWorkHours:
+          actualWorkHours !== undefined
+            ? Number(actualWorkHours) || 0
+            : existingRecord.actualWorkHours,
+        assignedTasks:
+          assignedTasks !== undefined
+            ? Number(assignedTasks) || 0
+            : existingRecord.assignedTasks,
+        assignedTasksDetails:
+          assignedTasksDetails !== undefined
+            ? Array.isArray(assignedTasksDetails)
+              ? assignedTasksDetails
+              : []
+            : ((existingRecord as any).assignedTasksDetails || []),
+        weeklyOverdueTasks:
+          weeklyOverdueTasks !== undefined
+            ? Number(weeklyOverdueTasks) || 0
+            : existingRecord.weeklyOverdueTasks,
+        overdueTasksDetails:
+          overdueTasksDetails !== undefined
+            ? Array.isArray(overdueTasksDetails)
+              ? overdueTasksDetails
+              : []
+            : ((existingRecord as any).overdueTasksDetails || []),
+        allOverdueTasks:
+          allOverdueTasks !== undefined
+            ? Number(allOverdueTasks) || 0
+            : ((existingRecord as any).allOverdueTasks || 0),
+        allOverdueTasksDetails:
+          allOverdueTasksDetails !== undefined
+            ? Array.isArray(allOverdueTasksDetails)
+              ? allOverdueTasksDetails
+              : []
+            : ((existingRecord as any).allOverdueTasksDetails || []),
+        managerComment:
+          managerComment !== undefined
+            ? managerComment || null
+            : ((existingRecord as any).managerComment || null),
       },
     });
 

@@ -504,6 +504,16 @@ Whitewater University of California
     if (record.managerComment && record.managerComment.trim().length > 0) return;
   }, [record, employeeName]);
 
+  useEffect(() => {
+    if (!generateMessage) return;
+
+    const timeoutId = setTimeout(() => {
+      setGenerateMessage(null);
+    }, 5000);
+
+    return () => clearTimeout(timeoutId);
+  }, [generateMessage]);
+
   const warningIndex = commentText.indexOf(warningAdvisory);
   const displayComment =
     warningIndex >= 0
