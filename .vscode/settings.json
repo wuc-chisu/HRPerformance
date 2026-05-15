@@ -1,6 +1,7 @@
 {
     "chat.tools.terminal.autoApprove": {
         "psql": true,
-        "npm install": true
+        "npm install": true,
+        "pg_isready": true
     }
 }

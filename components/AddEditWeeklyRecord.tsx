@@ -8,7 +8,10 @@ interface AddEditWeeklyRecordProps {
   record?: WeeklyRecord;
   employeeType?: string;
   contractWorkHours?: number | null;
-  onSave: (record: WeeklyRecord) => Promise<void> | void;
+  onSave: (
+    record: WeeklyRecord,
+    setApiError?: (message: string) => void
+  ) => Promise<void> | void;
   onCancel: () => void;
 }
 
@@ -39,6 +42,7 @@ export default function AddEditWeeklyRecord({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -74,11 +78,12 @@ export default function AddEditWeeklyRecord({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+    setApiError(null);
     if (!validateForm()) return;
 
     try {
       setIsSubmitting(true);
-      await onSave(formData);
+      await onSave(formData, setApiError);
     } finally {
       setIsSubmitting(false);
     }
@@ -107,13 +112,22 @@ export default function AddEditWeeklyRecord({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="bg-gradient-to-r from-purple-300 to-pink-300 px-6 py-4 sticky top-0">
+        <div className="bg-linear-to-r from-purple-300 to-pink-300 px-6 py-4 sticky top-0">
           <h2 className="text-2xl font-bold text-white">
             {record ? "Edit Weekly Record" : "Add Weekly Record"}
           </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {apiError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4">
+              {apiError}
+            </div>
+          )}
+
+          <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-2 rounded text-sm">
+            This button creates or updates the weekly report row in the database.
+          </div>
           {/* Week Range - Start and End Dates */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -299,7 +313,11 @@ export default function AddEditWeeklyRecord({
               disabled={isSubmitting}
               className={isSubmitting ? "flex-1 bg-purple-400 cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors" : "flex-1 bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"}
             >
-              {isSubmitting ? "Saving..." : record ? "Update Record" : "Add Record"}
+              {isSubmitting
+                ? "Saving..."
+                : record
+                  ? "Update Weekly Report in DB"
+                  : "Create Weekly Report in DB"}
             </button>
             <button
               type="button"

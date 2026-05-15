@@ -68,6 +68,10 @@ export default function Home() {
   const [performanceView, setPerformanceView] = useState<"weekly" | "monthly">("weekly");
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [holidays, setHolidays] = useState<HolidayRecord[]>([]);
+  const [weeklyRecordNotice, setWeeklyRecordNotice] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
   const [dbInfo, setDbInfo] = useState<{
     database: string;
     user: string;
@@ -563,11 +567,18 @@ export default function Home() {
             throw new Error("Failed to delete record");
           }
 
-          // Refetch employees to get the updated data - stay on same employee
           await fetchEmployees();
+          setWeeklyRecordNotice({
+            type: "success",
+            message: "Weekly record deleted from database.",
+          });
         } catch (error) {
           console.error("Error deleting weekly record:", error);
           alert("Failed to delete record");
+          setWeeklyRecordNotice({
+            type: "error",
+            message: "Failed to delete weekly record from database.",
+          });
         }
       }
     }
@@ -637,22 +648,16 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const message = errorData.details
-          ? `${errorData.error || "Failed to update assigned tasks"}: ${errorData.details}`
-          : errorData.error || "Failed to update assigned tasks";
-        throw new Error(message);
+        throw new Error("Failed to update assigned tasks");
       }
 
       await fetchEmployees();
     } catch (error) {
       console.error("Error updating assigned tasks:", error);
-      console.error(
-        "Assigned tasks update failed:",
-        error instanceof Error ? error.message : String(error)
-      );
+      alert("Failed to update assigned tasks");
     }
   };
+
   const handleUpdateAllOverdueTasks = async (recordId: string, details: any[]) => {
     try {
       const record = selectedEmployee?.weeklyRecords.find(
@@ -696,7 +701,64 @@ export default function Home() {
       );
     }
   };
-  const handleSaveWeeklyRecord = async (record: any) => {
+
+  const handleSaveWeeklyRecordUpdates = async (
+    recordId: string,
+    updates: any
+  ) => {
+    const record = selectedEmployee?.weeklyRecords.find(
+      (r) => r.recordId === recordId
+    );
+
+    if (!record) {
+      throw new Error("Unable to save weekly record updates: Record not found");
+    }
+
+    const mergedPayload = {
+      ...record,
+      ...updates,
+    };
+
+    console.log("📤 [PUT] Weekly Record Update");
+    console.log("   Record ID:", recordId);
+    console.log("   Updates received:", updates);
+    console.log("   Merged payload:", mergedPayload);
+    console.log("   Task details to save:");
+    console.log("     - assignedTasksDetails:", mergedPayload.assignedTasksDetails);
+    console.log("     - overdueTasksDetails:", mergedPayload.overdueTasksDetails);
+    console.log("     - allOverdueTasksDetails:", mergedPayload.allOverdueTasksDetails);
+
+    const response = await fetch(`/api/weekly-records/${recordId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(mergedPayload),
+    });
+
+    console.log("📨 Response status:", response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("❌ Backend error:", errorData);
+      const message = errorData.details
+        ? `${errorData.error || "Failed to save weekly record updates"}: ${errorData.details}`
+        : errorData.error || "Failed to save weekly record updates";
+      throw new Error(message);
+    }
+
+    const responseData = await response.json();
+    console.log("✅ Response data:", responseData);
+
+    await fetchEmployees();
+    setWeeklyRecordNotice({
+      type: "success",
+      message: `Saved ${record.startDate} to ${record.endDate} to database.`,
+    });
+  };
+
+  const handleSaveWeeklyRecord = async (
+    record: any,
+    setApiError?: (message: string) => void
+  ) => {
     try {
       if (selectedEmployee) {
         let focusStartDate: string | undefined;
@@ -708,7 +770,12 @@ export default function Home() {
           const recordId = existingRecord?.recordId || record.recordId;
 
           if (!recordId) {
-            alert("Unable to update record: Record ID not found");
+            const message = "Unable to update record: Record ID not found";
+            if (setApiError) {
+              setApiError(message);
+            } else {
+              alert(message);
+            }
             return;
           }
 
@@ -750,10 +817,18 @@ export default function Home() {
             const message = errorData.details
               ? `${errorData.error || "Failed to update weekly record"}: ${errorData.details}`
               : errorData.error || "Failed to update weekly record";
+            if (setApiError) {
+              setApiError(message);
+              return;
+            }
             throw new Error(message);
           }
 
           await fetchEmployees();
+          setWeeklyRecordNotice({
+            type: "success",
+            message: `Saved ${focusStartDate} to ${focusEndDate} to database.`,
+          });
         } else {
           // Add new record
           focusStartDate = record.startDate;
@@ -772,9 +847,17 @@ export default function Home() {
             const message = errorData.details
               ? `${errorData.error || "Failed to create weekly record"}: ${errorData.details}`
               : errorData.error || "Failed to create weekly record";
+            if (setApiError) {
+              setApiError(message);
+              return;
+            }
             throw new Error(message);
           }
           await fetchEmployees();
+          setWeeklyRecordNotice({
+            type: "success",
+            message: `Saved ${focusStartDate} to ${focusEndDate} to database.`,
+          });
         }
 
         if (focusStartDate && focusEndDate) {
@@ -796,7 +879,15 @@ export default function Home() {
       console.error("Error saving weekly record:", error);
       const message =
         error instanceof Error ? error.message : "Failed to save weekly record";
-      alert(message);
+      if (setApiError) {
+        setApiError(message);
+      } else {
+        alert(message);
+      }
+      setWeeklyRecordNotice({
+        type: "error",
+        message,
+      });
     }
   };
 
@@ -850,10 +941,24 @@ export default function Home() {
   };
 
   // Get filtered week ranges for display
+  const allWeekRanges = getAllWeekRanges();
+  const latestWeekRange = allWeekRanges[0] || null;
   const filteredWeekRanges = getFilteredWeekRanges();
   const uniqueFilteredWeekRanges = filteredWeekRanges.filter(
     (week, index, arr) => arr.findIndex((item) => item.range === week.range) === index
   );
+
+  const showLatestRecords = () => {
+    if (!latestWeekRange) {
+      setSelectedWeekFilter(null);
+      return;
+    }
+
+    const latestStart = parseDateInPacific(latestWeekRange.start);
+    setSelectedYear(latestStart.getFullYear());
+    setSelectedMonth(latestStart.getMonth());
+    setSelectedWeekFilter(null);
+  };
 
   useEffect(() => {
     if (
@@ -873,9 +978,9 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <header className="bg-gradient-to-r from-blue-300 to-purple-300 text-white shadow-lg">
+      <header className="bg-linear-to-r from-blue-300 to-purple-300 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <h1 className="text-4xl font-bold mb-2">HR Performance Review</h1>
           <p className="text-white opacity-90">
@@ -892,6 +997,24 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {weeklyRecordNotice && (
+          <div
+            className={`mb-6 rounded-lg border px-4 py-3 flex items-center justify-between ${
+              weeklyRecordNotice.type === "success"
+                ? "bg-green-50 border-green-200 text-green-900"
+                : "bg-red-50 border-red-200 text-red-900"
+            }`}
+          >
+            <span className="text-sm font-medium">{weeklyRecordNotice.message}</span>
+            <button
+              onClick={() => setWeeklyRecordNotice(null)}
+              className="text-sm font-semibold opacity-80 hover:opacity-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Navigation Tabs */}
         <div className="flex gap-4 mb-8 flex-wrap">
           <button
@@ -1255,7 +1378,21 @@ export default function Home() {
                       ))}
                     </select>
                   </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={showLatestRecords}
+                      className="px-4 py-2 rounded-lg font-semibold bg-emerald-400 text-white hover:bg-emerald-500 transition-colors"
+                    >
+                      Show Latest Records
+                    </button>
+                  </div>
                 </div>
+
+                {uniqueFilteredWeekRanges.length === 0 && latestWeekRange && (
+                  <p className="text-sm text-amber-700 mb-4">
+                    No records for the selected month. Click "Show Latest Records" to jump to the newest saved week.
+                  </p>
+                )}
 
                 {/* Week Selector */}
                 <div className="mb-6 overflow-x-auto pb-2">
@@ -1388,6 +1525,7 @@ export default function Home() {
                         onUpdateOverdueTasks={handleUpdateOverdueTasks}
                         onUpdateAssignedTasks={handleUpdateAssignedTasks}
                         onUpdateAllOverdueTasks={handleUpdateAllOverdueTasks}
+                        onSaveRecord={handleSaveWeeklyRecordUpdates}
                       />
                     )}
 

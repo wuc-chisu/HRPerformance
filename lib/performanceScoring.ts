@@ -20,12 +20,13 @@ export interface TaskPriorityHandlingBreakdown {
  * Formula: min((actualHours / plannedHours) * 25, 25)
  * - Full 25 points if actual >= planned
  * - Proportional score if actual < planned
+ * - If planned hours are 0 (e.g., full approved leave), award full 25 points
  */
 export function calculateWorkHoursFulfillment(
   actualWorkHours: number,
   plannedWorkHours: number
 ): number {
-  if (plannedWorkHours === 0) return 0;
+  if (plannedWorkHours <= 0) return 25;
   
   const score = (actualWorkHours / plannedWorkHours) * 25;
   return Math.min(score, 25);
@@ -38,10 +39,10 @@ export function calculateWorkHoursFulfillment(
  * - Urgent: -4 points each
  * - High:   -3 points each
  * Deduction per assigned task with no priority:
- * - No Priority: -2 points each
+ * - No Priority: -1 point each
  *
  * Formula:
- *   totalDeduction = (overdueUrgent × 4) + (overdueHigh × 3) + (assignedNoPriority × 2)
+ *   totalDeduction = (overdueUrgent × 4) + (overdueHigh × 3) + (assignedNoPriority × 1)
  *   finalScore     = max(0, 20 − totalDeduction)
  *
  * Returns: Numeric score (0–20)
@@ -59,7 +60,7 @@ export function getTaskPriorityHandlingBreakdown(
   const noPriorityAssigned =
     assignedDetails.find((d) => d.priority === "no priority")?.count || 0;
 
-  const totalDeduction = overdueUrgent * 4 + overdueHigh * 3 + noPriorityAssigned * 2;
+  const totalDeduction = overdueUrgent * 4 + overdueHigh * 3 + noPriorityAssigned;
 
   return {
     urgentOverdue: overdueUrgent,

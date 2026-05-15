@@ -20,7 +20,7 @@ export default function WeeklyRecordsTable({ employee }: WeeklyRecordsTableProps
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4">
+      <div className="bg-linear-to-r from-blue-600 to-blue-800 px-6 py-4">
         <h3 className="text-xl font-bold text-white">Weekly Performance Records</h3>
         <p className="text-blue-100 text-sm mt-1">
           {employee.name} • {employee.id}

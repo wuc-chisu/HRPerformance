@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { formatDateForResponse, parseDateForDatabase } from "@/lib/dateUtils";
-import { allocateHoursAcrossOverlaps, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
+import { allocateHoursAcrossOverlaps, countOverlappingDays, getDateSpanDays, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
 import { NextResponse } from "next/server";
 
 type PendingApprovedTimeOffRequest = {
@@ -225,22 +225,19 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const { overlaps, isFullyCovered } = getFullyCoveredOverlaps(
+        const overlapDays = countOverlappingDays(
           request.startDate,
           request.endDate,
-          employeeWeeklyRecords
+          parsedStartDate,
+          parsedEndDate
         );
+        if (overlapDays <= 0) continue;
 
-        if (!isFullyCovered || overlaps.length === 0) {
-          continue;
-        }
+        const weekTotalDays = getDateSpanDays(parsedStartDate, parsedEndDate);
+        if (weekTotalDays <= 0) continue;
 
-        const deductions = allocateHoursAcrossOverlaps(Number(request.hours), overlaps);
-        const createdEntry = deductions.find((entry) => entry.record.id === createdRecord.id);
-
-        if (createdEntry) {
-          adjustedPlannedWorkHours = Math.max(0, adjustedPlannedWorkHours - createdEntry.allocatedHours);
-        }
+        const deduction = Math.round((adjustedPlannedWorkHours * overlapDays / weekTotalDays) * 100) / 100;
+        adjustedPlannedWorkHours = Math.max(0, adjustedPlannedWorkHours - deduction);
       }
 
       for (const request of pendingApprovedRequests) {

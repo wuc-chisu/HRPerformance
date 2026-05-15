@@ -206,6 +206,10 @@ San Jose, CA 95118`;
 
       if (successMessage) {
         setGenerateMessage(successMessage);
+        // Auto-hide success message after 3 seconds
+        setTimeout(() => {
+          setGenerateMessage(null);
+        }, 3000);
       }
       return true;
     } catch (error) {
@@ -284,7 +288,7 @@ San Jose, CA 95118`;
       if (generated) {
         setMonthlyComment(generated);
         setEditedComment(generated);
-        await saveMonthlyComment(generated);
+        await saveMonthlyComment(generated, "Saved successfully");
         setIsEditing(false);
       }
     } catch (error) {
@@ -443,7 +447,7 @@ San Jose, CA 95118`;
               Monthly Performance Report
             </h2>
             <p className="text-sm text-gray-600">
-              {employee.name} • {employee.id} • {monthNames[month]} {year}
+              {monthNames[month]} {year}
             </p>
           </div>
           <div className="flex gap-2 print:hidden">
@@ -728,9 +732,6 @@ San Jose, CA 95118`;
               )}
             </div>
           </div>
-          {isGenerating && (
-            <p className="text-xs text-blue-700 mb-2">Generating AI summary...</p>
-          )}
           {generateMessage && (
             <p className="text-xs text-blue-700 mb-2">{generateMessage}</p>
           )}

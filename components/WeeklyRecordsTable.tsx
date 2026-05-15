@@ -21,6 +21,10 @@ interface WeeklyRecordsTableProps {
   onUpdateOverdueTasks?: (recordId: string, details: OverdueTaskDetail[]) => void;
   onUpdateAssignedTasks?: (recordId: string, details: AssignedTaskDetail[]) => void;
   onUpdateAllOverdueTasks?: (recordId: string, details: OverdueTaskDetail[]) => void;
+  onSaveRecord?: (
+    recordId: string,
+    updates: Partial<WeeklyRecord>
+  ) => Promise<void> | void;
 }
 
 export default function WeeklyRecordsTable({
@@ -36,6 +40,7 @@ export default function WeeklyRecordsTable({
   onUpdateOverdueTasks,
   onUpdateAssignedTasks,
   onUpdateAllOverdueTasks,
+  onSaveRecord,
 }: WeeklyRecordsTableProps) {
   const [showOverdueManager, setShowOverdueManager] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<WeeklyRecord | null>(null);
@@ -45,6 +50,10 @@ export default function WeeklyRecordsTable({
   const [showAllOverdueManager, setShowAllOverdueManager] = useState(false);
   const [selectedAllOverdueRecord, setSelectedAllOverdueRecord] =
     useState<WeeklyRecord | null>(null);
+  const [pendingUpdates, setPendingUpdates] = useState<
+    Record<string, Partial<WeeklyRecord>>
+  >({});
+  const [savingRecordId, setSavingRecordId] = useState<string | null>(null);
 
   const getRecordKey = (record: WeeklyRecord) =>
     record.recordId || `${record.startDate}-${record.endDate}`;
@@ -135,43 +144,159 @@ export default function WeeklyRecordsTable({
   };
 
   const handleViewOverdue = (record: WeeklyRecord) => {
-    setSelectedRecord(record);
+    const rowUpdates =
+      (record.recordId && pendingUpdates[record.recordId]) || undefined;
+    setSelectedRecord(rowUpdates ? { ...record, ...rowUpdates } : record);
     setShowOverdueManager(true);
   };
 
   const handleUpdateOverdue = (details: OverdueTaskDetail[]) => {
-    if (selectedRecord && selectedRecord.recordId && onUpdateOverdueTasks) {
+    if (!selectedRecord || !selectedRecord.recordId) {
+      console.warn("Cannot update overdue tasks: missing selectedRecord or recordId");
+      return;
+    }
+
+    const totalOverdue = details.reduce((sum, detail) => sum + detail.count, 0);
+    console.log("📝 Updating overdue tasks for record:", selectedRecord.recordId);
+    console.log("   Details:", details);
+    console.log("   Total count:", totalOverdue);
+
+    if (onSaveRecord) {
+      setPendingUpdates((prev) => ({
+        ...prev,
+        [selectedRecord.recordId!]: {
+          ...(prev[selectedRecord.recordId!] || {}),
+          overdueTasksDetails: details,
+          weeklyOverdueTasks: totalOverdue,
+        },
+      }));
+      console.log("✅ Overdue tasks staged for save");
+      return;
+    }
+
+    if (onUpdateOverdueTasks) {
       onUpdateOverdueTasks(selectedRecord.recordId, details);
     }
   };
 
   const handleViewAssigned = (record: WeeklyRecord) => {
-    setSelectedAssignedRecord(record);
+    const rowUpdates =
+      (record.recordId && pendingUpdates[record.recordId]) || undefined;
+    setSelectedAssignedRecord(
+      rowUpdates ? { ...record, ...rowUpdates } : record
+    );
     setShowAssignedManager(true);
   };
 
   const handleUpdateAssigned = (details: AssignedTaskDetail[]) => {
-    if (
-      selectedAssignedRecord &&
-      selectedAssignedRecord.recordId &&
-      onUpdateAssignedTasks
-    ) {
+    if (!selectedAssignedRecord || !selectedAssignedRecord.recordId) {
+      console.warn("Cannot update assigned tasks: missing selectedAssignedRecord or recordId");
+      return;
+    }
+
+    const totalAssigned = details.reduce((sum, detail) => sum + detail.count, 0);
+    console.log("📝 Updating assigned tasks for record:", selectedAssignedRecord.recordId);
+    console.log("   Details:", details);
+    console.log("   Total count:", totalAssigned);
+
+    if (onSaveRecord) {
+      setPendingUpdates((prev) => ({
+        ...prev,
+        [selectedAssignedRecord.recordId!]: {
+          ...(prev[selectedAssignedRecord.recordId!] || {}),
+          assignedTasksDetails: details,
+          assignedTasks: totalAssigned,
+        },
+      }));
+      console.log("✅ Assigned tasks staged for save");
+      return;
+    }
+
+    if (onUpdateAssignedTasks) {
       onUpdateAssignedTasks(selectedAssignedRecord.recordId, details);
     }
   };
 
   const handleViewAllOverdue = (record: WeeklyRecord) => {
-    setSelectedAllOverdueRecord(record);
+    const rowUpdates =
+      (record.recordId && pendingUpdates[record.recordId]) || undefined;
+    setSelectedAllOverdueRecord(
+      rowUpdates ? { ...record, ...rowUpdates } : record
+    );
     setShowAllOverdueManager(true);
   };
 
   const handleUpdateAllOverdue = (details: OverdueTaskDetail[]) => {
-    if (
-      selectedAllOverdueRecord &&
-      selectedAllOverdueRecord.recordId &&
-      onUpdateAllOverdueTasks
-    ) {
+    if (!selectedAllOverdueRecord || !selectedAllOverdueRecord.recordId) {
+      console.warn("Cannot update all overdue tasks: missing selectedAllOverdueRecord or recordId");
+      return;
+    }
+
+    const totalAllOverdue = details.reduce((sum, detail) => sum + detail.count, 0);
+    console.log("📝 Updating all overdue tasks for record:", selectedAllOverdueRecord.recordId);
+    console.log("   Details:", details);
+    console.log("   Total count:", totalAllOverdue);
+
+    if (onSaveRecord) {
+      setPendingUpdates((prev) => ({
+        ...prev,
+        [selectedAllOverdueRecord.recordId!]: {
+          ...(prev[selectedAllOverdueRecord.recordId!] || {}),
+          allOverdueTasksDetails: details,
+          allOverdueTasks: totalAllOverdue,
+        },
+      }));
+      console.log("✅ All overdue tasks staged for save");
+      return;
+    }
+
+    if (onUpdateAllOverdueTasks) {
       onUpdateAllOverdueTasks(selectedAllOverdueRecord.recordId, details);
+    }
+  };
+
+  const handleSaveRecordUpdates = async (record: WeeklyRecord) => {
+    if (!onSaveRecord || !record.recordId) {
+      console.warn("Cannot save: missing onSaveRecord callback or recordId");
+      return;
+    }
+
+    const updates = pendingUpdates[record.recordId];
+    if (!updates) {
+      console.warn("No pending updates for record:", record.recordId);
+      return;
+    }
+
+    console.log("🔄 [CLIENT] Saving record updates");
+    console.log("   Record ID:", record.recordId);
+    console.log("   Current record state:", {
+      startDate: record.startDate,
+      endDate: record.endDate,
+      assignedTasksDetails: record.assignedTasksDetails,
+      overdueTasksDetails: record.overdueTasksDetails,
+      allOverdueTasksDetails: record.allOverdueTasksDetails,
+    });
+    console.log("   Pending updates:", updates);
+
+    try {
+      setSavingRecordId(record.recordId);
+      await onSaveRecord(record.recordId, updates);
+      console.log("✅ Save successful, clearing pending updates");
+      setPendingUpdates((prev) => {
+        const next = { ...prev };
+        delete next[record.recordId!];
+        return next;
+      });
+    } catch (error) {
+      console.error("❌ Failed to save weekly record updates:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to save weekly record updates";
+      console.error("Error details:", errorMessage);
+      alert(errorMessage);
+    } finally {
+      setSavingRecordId(null);
     }
   };
 
@@ -218,7 +343,7 @@ export default function WeeklyRecordsTable({
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="bg-gradient-to-r from-purple-300 to-pink-300 px-6 py-4 flex justify-between items-center">
+      <div className="bg-linear-to-r from-purple-300 to-pink-300 px-6 py-4 flex justify-between items-center">
         <div>
           <h3 className="text-xl font-bold text-white">Weekly Performance Records</h3>
           <p className="text-blue-100 text-sm mt-1">
@@ -269,19 +394,24 @@ export default function WeeklyRecordsTable({
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredRecords.map((record) => {
+              const rowUpdates =
+                (record.recordId && pendingUpdates[record.recordId]) || undefined;
               const status = getPerformanceStatus(record);
               const assignedDetailsTotal = (
-                record.assignedTasksDetails || []
+                rowUpdates?.assignedTasksDetails || record.assignedTasksDetails || []
               ).reduce((sum, detail) => sum + detail.count, 0);
               const assignedTasksTotal =
-                (record.assignedTasksDetails || []).length > 0
+                (rowUpdates?.assignedTasksDetails || record.assignedTasksDetails || []).length > 0
                   ? assignedDetailsTotal
-                  : record.assignedTasks;
+                  : (rowUpdates?.assignedTasks ?? record.assignedTasks);
               // Sum up all overdue tasks from overdueTasksDetails for this week
-              const weeklyOverdueTotal = (record.overdueTasksDetails || []).reduce(
+              const weeklyOverdueTotal = ((rowUpdates?.overdueTasksDetails || record.overdueTasksDetails || [])).reduce(
                 (sum, detail) => sum + detail.count,
                 0
               );
+              const allOverdueTotalForRow =
+                rowUpdates?.allOverdueTasks ?? record.allOverdueTasks ?? 0;
+              const hasPendingUpdates = Boolean(rowUpdates);
               
               return (
                 <tr
@@ -359,9 +489,9 @@ export default function WeeklyRecordsTable({
                   >
                     <div className="flex items-center gap-3">
                       <span>
-                        {(record.overdueTasksDetails || []).length > 0
+                        {(rowUpdates?.overdueTasksDetails || record.overdueTasksDetails || []).length > 0
                           ? weeklyOverdueTotal
-                          : record.weeklyOverdueTasks}
+                          : rowUpdates?.weeklyOverdueTasks ?? record.weeklyOverdueTasks}
                       </span>
                       <button
                         onClick={() => handleViewOverdue(record)}
@@ -373,7 +503,7 @@ export default function WeeklyRecordsTable({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                     <div className="flex items-center gap-3">
-                      <span>{record.allOverdueTasks || 0}</span>
+                      <span>{allOverdueTotalForRow}</span>
                       <button
                         onClick={() => handleViewAllOverdue(record)}
                         className="bg-orange-300 text-white px-3 py-1 rounded hover:bg-orange-400 transition-colors text-xs font-semibold"
@@ -392,6 +522,35 @@ export default function WeeklyRecordsTable({
                   </td>
                   {(onEditRecord || onDeleteRecord) && (
                     <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2 flex">
+                      {onSaveRecord && record.recordId && (
+                        <>
+                          <button
+                            onClick={() => handleSaveRecordUpdates(record)}
+                            disabled={!hasPendingUpdates || savingRecordId === record.recordId}
+                            className={`px-3 py-1 rounded transition-colors text-xs font-semibold ${
+                              !hasPendingUpdates || savingRecordId === record.recordId
+                                ? "bg-green-200 text-white cursor-not-allowed"
+                                : "bg-green-400 text-white hover:bg-green-500"
+                            }`}
+                          >
+                            {savingRecordId === record.recordId ? "Saving..." : "Save Details to DB"}
+                          </button>
+                          {hasPendingUpdates && (
+                            <button
+                              onClick={() => {
+                                setPendingUpdates((prev) => {
+                                  const next = { ...prev };
+                                  delete next[record.recordId!];
+                                  return next;
+                                });
+                              }}
+                              className="bg-gray-300 text-gray-800 px-3 py-1 rounded hover:bg-gray-400 transition-colors text-xs font-semibold"
+                            >
+                              Revert
+                            </button>
+                          )}
+                        </>
+                      )}
                       {onEditRecord && (
                         <button
                           onClick={() => {

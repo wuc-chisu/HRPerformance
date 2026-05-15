@@ -362,7 +362,7 @@ Whitewater University of California
     const taskPriorityBreakdown = getTaskPriorityBreakdown(record);
     const priorityDeductionSummary =
       taskPriorityBreakdown.totalDeduction > 0
-        ? `Task priority handling lost ${taskPriorityBreakdown.totalDeduction} points because ${taskPriorityBreakdown.urgentOverdue} urgent overdue task(s) count as -${taskPriorityBreakdown.urgentOverdue * 4}, ${taskPriorityBreakdown.highOverdue} high overdue task(s) count as -${taskPriorityBreakdown.highOverdue * 3}, and ${taskPriorityBreakdown.noPriorityAssigned} assigned task(s) with no priority count as -${taskPriorityBreakdown.noPriorityAssigned * 2}.`
+        ? `Task priority handling lost ${taskPriorityBreakdown.totalDeduction} points because ${taskPriorityBreakdown.urgentOverdue} urgent overdue task(s) count as -${taskPriorityBreakdown.urgentOverdue * 4}, ${taskPriorityBreakdown.highOverdue} high overdue task(s) count as -${taskPriorityBreakdown.highOverdue * 3}, and ${taskPriorityBreakdown.noPriorityAssigned} assigned task(s) with no priority count as -${taskPriorityBreakdown.noPriorityAssigned}.`
         : "Task priority handling had no direct deduction this week because there were no urgent overdue tasks, no high overdue tasks, and no assigned tasks left with no priority.";
     
     // Check if employee fulfilled work hours requirement
@@ -729,7 +729,7 @@ Whitewater University of California
                 const breakdown = getTaskPriorityBreakdown(record);
                 return (
                   <p className="text-xs text-gray-600 mt-1">
-                    20% weight • direct deductions: {breakdown.urgentOverdue} urgent (−{breakdown.urgentOverdue * 4}), {breakdown.highOverdue} high (−{breakdown.highOverdue * 3}), {breakdown.noPriorityAssigned} no-priority assigned (−{breakdown.noPriorityAssigned * 2})
+                    20% weight • direct deductions: {breakdown.urgentOverdue} urgent (−{breakdown.urgentOverdue * 4}), {breakdown.highOverdue} high (−{breakdown.highOverdue * 3}), {breakdown.noPriorityAssigned} no-priority assigned (−{breakdown.noPriorityAssigned})
                   </p>
                 );
               })()}
@@ -933,7 +933,7 @@ Whitewater University of California
         <p className="text-xs font-semibold text-gray-600 mb-3">Task Priority Handling Scoring Formula</p>
         <div className="text-xs text-gray-600 space-y-2">
           <p><span className="font-semibold">Focuses on:</span> overdue urgency and priority-setting compliance</p>
-          <p><span className="font-semibold">Direct deductions:</span> Urgent overdue = -4 points each, High overdue = -3 points each, Assigned with no priority = -2 points each</p>
+          <p><span className="font-semibold">Direct deductions:</span> Urgent overdue = -4 points each, High overdue = -3 points each, Assigned with no priority = -1 point each</p>
           <p><span className="font-semibold">Calculation:</span> Score = max(0, 20 - total direct deduction)</p>
           <p><span className="font-semibold">No-priority rule:</span> A task without a priority still causes a deduction even if the task was completed.</p>
         </div>
