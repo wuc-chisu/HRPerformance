@@ -5,7 +5,7 @@ import { AssignedTaskDetail } from "@/lib/employees";
 
 interface AssignedTaskManagerProps {
   assignedTasksDetails: AssignedTaskDetail[];
-  onUpdate: (details: AssignedTaskDetail[]) => void;
+  onUpdate: (details: AssignedTaskDetail[]) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -30,6 +30,7 @@ export default function AssignedTaskManager({
     "urgent" | "high" | "normal" | "low" | "no priority"
   >("normal");
   const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const priorities = ["urgent", "high", "normal", "low", "no priority"] as const;
 
@@ -59,9 +60,17 @@ export default function AssignedTaskManager({
     setDetails(details.filter((d) => d.priority !== priority));
   };
 
-  const handleSave = () => {
-    onUpdate(details);
-    onClose();
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      await onUpdate(details);
+      onClose();
+    } catch (error) {
+      console.error("Failed to save assigned task details:", error);
+      alert(error instanceof Error ? error.message : "Failed to save assigned task details.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const currentTotal = details.reduce((sum, d) => sum + d.count, 0);
@@ -69,7 +78,7 @@ export default function AssignedTaskManager({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="bg-gradient-to-r from-blue-300 to-indigo-400 px-6 py-4 sticky top-0">
+        <div className="bg-linear-to-r from-blue-300 to-indigo-400 px-6 py-4 sticky top-0">
           <h2 className="text-2xl font-bold text-white">Assigned Tasks Details</h2>
           <p className="text-blue-100 text-sm mt-1">Total: {currentTotal} tasks</p>
         </div>
@@ -169,12 +178,14 @@ export default function AssignedTaskManager({
           <div className="flex gap-3 pt-4 border-t border-gray-200">
             <button
               onClick={handleSave}
+              disabled={isSaving}
               className="flex-1 bg-green-300 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-400 transition-colors"
             >
-              Save Changes
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
             <button
               onClick={onClose}
+              disabled={isSaving}
               className="flex-1 bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
             >
               Cancel

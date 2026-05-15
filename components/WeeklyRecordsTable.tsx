@@ -150,7 +150,7 @@ export default function WeeklyRecordsTable({
     setShowOverdueManager(true);
   };
 
-  const handleUpdateOverdue = (details: OverdueTaskDetail[]) => {
+  const handleUpdateOverdue = async (details: OverdueTaskDetail[]) => {
     if (!selectedRecord || !selectedRecord.recordId) {
       console.warn("Cannot update overdue tasks: missing selectedRecord or recordId");
       return;
@@ -162,15 +162,25 @@ export default function WeeklyRecordsTable({
     console.log("   Total count:", totalOverdue);
 
     if (onSaveRecord) {
-      setPendingUpdates((prev) => ({
-        ...prev,
-        [selectedRecord.recordId!]: {
-          ...(prev[selectedRecord.recordId!] || {}),
+      try {
+        setSavingRecordId(selectedRecord.recordId);
+        await onSaveRecord(selectedRecord.recordId, {
           overdueTasksDetails: details,
           weeklyOverdueTasks: totalOverdue,
-        },
-      }));
-      console.log("✅ Overdue tasks staged for save");
+        });
+        console.log("✅ Overdue tasks saved to DB");
+        setPendingUpdates((prev) => {
+          const next = { ...prev };
+          delete next[selectedRecord.recordId!];
+          return next;
+        });
+      } catch (error) {
+        console.error("❌ Failed to save overdue tasks:", error);
+        alert(error instanceof Error ? error.message : "Failed to save overdue tasks.");
+        throw error;
+      } finally {
+        setSavingRecordId(null);
+      }
       return;
     }
 
@@ -188,7 +198,7 @@ export default function WeeklyRecordsTable({
     setShowAssignedManager(true);
   };
 
-  const handleUpdateAssigned = (details: AssignedTaskDetail[]) => {
+  const handleUpdateAssigned = async (details: AssignedTaskDetail[]) => {
     if (!selectedAssignedRecord || !selectedAssignedRecord.recordId) {
       console.warn("Cannot update assigned tasks: missing selectedAssignedRecord or recordId");
       return;
@@ -200,15 +210,25 @@ export default function WeeklyRecordsTable({
     console.log("   Total count:", totalAssigned);
 
     if (onSaveRecord) {
-      setPendingUpdates((prev) => ({
-        ...prev,
-        [selectedAssignedRecord.recordId!]: {
-          ...(prev[selectedAssignedRecord.recordId!] || {}),
+      try {
+        setSavingRecordId(selectedAssignedRecord.recordId);
+        await onSaveRecord(selectedAssignedRecord.recordId, {
           assignedTasksDetails: details,
           assignedTasks: totalAssigned,
-        },
-      }));
-      console.log("✅ Assigned tasks staged for save");
+        });
+        console.log("✅ Assigned tasks saved to DB");
+        setPendingUpdates((prev) => {
+          const next = { ...prev };
+          delete next[selectedAssignedRecord.recordId!];
+          return next;
+        });
+      } catch (error) {
+        console.error("❌ Failed to save assigned tasks:", error);
+        alert(error instanceof Error ? error.message : "Failed to save assigned tasks.");
+        throw error;
+      } finally {
+        setSavingRecordId(null);
+      }
       return;
     }
 
@@ -226,7 +246,7 @@ export default function WeeklyRecordsTable({
     setShowAllOverdueManager(true);
   };
 
-  const handleUpdateAllOverdue = (details: OverdueTaskDetail[]) => {
+  const handleUpdateAllOverdue = async (details: OverdueTaskDetail[]) => {
     if (!selectedAllOverdueRecord || !selectedAllOverdueRecord.recordId) {
       console.warn("Cannot update all overdue tasks: missing selectedAllOverdueRecord or recordId");
       return;
@@ -238,15 +258,25 @@ export default function WeeklyRecordsTable({
     console.log("   Total count:", totalAllOverdue);
 
     if (onSaveRecord) {
-      setPendingUpdates((prev) => ({
-        ...prev,
-        [selectedAllOverdueRecord.recordId!]: {
-          ...(prev[selectedAllOverdueRecord.recordId!] || {}),
+      try {
+        setSavingRecordId(selectedAllOverdueRecord.recordId);
+        await onSaveRecord(selectedAllOverdueRecord.recordId, {
           allOverdueTasksDetails: details,
           allOverdueTasks: totalAllOverdue,
-        },
-      }));
-      console.log("✅ All overdue tasks staged for save");
+        });
+        console.log("✅ All overdue tasks saved to DB");
+        setPendingUpdates((prev) => {
+          const next = { ...prev };
+          delete next[selectedAllOverdueRecord.recordId!];
+          return next;
+        });
+      } catch (error) {
+        console.error("❌ Failed to save all overdue tasks:", error);
+        alert(error instanceof Error ? error.message : "Failed to save all overdue tasks.");
+        throw error;
+      } finally {
+        setSavingRecordId(null);
+      }
       return;
     }
 
