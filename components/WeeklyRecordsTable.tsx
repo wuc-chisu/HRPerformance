@@ -54,6 +54,7 @@ export default function WeeklyRecordsTable({
     Record<string, Partial<WeeklyRecord>>
   >({});
   const [savingRecordId, setSavingRecordId] = useState<string | null>(null);
+  const [savedRecordIds, setSavedRecordIds] = useState<Record<string, boolean>>({});
 
   const getRecordKey = (record: WeeklyRecord) =>
     record.recordId || `${record.startDate}-${record.endDate}`;
@@ -169,6 +170,10 @@ export default function WeeklyRecordsTable({
           weeklyOverdueTasks: totalOverdue,
         });
         console.log("✅ Overdue tasks saved to DB");
+        setSavedRecordIds((prev) => ({
+          ...prev,
+          [selectedRecord.recordId!]: true,
+        }));
         setPendingUpdates((prev) => {
           const next = { ...prev };
           delete next[selectedRecord.recordId!];
@@ -217,6 +222,10 @@ export default function WeeklyRecordsTable({
           assignedTasks: totalAssigned,
         });
         console.log("✅ Assigned tasks saved to DB");
+        setSavedRecordIds((prev) => ({
+          ...prev,
+          [selectedAssignedRecord.recordId!]: true,
+        }));
         setPendingUpdates((prev) => {
           const next = { ...prev };
           delete next[selectedAssignedRecord.recordId!];
@@ -265,6 +274,10 @@ export default function WeeklyRecordsTable({
           allOverdueTasks: totalAllOverdue,
         });
         console.log("✅ All overdue tasks saved to DB");
+        setSavedRecordIds((prev) => ({
+          ...prev,
+          [selectedAllOverdueRecord.recordId!]: true,
+        }));
         setPendingUpdates((prev) => {
           const next = { ...prev };
           delete next[selectedAllOverdueRecord.recordId!];
@@ -291,11 +304,7 @@ export default function WeeklyRecordsTable({
       return;
     }
 
-    const updates = pendingUpdates[record.recordId];
-    if (!updates) {
-      console.warn("No pending updates for record:", record.recordId);
-      return;
-    }
+    const updates = pendingUpdates[record.recordId] || {};
 
     console.log("🔄 [CLIENT] Saving record updates");
     console.log("   Record ID:", record.recordId);
@@ -312,6 +321,10 @@ export default function WeeklyRecordsTable({
       setSavingRecordId(record.recordId);
       await onSaveRecord(record.recordId, updates);
       console.log("✅ Save successful, clearing pending updates");
+      setSavedRecordIds((prev) => ({
+        ...prev,
+        [record.recordId!]: true,
+      }));
       setPendingUpdates((prev) => {
         const next = { ...prev };
         delete next[record.recordId!];
@@ -556,14 +569,18 @@ export default function WeeklyRecordsTable({
                         <>
                           <button
                             onClick={() => handleSaveRecordUpdates(record)}
-                            disabled={!hasPendingUpdates || savingRecordId === record.recordId}
+                            disabled={savingRecordId === record.recordId}
                             className={`px-3 py-1 rounded transition-colors text-xs font-semibold ${
-                              !hasPendingUpdates || savingRecordId === record.recordId
+                              savingRecordId === record.recordId
                                 ? "bg-green-200 text-white cursor-not-allowed"
                                 : "bg-green-400 text-white hover:bg-green-500"
                             }`}
                           >
-                            {savingRecordId === record.recordId ? "Saving..." : "Save Details to DB"}
+                            {savingRecordId === record.recordId
+                              ? "Saving..."
+                              : savedRecordIds[record.recordId]
+                                ? "Saved"
+                                : "Save Details to DB"}
                           </button>
                           {hasPendingUpdates && (
                             <button
