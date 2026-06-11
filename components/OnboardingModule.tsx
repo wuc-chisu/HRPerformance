@@ -9,6 +9,9 @@ import {
   OnboardingStep2Update,
   OnboardingStep3Update,
   OnboardingStep4Update,
+  OnboardingStep5Update,
+  OnboardingStep6Update,
+  OnboardingPayrollSetup,
   REQUIRED_HR_POLICY_SIGNOFFS,
   REQUIRED_ONBOARDING_FORMS,
   REQUIRED_TRAINING_ITEMS,
@@ -20,15 +23,25 @@ interface OnboardingModuleProps {
   onSaveStep2: (employeeId: string, payload: OnboardingStep2Update) => Promise<void>;
   onSaveStep3: (employeeId: string, payload: OnboardingStep3Update) => Promise<void>;
   onSaveStep4: (employeeId: string, payload: OnboardingStep4Update) => Promise<void>;
-  onSaveStep5: (employeeId: string, activated: boolean) => Promise<void>;
+  onSaveStep5: (employeeId: string, payload: OnboardingStep5Update) => Promise<void>;
+  onSaveStep6: (employeeId: string, payload: OnboardingStep6Update) => Promise<void>;
 }
 
-const stepLabels = [
+const BASE_STEP_LABELS = [
   "1. Pre-Onboarding",
   "2. Forms Completed",
   "3. HR Policies Sign Off",
   "4. Trainings",
   "5. Activated",
+];
+
+const TAIWAN_STEP_LABELS = [
+  "1. Pre-Onboarding",
+  "2. Forms Completed",
+  "3. HR Policies Sign Off",
+  "4. Trainings",
+  "5. Payroll Setup",
+  "6. Activated",
 ];
 
 const STEP3_POLICY_ITEMS = REQUIRED_HR_POLICY_SIGNOFFS;
@@ -39,6 +52,8 @@ const STEP4_TRAINING_ITEMS: Array<{
 }> = [
   { name: "Annual: PD/CEU Training Certification" },
   { name: "Annual: FERPA training completed certificate", urlFieldLabels: ["FERPA Certificate URL"] },
+  { name: "ClickUp Training" },
+  { name: "Moodle Training" },
   {
     name: "Annual: Training exam 1/year",
     urlFieldLabels: [
@@ -407,6 +422,14 @@ function getDefaultOnboarding(): OnboardingState {
     step4Completed: false,
     step4Forms: getDefaultStep4Forms(),
     step5Completed: false,
+    step5PayrollSetup: {
+      paypalConfirmed: false,
+      laborInsuranceAmount: null,
+      healthInsuranceAmount: null,
+      laborInsuranceReceiptProvided: false,
+      healthInsuranceReceiptProvided: false,
+    },
+    step6Completed: false,
     step6AnnualTracking: false,
     step2CompletedAt: null,
     step3CompletedAt: null,
@@ -457,6 +480,17 @@ function getResolvedOnboarding(employee?: Employee | null): OnboardingState {
     step3Completed: getStep3Completion(step3Forms),
     step4Forms,
     step4Completed: getStep4Completion(step4Forms),
+    step5PayrollSetup: onboarding.step5PayrollSetup || {
+      paypalConfirmed: false,
+      laborInsuranceAmount: null,
+      healthInsuranceAmount: null,
+      laborInsuranceReceiptProvided: false,
+      healthInsuranceReceiptProvided: false,
+    },
+    step6Completed:
+      typeof onboarding.step6Completed === "boolean"
+        ? onboarding.step6Completed
+        : Boolean(onboarding.step6AnnualTracking || onboarding.step5Completed),
   };
 }
 
@@ -467,6 +501,7 @@ export default function OnboardingModule({
   onSaveStep3,
   onSaveStep4,
   onSaveStep5,
+  onSaveStep6,
 }: OnboardingModuleProps) {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [activeStep, setActiveStep] = useState<number>(1);
@@ -486,6 +521,13 @@ export default function OnboardingModule({
   const [step2Forms, setStep2Forms] = useState<OnboardingFormItem[]>(getDefaultStep2Forms());
   const [step3Forms, setStep3Forms] = useState<OnboardingFormItem[]>(getDefaultStep3Forms());
   const [step4Forms, setStep4Forms] = useState<OnboardingFormItem[]>(getDefaultStep4Forms());
+  const [step5PayrollSetup, setStep5PayrollSetup] = useState<OnboardingPayrollSetup>({
+    paypalConfirmed: false,
+    laborInsuranceAmount: null,
+    healthInsuranceAmount: null,
+    laborInsuranceReceiptProvided: false,
+    healthInsuranceReceiptProvided: false,
+  });
   const [actingRole, setActingRole] = useState<Step2ActorRole>("HR");
   const [actingUserName, setActingUserName] = useState<string>("");
   const [openSections, setOpenSections] = useState<Set<string>>(
@@ -552,6 +594,10 @@ export default function OnboardingModule({
 
   const selectedEmployee = sortedEmployees.find((emp) => emp.id === selectedEmployeeId) || null;
   const onboarding = getResolvedOnboarding(selectedEmployee);
+  const isTaiwanEmployee = (selectedEmployee?.staffWorkLocation || "")
+    .toLowerCase()
+    .includes("taiwan");
+  const stepLabels = isTaiwanEmployee ? TAIWAN_STEP_LABELS : BASE_STEP_LABELS;
 
   useEffect(() => {
     if (!selectedEmployee) return;
@@ -569,17 +615,29 @@ export default function OnboardingModule({
     setStep2Forms(applyStep2VerifierDefaults(onboarding.step2Forms, roleVerifierLookup));
     setStep3Forms(onboarding.step3Forms);
     setStep4Forms(onboarding.step4Forms);
+    setStep5PayrollSetup(onboarding.step5PayrollSetup);
     setSaveStatus(null);
     setActiveStep(1);
   }, [selectedEmployeeId, roleVerifierLookup]);
 
-  const completedSteps = [
-    onboarding.step1Completed,
-    getStep2Completion(step2Forms),
-    getStep3Completion(step3Forms),
-    getStep4Completion(step4Forms),
-    onboarding.step5Completed,
-  ].filter(Boolean).length;
+  const completedStepFlags = isTaiwanEmployee
+    ? [
+        onboarding.step1Completed,
+        getStep2Completion(step2Forms),
+        getStep3Completion(step3Forms),
+        getStep4Completion(step4Forms),
+        onboarding.step5Completed,
+        onboarding.step6Completed,
+      ]
+    : [
+        onboarding.step1Completed,
+        getStep2Completion(step2Forms),
+        getStep3Completion(step3Forms),
+        getStep4Completion(step4Forms),
+        onboarding.step6Completed,
+      ];
+
+  const completedSteps = completedStepFlags.filter(Boolean).length;
 
   const handleAccessToggle = (
     key: "gmail" | "clickup" | "moodle" | "googleDrive",
@@ -843,16 +901,45 @@ export default function OnboardingModule({
     }
   };
 
+  const handlePayrollAmountChange = (
+    field: "laborInsuranceAmount" | "healthInsuranceAmount",
+    value: string
+  ) => {
+    setStep5PayrollSetup((prev) => ({
+      ...prev,
+      [field]: value === "" ? null : Number(value),
+    }));
+  };
+
   const handleSaveStep5 = async () => {
     if (!selectedEmployee) return;
 
     try {
       setSaving(true);
       setSaveStatus(null);
-      await onSaveStep5(selectedEmployee.id, formState.checklistAssigned);
+      await onSaveStep5(selectedEmployee.id, { payrollSetup: step5PayrollSetup });
       setSaveStatus({ ok: true, msg: "Saved successfully." });
+      if (isTaiwanEmployee) {
+        setActiveStep(6);
+      }
     } catch (error) {
       console.error("Failed to save onboarding step 5:", error);
+      setSaveStatus({ ok: false, msg: "Failed to save." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveStep6 = async () => {
+    if (!selectedEmployee) return;
+
+    try {
+      setSaving(true);
+      setSaveStatus(null);
+      await onSaveStep6(selectedEmployee.id, { activated: formState.checklistAssigned });
+      setSaveStatus({ ok: true, msg: "Saved successfully." });
+    } catch (error) {
+      console.error("Failed to save onboarding step 6:", error);
       setSaveStatus({ ok: false, msg: "Failed to save." });
     } finally {
       setSaving(false);
@@ -915,7 +1002,7 @@ export default function OnboardingModule({
               }
             />
             <span className="font-semibold text-gray-900">
-              Assign onboarding checklist (required to move to Steps 2-5)
+              Assign onboarding checklist (required to move to later onboarding steps)
             </span>
           </label>
 
@@ -1476,7 +1563,103 @@ export default function OnboardingModule({
       );
     }
 
-    if (activeStep === 5) {
+    if (activeStep === 5 && isTaiwanEmployee) {
+      return (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h4 className="text-lg font-bold text-gray-900 mb-1">Step 5: Payroll Setup</h4>
+          <p className="text-sm text-gray-600 mb-5">
+            Complete Taiwan payroll setup before moving to activation.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+            <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+              <input
+                type="checkbox"
+                checked={step5PayrollSetup.paypalConfirmed}
+                onChange={(e) =>
+                  setStep5PayrollSetup((prev) => ({
+                    ...prev,
+                    paypalConfirmed: e.target.checked,
+                  }))
+                }
+              />
+              <span className="font-medium text-gray-900">(1) Confirm PayPal account</span>
+            </label>
+
+            <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+              <input
+                type="checkbox"
+                checked={step5PayrollSetup.laborInsuranceReceiptProvided}
+                onChange={(e) =>
+                  setStep5PayrollSetup((prev) => ({
+                    ...prev,
+                    laborInsuranceReceiptProvided: e.target.checked,
+                  }))
+                }
+              />
+              <span className="font-medium text-gray-900">(4) If provide 勞保 receipt</span>
+            </label>
+
+            <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+              <input
+                type="checkbox"
+                checked={step5PayrollSetup.healthInsuranceReceiptProvided}
+                onChange={(e) =>
+                  setStep5PayrollSetup((prev) => ({
+                    ...prev,
+                    healthInsuranceReceiptProvided: e.target.checked,
+                  }))
+                }
+              />
+              <span className="font-medium text-gray-900">(5) If provide 健保 receipt</span>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">(2) 勞保費用 / amount</label>
+              <input
+                type="number"
+                min="0"
+                value={step5PayrollSetup.laborInsuranceAmount ?? ""}
+                onChange={(e) => handlePayrollAmountChange("laborInsuranceAmount", e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm"
+                placeholder="Enter amount"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">(3) 健保費用 amount</label>
+              <input
+                type="number"
+                min="0"
+                value={step5PayrollSetup.healthInsuranceAmount ?? ""}
+                onChange={(e) => handlePayrollAmountChange("healthInsuranceAmount", e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm"
+                placeholder="Enter amount"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            {saveStatus && (
+              <span className={`text-sm font-medium ${saveStatus.ok ? "text-green-600" : "text-red-600"}`}>
+                {saveStatus.msg}
+              </span>
+            )}
+            <button
+              onClick={handleSaveStep6}
+              disabled={saving}
+              className="bg-cyan-500 text-white font-semibold py-2 px-5 rounded-lg hover:bg-cyan-600 disabled:bg-cyan-300"
+            >
+              {saving ? "Saving..." : "Save Step 5"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeStep === 5 && !isTaiwanEmployee) {
       return (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h4 className="text-lg font-bold text-gray-900 mb-1">Step 5: Activated</h4>
@@ -1519,6 +1702,49 @@ export default function OnboardingModule({
       );
     }
 
+    if (activeStep === 6 && isTaiwanEmployee) {
+      return (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h4 className="text-lg font-bold text-gray-900 mb-1">Step 6: Activated</h4>
+          <p className="text-sm text-gray-600 mb-5">
+            Set and save the employee&apos;s current enrollment status.
+          </p>
+
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Current Enrollment Status</label>
+            <select
+              value={formState.checklistAssigned ? "Enrolled" : "In Progress"}
+              onChange={(e) =>
+                setFormState((prev) => ({
+                  ...prev,
+                  checklistAssigned: e.target.value === "Enrolled",
+                }))
+              }
+              className="w-full md:w-80 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm"
+            >
+              <option value="Enrolled">Enrolled</option>
+              <option value="In Progress">In Progress</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            {saveStatus && (
+              <span className={`text-sm font-medium ${saveStatus.ok ? "text-green-600" : "text-red-600"}`}>
+                {saveStatus.msg}
+              </span>
+            )}
+            <button
+              onClick={handleSaveStep6}
+              disabled={saving}
+              className="bg-cyan-500 text-white font-semibold py-2 px-5 rounded-lg hover:bg-cyan-600 disabled:bg-cyan-300"
+            >
+              {saving ? "Saving..." : "Save Step 6"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <h4 className="text-lg font-bold text-gray-900 mb-1">{stepLabels[activeStep - 1]}</h4>
@@ -1534,7 +1760,9 @@ export default function OnboardingModule({
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Onboarding Module</h2>
         <p className="text-gray-600">
-          Flow: Pre-Onboarding → Forms Completed → HR Policies Sign Off → Trainings → Activated
+          Flow: {isTaiwanEmployee
+            ? "Pre-Onboarding → Forms Completed → HR Policies Sign Off → Trainings → Payroll Setup → Activated"
+            : "Pre-Onboarding → Forms Completed → HR Policies Sign Off → Trainings → Activated"}
         </p>
       </div>
 
@@ -1552,8 +1780,18 @@ export default function OnboardingModule({
                 employeeOnboarding.step2Completed,
                 employeeOnboarding.step3Completed,
                 employeeOnboarding.step4Completed,
-                employeeOnboarding.step5Completed,
+                (employee.staffWorkLocation || "").toLowerCase().includes("taiwan")
+                  ? employeeOnboarding.step5Completed
+                  : employeeOnboarding.step6Completed,
+                (employee.staffWorkLocation || "").toLowerCase().includes("taiwan")
+                  ? employeeOnboarding.step6Completed
+                  : undefined,
               ].filter(Boolean).length;
+              const employeeStepTotal = (employee.staffWorkLocation || "")
+                .toLowerCase()
+                .includes("taiwan")
+                ? 6
+                : 5;
 
               return (
                 <button
@@ -1577,7 +1815,7 @@ export default function OnboardingModule({
                     >
                       {enrolled ? "Enrolled" : "Not enrolled"}
                     </span>
-                    <span className="text-xs text-gray-500">{employeeCompleted}/5 done</span>
+                    <span className="text-xs text-gray-500">{employeeCompleted}/{employeeStepTotal} done</span>
                   </div>
                 </button>
               );
@@ -1603,19 +1841,13 @@ export default function OnboardingModule({
                     <p className="text-gray-600 mt-1">{selectedEmployee.department} · {selectedEmployee.position}</p>
                   </div>
                   <div className="text-sm font-semibold text-gray-700 bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-200">
-                    Progress: {completedSteps}/5
+                    Progress: {completedSteps}/{stepLabels.length}
                   </div>
                 </div>
 
                 <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
                   {stepLabels.map((label, index) => {
-                    const completed = [
-                      onboarding.step1Completed,
-                      getStep2Completion(step2Forms),
-                      getStep3Completion(step3Forms),
-                      getStep4Completion(step4Forms),
-                      onboarding.step5Completed,
-                    ][index];
+                    const completed = completedStepFlags[index];
 
                     return (
                       <button

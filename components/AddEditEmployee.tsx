@@ -14,7 +14,7 @@ const OFFICE_DAYS: OfficeDay[] = [
 
 interface AddEditEmployeeProps {
   employee?: Employee;
-  onSave: (employee: Employee) => void;
+  onSave: (employee: Employee) => void | Promise<void>;
   onCancel: () => void;
   departments?: string[];
   employees?: Employee[];
@@ -39,18 +39,25 @@ export default function AddEditEmployee({
     id: employee?.id || "",
     name: employee?.name || "",
     email: employee?.email || "",
+    personalEmail: employee?.personalEmail || "",
     department: employee?.department || "",
     manager: employee?.manager || "",
     position: employee?.position || "",
     joinDate: employee?.joinDate || "",
-    workAuthorizationStatus: employee?.workAuthorizationStatus || "Other Work Visa",
+    workAuthorizationStatus: employee?.workAuthorizationStatus || "Taiwan Resident",
     staffWorkLocation: employee?.staffWorkLocation || "USA",
     employeeType: employee?.employeeType || "Full time",
     contractWorkHours: employee?.contractWorkHours || 0,
     officeSchedule: employee?.officeSchedule || null,
+    probationPeriodStartDate: employee?.probationPeriodStartDate || "",
+    probationPeriodEndDate: employee?.probationPeriodEndDate || "",
+    monthlySalaryDuringProbation: employee?.monthlySalaryDuringProbation ?? 1300,
+    monthlySalaryAfterProbation: employee?.monthlySalaryAfterProbation ?? 1400,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const salaryCurrencyCode = "USD";
 
   const managerOptions = employees
     .filter((entry) => entry.id !== formData.id)
@@ -86,19 +93,39 @@ export default function AddEditEmployee({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (validateForm()) {
-      const newEmployee: Employee = {
-        ...formData,
-        staffWorkLocation: formData.staffWorkLocation,
-        contractWorkHours: formData.employeeType === "Contract" ? formData.contractWorkHours : undefined,
-        officeSchedule: formData.officeSchedule,
-        weeklyRecords: employee?.weeklyRecords || [],
-      };
-      onSave(newEmployee);
+      try {
+        setIsSubmitting(true);
+        await Promise.resolve(onSave(buildEmployeePayload()));
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
+
+  const buildEmployeePayload = (): Employee => ({
+    ...formData,
+    id: formData.id.trim(),
+    name: formData.name.trim(),
+    email: formData.email.trim(),
+    personalEmail: formData.personalEmail.trim(),
+    manager: formData.manager.trim(),
+    position: formData.position.trim(),
+    staffWorkLocation: formData.staffWorkLocation,
+    contractWorkHours:
+      formData.employeeType === "Contract" ? formData.contractWorkHours : undefined,
+    officeSchedule: formData.officeSchedule,
+    probationPeriodStartDate: formData.probationPeriodStartDate,
+    probationPeriodEndDate: formData.probationPeriodEndDate,
+    monthlySalaryDuringProbation: Number(formData.monthlySalaryDuringProbation),
+    monthlySalaryAfterProbation: Number(formData.monthlySalaryAfterProbation),
+    weeklyRecords: employee?.weeklyRecords || [],
+  });
+
 
   const toggleOfficeDay = (day: OfficeDay, checked: boolean) => {
     setFormData((prev) => {
@@ -215,9 +242,10 @@ export default function AddEditEmployee({
           </div>
 
           {/* Email */}
-          <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Email *
+              Work Email *
             </label>
             <input
               type="email"
@@ -234,6 +262,21 @@ export default function AddEditEmployee({
             {errors.email && (
               <p className="text-red-600 text-sm mt-1">{errors.email}</p>
             )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Personal Email
+              </label>
+              <input
+                type="email"
+                name="personalEmail"
+                value={formData.personalEmail}
+                onChange={handleChange}
+                placeholder="e.g., yourname@gmail.com"
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition border-gray-300 hover:border-gray-400"
+              />
+            </div>
           </div>
 
           {/* Department and Position in 2 columns */}
@@ -337,6 +380,66 @@ export default function AddEditEmployee({
             <p className="text-gray-500 text-xs mt-1">Format: YYYY-MM-DD</p>
           </div>
 
+          {/* Probation Period - Start and End Date */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Probation Period Start Date
+              </label>
+              <input
+                type="date"
+                name="probationPeriodStartDate"
+                value={formData.probationPeriodStartDate}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+              />
+              <p className="text-gray-500 text-xs mt-1">Usually same as Hire Date</p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Probation Period End Date
+              </label>
+              <input
+                type="date"
+                name="probationPeriodEndDate"
+                value={formData.probationPeriodEndDate}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+              />
+              <p className="text-gray-500 text-xs mt-1">Usually 3 months after start date</p>
+            </div>
+          </div>
+
+          {/* Monthly Salary Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Monthly Salary During Probation ({salaryCurrencyCode})
+              </label>
+              <input
+                type="number"
+                name="monthlySalaryDuringProbation"
+                value={formData.monthlySalaryDuringProbation}
+                onChange={handleChange}
+                placeholder="e.g., 1300"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Monthly Salary After Probation ({salaryCurrencyCode})
+              </label>
+              <input
+                type="number"
+                name="monthlySalaryAfterProbation"
+                value={formData.monthlySalaryAfterProbation}
+                onChange={handleChange}
+                placeholder="e.g., 1400"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+              />
+            </div>
+          </div>
+
           {/* Staff Work Location */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -349,7 +452,7 @@ export default function AddEditEmployee({
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
             >
               <option value="USA">USA</option>
-              <option value="Taiwan">Taiwan</option>
+              <option value="Taiwan (Remote)">Taiwan (Remote)</option>
             </select>
             <p className="text-gray-500 text-xs mt-1">Used to determine applicable public holidays</p>
           </div>
@@ -373,7 +476,7 @@ export default function AddEditEmployee({
                 <option value="F-1 CPT">F-1 CPT</option>
                 <option value="H-1B">H-1B</option>
                 <option value="Work Authorization (EAD)">Work Authorization (EAD)</option>
-                <option value="Other Work Visa">Other Work Visa</option>
+                <option value="Taiwan Resident">Taiwan Resident</option>
               </select>
             </div>
 
@@ -466,13 +569,21 @@ export default function AddEditEmployee({
           <div className="flex gap-4 pt-4 border-t">
             <button
               type="submit"
+              disabled={isSubmitting}
               className="flex-1 bg-blue-300 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-400 transition-colors"
             >
-              {employee ? "Update Employee" : "Add Employee"}
+              {isSubmitting
+                ? employee
+                  ? "Updating..."
+                  : "Adding..."
+                : employee
+                ? "Update Employee"
+                : "Add Employee"}
             </button>
             <button
               type="button"
               onClick={onCancel}
+              disabled={isSubmitting}
               className="flex-1 bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
             >
               Cancel
@@ -480,6 +591,7 @@ export default function AddEditEmployee({
           </div>
         </form>
       </div>
+
     </div>
   );
 }

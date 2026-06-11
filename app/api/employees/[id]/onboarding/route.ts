@@ -19,6 +19,92 @@ type OnboardingForm = {
   extraUrls?: string[];
 };
 
+type OnboardingPayrollSetup = {
+  paypalConfirmed: boolean;
+  laborInsuranceAmount: number | null;
+  healthInsuranceAmount: number | null;
+  laborInsuranceReceiptProvided: boolean;
+  healthInsuranceReceiptProvided: boolean;
+};
+
+const PAYROLL_META_MARKER = "\n\n[ONBOARDING_META]";
+
+function getDefaultPayrollSetup(): OnboardingPayrollSetup {
+  return {
+    paypalConfirmed: false,
+    laborInsuranceAmount: null,
+    healthInsuranceAmount: null,
+    laborInsuranceReceiptProvided: false,
+    healthInsuranceReceiptProvided: false,
+  };
+}
+
+function toNullableAmount(value: unknown): number | null {
+  if (value === "" || value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+function sanitizePayrollSetup(input: unknown): OnboardingPayrollSetup {
+  if (!input || typeof input !== "object") {
+    return getDefaultPayrollSetup();
+  }
+
+  const source = input as Record<string, unknown>;
+
+  return {
+    paypalConfirmed: Boolean(source.paypalConfirmed),
+    laborInsuranceAmount: toNullableAmount(source.laborInsuranceAmount),
+    healthInsuranceAmount: toNullableAmount(source.healthInsuranceAmount),
+    laborInsuranceReceiptProvided: Boolean(source.laborInsuranceReceiptProvided),
+    healthInsuranceReceiptProvided: Boolean(source.healthInsuranceReceiptProvided),
+  };
+}
+
+function isPayrollSetupComplete(payrollSetup: OnboardingPayrollSetup): boolean {
+  return (
+    payrollSetup.paypalConfirmed &&
+    typeof payrollSetup.laborInsuranceAmount === "number" &&
+    typeof payrollSetup.healthInsuranceAmount === "number" &&
+    payrollSetup.laborInsuranceReceiptProvided &&
+    payrollSetup.healthInsuranceReceiptProvided
+  );
+}
+
+function parseOnboardingNotes(raw: string | null | undefined) {
+  const source = raw || "";
+  const markerIndex = source.indexOf(PAYROLL_META_MARKER);
+
+  if (markerIndex === -1) {
+    return {
+      notes: source,
+      payrollSetup: getDefaultPayrollSetup(),
+    };
+  }
+
+  const notes = source.slice(0, markerIndex);
+  const metaRaw = source.slice(markerIndex + PAYROLL_META_MARKER.length).trim();
+
+  try {
+    const parsed = JSON.parse(metaRaw) as { payrollSetup?: unknown };
+    return {
+      notes,
+      payrollSetup: sanitizePayrollSetup(parsed?.payrollSetup),
+    };
+  } catch {
+    return {
+      notes,
+      payrollSetup: getDefaultPayrollSetup(),
+    };
+  }
+}
+
+function serializeOnboardingNotes(notes: string, payrollSetup: OnboardingPayrollSetup) {
+  const trimmedNotes = notes || "";
+  const meta = JSON.stringify({ payrollSetup });
+  return `${trimmedNotes}${PAYROLL_META_MARKER}\n${meta}`;
+}
+
 function parseOptionalDate(value?: string | null) {
   return value ? new Date(value) : null;
 }
@@ -172,7 +258,7 @@ export async function PATCH(
     const step = Number(body?.step);
     const payload = body?.payload || {};
 
-    if (!Number.isInteger(step) || step < 1 || step > 5) {
+    if (!Number.isInteger(step) || step < 1 || step > 6) {
       return NextResponse.json({ error: "Invalid onboarding step" }, { status: 400 });
     }
 
@@ -187,6 +273,9 @@ export async function PATCH(
         onboardingStep3CompletedAt: true,
         onboardingStep4CompletedAt: true,
         onboardingStep5CompletedAt: true,
+        onboardingStep6LastReviewAt: true,
+        onboardingStep1Notes: true,
+        staffWorkLocation: true,
       },
     });
 
@@ -197,6 +286,7 @@ export async function PATCH(
     let data: Record<string, unknown> = {};
 
     if (step === 1) {
+      const parsedMeta = parseOnboardingNotes(existing.onboardingStep1Notes);
       data = {
         onboardingChecklistAssigned: Boolean(payload.checklistAssigned),
         systemAccessGmail: Boolean(payload.systemAccess?.gmail),
@@ -205,7 +295,7 @@ export async function PATCH(
         systemAccessGoogleDrive: Boolean(payload.systemAccess?.googleDrive),
         onboardingStep1UpdatedBy: payload.updatedBy || "HR Manager",
         onboardingStep1UpdatedAt: new Date(),
-        onboardingStep1Notes: payload.notes || "",
+        onboardingStep1Notes: serializeOnboardingNotes(payload.notes || "", parsedMeta.payrollSetup),
       };
     }
 
@@ -267,12 +357,27 @@ export async function PATCH(
     }
 
     if (step === 5) {
+      const parsedMeta = parseOnboardingNotes(existing.onboardingStep1Notes);
+      const payrollSetup = sanitizePayrollSetup(payload.payrollSetup);
+      const isTaiwanEmployee = (existing.staffWorkLocation || "").toLowerCase().includes("taiwan");
+      const completed = isTaiwanEmployee ? isPayrollSetupComplete(payrollSetup) : true;
+
+      data = {
+        onboardingStep5Completed: completed,
+        onboardingStep5CompletedAt: completed
+          ? parseOptionalDate(payload.step5CompletedAt) || existing.onboardingStep5CompletedAt || new Date()
+          : null,
+        onboardingStep1Notes: serializeOnboardingNotes(parsedMeta.notes, payrollSetup),
+      };
+    }
+
+    if (step === 6) {
       const activated = Boolean(payload.activated);
       data = {
         onboardingChecklistAssigned: activated,
-        onboardingStep5Completed: activated,
-        onboardingStep5CompletedAt: activated
-          ? parseOptionalDate(payload.step5CompletedAt) || existing.onboardingStep5CompletedAt || new Date()
+        onboardingStep6AnnualTracking: activated,
+        onboardingStep6LastReviewAt: activated
+          ? parseOptionalDate(payload.step6CompletedAt) || existing.onboardingStep6LastReviewAt || new Date()
           : null,
       };
     }
@@ -287,12 +392,17 @@ export async function PATCH(
         onboardingStep3Completed: true,
         onboardingStep4Completed: true,
         onboardingStep5Completed: true,
+        onboardingStep6AnnualTracking: true,
         onboardingStep2CompletedAt: true,
         onboardingStep3CompletedAt: true,
         onboardingStep4CompletedAt: true,
         onboardingStep5CompletedAt: true,
+        onboardingStep6LastReviewAt: true,
+        onboardingStep1Notes: true,
       },
     });
+
+    const parsedMeta = parseOnboardingNotes((updated as any).onboardingStep1Notes);
 
     return NextResponse.json({
       id: updated.employeeId,
@@ -301,10 +411,15 @@ export async function PATCH(
       step3Completed: Boolean(updated.onboardingStep3Completed),
       step4Completed: Boolean(updated.onboardingStep4Completed),
       step5Completed: Boolean(updated.onboardingStep5Completed),
+      step6Completed: Boolean(
+        (updated as any).onboardingStep6AnnualTracking || updated.onboardingStep5Completed
+      ),
+      step5PayrollSetup: parsedMeta.payrollSetup,
       step2CompletedAt: formatDateTimeForResponse(updated.onboardingStep2CompletedAt),
       step3CompletedAt: formatDateTimeForResponse(updated.onboardingStep3CompletedAt),
       step4CompletedAt: formatDateTimeForResponse(updated.onboardingStep4CompletedAt),
       step5CompletedAt: formatDateTimeForResponse(updated.onboardingStep5CompletedAt),
+      step6CompletedAt: formatDateTimeForResponse((updated as any).onboardingStep6LastReviewAt),
       updatedAt: formatDateForResponse(new Date()),
     });
   } catch (error) {

@@ -21,15 +21,20 @@ model Employee {
   employeeId                    String                      @unique
   name                          String
   email                         String                      @default("")
+  personalEmail                 String?                     @default("")
   department                    String
   manager                       String                      @default("")
   position                      String
   joinDate                      DateTime
-  workAuthorizationStatus       String                      @default("Other Work Visa")
+  workAuthorizationStatus       String                      @default("Taiwan Resident")
   staffWorkLocation             String                      @default("USA")
   employeeType                  String                      @default("Full time")
   contractWorkHours             Int?
   officeSchedule                Json?
+  probationPeriodStartDate      DateTime?
+  probationPeriodEndDate        DateTime?
+  monthlySalaryDuringProbation  Float?                      @default(1300)
+  monthlySalaryAfterProbation   Float?                      @default(1400)
   overallOverdueTasks           Int                         @default(0)
   onboardingChecklistAssigned   Boolean                     @default(true)
   systemAccessGmail             Boolean                     @default(true)

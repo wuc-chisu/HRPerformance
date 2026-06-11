@@ -64,6 +64,7 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
   const [reason, setReason] = useState("");
   const [historyMemo, setHistoryMemo] = useState("");
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [viewingRecordId, setViewingRecordId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedEmployeeFilter, setSelectedEmployeeFilter] = useState("");
   const editSectionRef = useRef<HTMLDivElement | null>(null);
@@ -800,12 +801,20 @@ Human Resources`
       ? records.find((record) => record.id === editingRecordId) || null
       : null;
 
+  const viewingRecord =
+    viewingRecordId != null
+      ? records.find((record) => record.id === viewingRecordId) || null
+      : null;
+
   const filteredRecords = useMemo(() => {
     const scopedRecords = selectedEmployeeFilter
       ? records.filter((record) => record.employeeId === selectedEmployeeFilter)
       : records;
 
     return [...scopedRecords].sort((first, second) => {
+      const byDate = second.occurrenceDate.localeCompare(first.occurrenceDate);
+      if (byDate !== 0) return byDate;
+
       const byName = first.name.localeCompare(second.name, undefined, {
         sensitivity: "base",
       });
@@ -816,9 +825,6 @@ Human Resources`
         sensitivity: "base",
       });
       if (byEmployeeId !== 0) return byEmployeeId;
-
-      const byDate = second.occurrenceDate.localeCompare(first.occurrenceDate);
-      if (byDate !== 0) return byDate;
 
       return second.id.localeCompare(first.id);
     });
@@ -1299,6 +1305,7 @@ Human Resources`
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">Appeal Decision</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">Decision Date</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700">Details</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
@@ -1405,6 +1412,14 @@ Human Resources`
                       />
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-700">{draft.status}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <button
+                        onClick={() => setViewingRecordId(record.id)}
+                        className="bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-blue-700"
+                      >
+                        View Details
+                      </button>
+                    </td>
                     <td className="px-4 py-3 min-w-44">
                       {showMeetingCheckbox && (
                         <label className="mb-2 flex items-center gap-2 text-xs text-gray-700">
@@ -1491,6 +1506,12 @@ Human Resources`
 
                       <div className="flex flex-wrap gap-2">
                         <button
+                          onClick={() => setViewingRecordId(record.id)}
+                          className="bg-slate-500 text-white text-xs px-2 py-1 rounded hover:bg-slate-600"
+                        >
+                          View
+                        </button>
+                        <button
                           onClick={() => setEditingRecordId(record.id)}
                           className="bg-purple-400 text-white text-xs px-2 py-1 rounded hover:bg-purple-500"
                         >
@@ -1545,7 +1566,7 @@ Human Resources`
 
               {filteredRecords.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-gray-600">
+                  <td colSpan={11} className="px-4 py-8 text-center text-gray-600">
                     No incident records yet.
                   </td>
                 </tr>
@@ -1608,6 +1629,97 @@ Human Resources`
         </div>
 
         {/* Email Draft Modal */}
+        {viewingRecord && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full mx-4 p-6 max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Incident Details</h2>
+                <button
+                  onClick={() => setViewingRecordId(null)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="font-semibold text-gray-700">Employee</p>
+                  <p className="text-gray-900">{viewingRecord.name} ({viewingRecord.employeeId})</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Record Type</p>
+                  <p className="text-gray-900">{viewingRecord.recordType}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Occurrence Date</p>
+                  <p className="text-gray-900">{formatShortDate(viewingRecord.occurrenceDate)}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Issued By</p>
+                  <p className="text-gray-900">{viewingRecord.issuedBy || "-"}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Appeal Decision</p>
+                  <p className="text-gray-900">{viewingRecord.appealDecision}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-700">Status</p>
+                  <p className="text-gray-900">{getStatusFromAppealDecision(viewingRecord.appealDecision)}</p>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="font-semibold text-gray-700 mb-1">Reason</p>
+                <div className="border border-gray-200 rounded-md p-3 text-sm text-gray-800 whitespace-pre-wrap break-words bg-gray-50">
+                  {viewingRecord.reason?.trim() || "No reason recorded."}
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="font-semibold text-gray-700 mb-1">Initial Memo</p>
+                <div className="border border-gray-200 rounded-md p-3 text-sm text-gray-800 whitespace-pre-wrap break-words bg-gray-50">
+                  {viewingRecord.histories.length > 0
+                    ? viewingRecord.histories[viewingRecord.histories.length - 1].memo
+                    : "No memo recorded."}
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <p className="font-semibold text-gray-700 mb-2">Memo / History Log</p>
+                {viewingRecord.histories.length === 0 ? (
+                  <p className="text-sm text-gray-600">No history entries.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {viewingRecord.histories.map((history) => (
+                      <div key={history.id} className="border border-gray-200 rounded-md p-3 bg-white">
+                        <p className="text-xs text-gray-500 mb-1">
+                          {history.type} • {history.createdBy || "Unknown"} • {formatCompactDate(history.createdAt)}
+                        </p>
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+                          {history.memo || "(No memo text)"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setViewingRecordId(null);
+                    setEditingRecordId(viewingRecord.id);
+                  }}
+                  className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+                >
+                  Edit This Record
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {emailDraft && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 p-6">

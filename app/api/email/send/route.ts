@@ -36,7 +36,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const files = formData.getAll("attachments");
+    // Support both plural and singular attachment keys used by different UIs.
+    const files = [
+      ...formData.getAll("attachments"),
+      ...formData.getAll("attachment"),
+    ];
     const attachments = await Promise.all(
       files
         .filter((item): item is File => item instanceof File && item.size > 0)

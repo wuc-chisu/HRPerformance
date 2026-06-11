@@ -11,6 +11,54 @@ import {
   REQUIRED_TRAINING_ITEMS,
 } from "@/lib/employees";
 
+type OnboardingPayrollSetup = {
+  paypalConfirmed: boolean;
+  laborInsuranceAmount: number | null;
+  healthInsuranceAmount: number | null;
+  laborInsuranceReceiptProvided: boolean;
+  healthInsuranceReceiptProvided: boolean;
+};
+
+const PAYROLL_META_MARKER = "\n\n[ONBOARDING_META]";
+
+function getDefaultPayrollSetup(): OnboardingPayrollSetup {
+  return {
+    paypalConfirmed: false,
+    laborInsuranceAmount: null,
+    healthInsuranceAmount: null,
+    laborInsuranceReceiptProvided: false,
+    healthInsuranceReceiptProvided: false,
+  };
+}
+
+function parseOnboardingNotes(raw: string | null | undefined) {
+  const source = raw || "";
+  const markerIndex = source.indexOf(PAYROLL_META_MARKER);
+
+  if (markerIndex === -1) {
+    return {
+      notes: source,
+      payrollSetup: getDefaultPayrollSetup(),
+    };
+  }
+
+  const notes = source.slice(0, markerIndex);
+  const metaRaw = source.slice(markerIndex + PAYROLL_META_MARKER.length).trim();
+
+  try {
+    const parsed = JSON.parse(metaRaw) as { payrollSetup?: OnboardingPayrollSetup };
+    return {
+      notes,
+      payrollSetup: parsed?.payrollSetup || getDefaultPayrollSetup(),
+    };
+  } catch {
+    return {
+      notes,
+      payrollSetup: getDefaultPayrollSetup(),
+    };
+  }
+}
+
 function normalizeProfessionalDevelopmentRecords(records: unknown) {
   if (!Array.isArray(records)) return [];
 
@@ -240,6 +288,7 @@ function formatOnboarding(emp: any) {
     moodle: Boolean(emp.systemAccessMoodle),
     googleDrive: Boolean(emp.systemAccessGoogleDrive),
   };
+  const onboardingNotes = parseOnboardingNotes(emp.onboardingStep1Notes);
 
   return {
     checklistAssigned: Boolean(emp.onboardingChecklistAssigned),
@@ -257,6 +306,8 @@ function formatOnboarding(emp: any) {
     step4Completed: getStep4Completed(step4Forms),
     step4Forms,
     step5Completed: Boolean(emp.onboardingStep5Completed),
+    step5PayrollSetup: onboardingNotes.payrollSetup,
+    step6Completed: Boolean(emp.onboardingStep6AnnualTracking || emp.onboardingStep5Completed),
     step6AnnualTracking: Boolean(emp.onboardingStep6AnnualTracking),
     step2CompletedAt: formatDateTimeForResponse(emp.onboardingStep2CompletedAt),
     step3CompletedAt: formatDateTimeForResponse(emp.onboardingStep3CompletedAt),
@@ -266,7 +317,7 @@ function formatOnboarding(emp: any) {
     step6LastReviewAt: formatDateTimeForResponse(emp.onboardingStep6LastReviewAt),
     updatedBy: emp.onboardingStep1UpdatedBy || "System",
     updatedAt: formatDateTimeForResponse(emp.onboardingStep1UpdatedAt),
-    notes: emp.onboardingStep1Notes || "",
+    notes: onboardingNotes.notes,
   };
 }
 
@@ -291,6 +342,7 @@ export async function PUT(
       id: nextEmployeeId,
       name,
       email,
+      personalEmail,
       department,
       manager,
       position,
@@ -303,6 +355,10 @@ export async function PUT(
       overallOverdueTasks,
       onboarding,
       professionalDevelopmentRecords,
+      probationPeriodStartDate,
+      probationPeriodEndDate,
+      monthlySalaryDuringProbation,
+      monthlySalaryAfterProbation,
     } = body;
 
     // Validate required fields
@@ -418,16 +474,21 @@ export async function PUT(
         employeeId: nextEmployeeId,
         name,
         email: email || "",
+        personalEmail: personalEmail || "",
         department,
         manager: manager || "",
         position,
         joinDate: parseDateForDatabase(joinDate),
-        workAuthorizationStatus: workAuthorizationStatus || "Other Work Visa",
+        workAuthorizationStatus: workAuthorizationStatus || "Taiwan Resident",
         staffWorkLocation: staffWorkLocation || "USA",
         employeeType: employeeType || "Full time",
         contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
         officeSchedule: officeSchedule ?? null,
         overallOverdueTasks: overallOverdueTasks || 0,
+        probationPeriodStartDate: probationPeriodStartDate ? parseDateForDatabase(probationPeriodStartDate) : null,
+        probationPeriodEndDate: probationPeriodEndDate ? parseDateForDatabase(probationPeriodEndDate) : null,
+        monthlySalaryDuringProbation: monthlySalaryDuringProbation !== undefined ? Number(monthlySalaryDuringProbation) : null,
+        monthlySalaryAfterProbation: monthlySalaryAfterProbation !== undefined ? Number(monthlySalaryAfterProbation) : null,
         ...(Array.isArray(professionalDevelopmentRecords)
           ? {
               professionalDevelopmentRecords:
@@ -486,6 +547,7 @@ export async function PUT(
       id: employee.employeeId,
       name: employee.name,
       email: employee.email,
+      personalEmail: employee.personalEmail || "",
       department: employee.department,
       manager: employee.manager,
       position: employee.position,
@@ -495,6 +557,14 @@ export async function PUT(
       employeeType: (employee as any).employeeType || "Full time",
       contractWorkHours: (employee as any).contractWorkHours ?? null,
       officeSchedule: (employee as any).officeSchedule ?? null,
+      probationPeriodStartDate: (employee as any).probationPeriodStartDate
+        ? formatDateForResponse((employee as any).probationPeriodStartDate)
+        : undefined,
+      probationPeriodEndDate: (employee as any).probationPeriodEndDate
+        ? formatDateForResponse((employee as any).probationPeriodEndDate)
+        : undefined,
+      monthlySalaryDuringProbation: (employee as any).monthlySalaryDuringProbation,
+      monthlySalaryAfterProbation: (employee as any).monthlySalaryAfterProbation,
       overallOverdueTasks: employee.overallOverdueTasks,
       professionalDevelopmentRecords: normalizeProfessionalDevelopmentRecords(
         (employee as any).professionalDevelopmentRecords

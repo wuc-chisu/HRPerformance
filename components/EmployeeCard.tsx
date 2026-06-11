@@ -65,6 +65,10 @@ export default function EmployeeCard({
           <p className="font-medium text-gray-900 break-all">{employee.email || "Not specified"}</p>
         </div>
         <div>
+          <p className="text-gray-600">Personal Email</p>
+          <p className="font-medium text-gray-900 break-all">{employee.personalEmail || "Not specified"}</p>
+        </div>
+        <div>
           <p className="text-gray-600">{workHoursLabel}</p>
           <p className="font-medium text-gray-900">{workHoursSummary}</p>
         </div>
