@@ -35,7 +35,7 @@ export default function Home() {
     null
   );
   const [activeView, setActiveView] = useState<
-    "dashboard" | "employees" | "manage" | "manage-performance" | "onboarding" | "offboarding" | "professional-development" | "incident-tracking" | "time-off"
+    "dashboard" | "employees" | "offboard-employees" | "manage" | "manage-performance" | "onboarding" | "offboarding" | "professional-development" | "incident-tracking" | "time-off"
   >("dashboard");
   const [selectedEmployeeForPerformance, setSelectedEmployeeForPerformance] =
     useState<string | null>(null);
@@ -68,6 +68,7 @@ export default function Home() {
   const [performanceView, setPerformanceView] = useState<"weekly" | "monthly">("weekly");
   const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>([]);
   const [holidays, setHolidays] = useState<HolidayRecord[]>([]);
+  const [selectedOffboardEmployeeId, setSelectedOffboardEmployeeId] = useState<string | null>(null);
   const isSavingEmployeeRef = useRef(false);
 
   // Generate available years (current year ± 5 years)
@@ -165,6 +166,11 @@ export default function Home() {
     [employees, confirmedOffboardEmployeeIds]
   );
 
+  const offboardEmployees = useMemo(
+    () => employees.filter((employee) => confirmedOffboardEmployeeIds.has(employee.id)),
+    [employees, confirmedOffboardEmployeeIds]
+  );
+
   const activeEmployeeIds = useMemo(
     () => new Set(activeEmployees.map((employee) => employee.id)),
     [activeEmployees]
@@ -173,6 +179,11 @@ export default function Home() {
   const activeTimeOffRequests = useMemo(
     () => timeOffRequests.filter((request) => activeEmployeeIds.has(request.employeeId)),
     [timeOffRequests, activeEmployeeIds]
+  );
+
+  const selectedOffboardEmployee = useMemo(
+    () => offboardEmployees.find((employee) => employee.id === selectedOffboardEmployeeId) || null,
+    [offboardEmployees, selectedOffboardEmployeeId]
   );
 
   const selectedEmployee = activeEmployees.find((e) => e.id === selectedEmployeeId);
@@ -188,6 +199,15 @@ export default function Home() {
       setSelectedEmployeeForPerformance(null);
     }
   }, [selectedEmployeeForPerformance, activeEmployeeIds]);
+
+  useEffect(() => {
+    if (
+      selectedOffboardEmployeeId &&
+      !offboardEmployees.some((employee) => employee.id === selectedOffboardEmployeeId)
+    ) {
+      setSelectedOffboardEmployeeId(null);
+    }
+  }, [selectedOffboardEmployeeId, offboardEmployees]);
 
   const handleAddEmployee = () => {
     setEditingEmployee(null);
@@ -234,6 +254,10 @@ export default function Home() {
           employeeType: employee.employeeType,
           contractWorkHours: employee.contractWorkHours,
           officeSchedule: employee.officeSchedule,
+          probationPeriodStartDate: employee.probationPeriodStartDate,
+          probationPeriodEndDate: employee.probationPeriodEndDate,
+          monthlySalaryDuringProbation: employee.monthlySalaryDuringProbation,
+          monthlySalaryAfterProbation: employee.monthlySalaryAfterProbation,
           overallOverdueTasks: employee.overallOverdueTasks,
         };
         const response = await fetch("/api/employees", {
@@ -1029,7 +1053,7 @@ export default function Home() {
           <button
             onClick={() => setActiveView("employees")}
             className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              activeView === "employees" || activeView === "manage"
+              activeView === "employees" || activeView === "manage" || activeView === "offboard-employees"
                 ? "bg-blue-300 text-white shadow-md"
                 : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
             }`}
@@ -1090,7 +1114,7 @@ export default function Home() {
           </button>
         </div>
 
-        {(activeView === "employees" || activeView === "manage") && (
+        {(activeView === "employees" || activeView === "manage" || activeView === "offboard-employees") && (
           <div className="mb-8 rounded-xl border border-blue-200 bg-white/90 shadow-sm p-3 sm:p-4">
             <div className="text-xs font-semibold tracking-wide text-blue-700 uppercase mb-3">
               Employee Sub-Menu
@@ -1108,6 +1132,19 @@ export default function Home() {
                 }`}
               >
                 Employee Cards
+              </button>
+              <button
+                onClick={() => {
+                  setActiveView("offboard-employees");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "offboard-employees"
+                    ? "bg-slate-700 text-white shadow"
+                    : "bg-slate-50 text-slate-800 border border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                Off-board Employees
               </button>
               <button
                 onClick={() => {
@@ -1173,6 +1210,88 @@ export default function Home() {
                 />
               ))}
             </div>
+          </div>
+        )}
+
+        {activeView === "offboard-employees" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Off-board Employees</h2>
+              <p className="text-gray-600">
+                Completed off-boarding records are kept here for lookup. These employees are hidden from active dashboards and operational modules.
+              </p>
+            </div>
+
+            {offboardEmployees.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-600">
+                No completed off-board employees yet.
+              </div>
+            ) : (
+              <>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">Employee Cards</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...offboardEmployees]
+                      .sort((a, b) =>
+                        a.id.localeCompare(b.id, undefined, {
+                          numeric: true,
+                          sensitivity: "base",
+                        })
+                      )
+                      .map((employee) => (
+                        <EmployeeCard
+                          key={employee.id}
+                          employee={employee}
+                          onSelect={(employeeId: string) => {
+                            setSelectedOffboardEmployeeId(employeeId);
+                          }}
+                        />
+                      ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Performance Report Employee
+                  </label>
+                  <select
+                    value={selectedOffboardEmployeeId || ""}
+                    onChange={(e) => setSelectedOffboardEmployeeId(e.target.value || null)}
+                    className="w-full md:w-[28rem] px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
+                  >
+                    <option value="">Choose an off-board employee...</option>
+                    {[...offboardEmployees]
+                      .sort((a, b) =>
+                        a.id.localeCompare(b.id, undefined, {
+                          numeric: true,
+                          sensitivity: "base",
+                        })
+                      )
+                      .map((emp) => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.name} ({emp.id})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {selectedOffboardEmployee && (
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">Performance Reports</h3>
+                    <MonthlyPerformanceReport
+                      employee={selectedOffboardEmployee}
+                      year={selectedYear}
+                      month={selectedMonth}
+                    />
+                  </div>
+                )}
+
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Mistakes & Warnings</h3>
+                  <IncidentTrackingTable employees={offboardEmployees} />
+                </div>
+              </>
+            )}
           </div>
         )}
 

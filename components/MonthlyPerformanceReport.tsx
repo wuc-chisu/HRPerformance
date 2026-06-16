@@ -482,6 +482,18 @@ San Jose, CA 95118`;
           </div>
         </div>
 
+        <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200 print:border-gray-300 print-avoid-break">
+          <h3 className="text-sm font-semibold text-gray-600 uppercase mb-3">Employee Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <p className="text-sm text-gray-900">
+              <span className="font-semibold">Employee Name:</span> {employee.name}
+            </p>
+            <p className="text-sm text-gray-900">
+              <span className="font-semibold">Employee ID:</span> {employee.id}
+            </p>
+          </div>
+        </div>
+
         {showEmailComposer && (
           <div className="bg-white rounded-lg p-4 mb-6 border border-green-200 print:hidden">
             <p className="text-sm font-semibold text-gray-900 mb-2">

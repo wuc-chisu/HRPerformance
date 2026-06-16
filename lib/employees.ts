@@ -194,6 +194,10 @@ export interface Employee {
   employeeType?: "Full time" | "Contract";
   contractWorkHours?: number;
   officeSchedule?: OfficeSchedule | null;
+  probationPeriodStartDate?: string;
+  probationPeriodEndDate?: string;
+  monthlySalaryDuringProbation?: number | null;
+  monthlySalaryAfterProbation?: number | null;
   overallOverdueTasks?: number;
   onboarding?: OnboardingState;
   professionalDevelopmentRecords?: ProfessionalDevelopmentRecord[];

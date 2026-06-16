@@ -46,6 +46,16 @@ function normalizeProfessionalDevelopmentRecords(records: unknown) {
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 }
 
+function parseOptionalDate(value?: string | null) {
+  return value ? new Date(value) : null;
+}
+
+function parseNullableNumber(value: unknown): number | null {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function buildDefaultStep2Forms(joinDate: Date, completed: boolean) {
   return REQUIRED_ONBOARDING_FORMS.map((name) => ({
     name,
@@ -294,6 +304,14 @@ export async function GET() {
       employeeType: emp.employeeType || "Full time",
       contractWorkHours: emp.contractWorkHours ?? null,
       officeSchedule: emp.officeSchedule ?? null,
+      probationPeriodStartDate: emp.probationPeriodStartDate
+        ? formatDateForResponse(emp.probationPeriodStartDate)
+        : "",
+      probationPeriodEndDate: emp.probationPeriodEndDate
+        ? formatDateForResponse(emp.probationPeriodEndDate)
+        : "",
+      monthlySalaryDuringProbation: emp.monthlySalaryDuringProbation ?? null,
+      monthlySalaryAfterProbation: emp.monthlySalaryAfterProbation ?? null,
       overallOverdueTasks: emp.overallOverdueTasks,
       professionalDevelopmentRecords: normalizeProfessionalDevelopmentRecords(
         emp.professionalDevelopmentRecords
@@ -338,6 +356,10 @@ export async function POST(request: Request) {
       manager,
       position,
       joinDate,
+      probationPeriodStartDate,
+      probationPeriodEndDate,
+      monthlySalaryDuringProbation,
+      monthlySalaryAfterProbation,
       workAuthorizationStatus,
       staffWorkLocation,
       employeeType,
@@ -403,6 +425,14 @@ export async function POST(request: Request) {
           manager: existingEmployee.manager,
           position: existingEmployee.position,
           joinDate: formatDateForResponse(existingEmployee.joinDate),
+          probationPeriodStartDate: existingEmployee.probationPeriodStartDate
+            ? formatDateForResponse(existingEmployee.probationPeriodStartDate)
+            : "",
+          probationPeriodEndDate: existingEmployee.probationPeriodEndDate
+            ? formatDateForResponse(existingEmployee.probationPeriodEndDate)
+            : "",
+          monthlySalaryDuringProbation: existingEmployee.monthlySalaryDuringProbation ?? null,
+          monthlySalaryAfterProbation: existingEmployee.monthlySalaryAfterProbation ?? null,
           workAuthorizationStatus: existingEmployee.workAuthorizationStatus,
           staffWorkLocation: existingEmployee.staffWorkLocation || "USA",
           employeeType: (existingEmployee as any).employeeType || "Full time",
@@ -453,6 +483,10 @@ export async function POST(request: Request) {
         manager: normalizedManager,
         position: normalizedPosition,
         joinDate: parseDateForDatabase(normalizedJoinDate),
+        probationPeriodStartDate: parseOptionalDate(probationPeriodStartDate),
+        probationPeriodEndDate: parseOptionalDate(probationPeriodEndDate),
+        monthlySalaryDuringProbation: parseNullableNumber(monthlySalaryDuringProbation),
+        monthlySalaryAfterProbation: parseNullableNumber(monthlySalaryAfterProbation),
         workAuthorizationStatus: workAuthorizationStatus || "Taiwan Resident",
         staffWorkLocation: staffWorkLocation || "USA",
         employeeType: employeeType || "Full time",
@@ -494,6 +528,14 @@ export async function POST(request: Request) {
       manager: employee.manager,
       position: employee.position,
       joinDate: formatDateForResponse(employee.joinDate),
+      probationPeriodStartDate: employee.probationPeriodStartDate
+        ? formatDateForResponse(employee.probationPeriodStartDate)
+        : "",
+      probationPeriodEndDate: employee.probationPeriodEndDate
+        ? formatDateForResponse(employee.probationPeriodEndDate)
+        : "",
+      monthlySalaryDuringProbation: employee.monthlySalaryDuringProbation ?? null,
+      monthlySalaryAfterProbation: employee.monthlySalaryAfterProbation ?? null,
       workAuthorizationStatus: employee.workAuthorizationStatus,
       staffWorkLocation: employee.staffWorkLocation || "USA",
       employeeType: (employee as any).employeeType || "Full time",

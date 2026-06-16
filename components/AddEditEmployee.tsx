@@ -35,6 +35,12 @@ export default function AddEditEmployee({
     "Operations",
   ],
 }: AddEditEmployeeProps) {
+  const parseNullableSalary = (value: unknown): number | null => {
+    if (value === "" || value === null || value === undefined) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
   const [formData, setFormData] = useState({
     id: employee?.id || "",
     name: employee?.name || "",
@@ -51,8 +57,8 @@ export default function AddEditEmployee({
     officeSchedule: employee?.officeSchedule || null,
     probationPeriodStartDate: employee?.probationPeriodStartDate || "",
     probationPeriodEndDate: employee?.probationPeriodEndDate || "",
-    monthlySalaryDuringProbation: employee?.monthlySalaryDuringProbation ?? 1300,
-    monthlySalaryAfterProbation: employee?.monthlySalaryAfterProbation ?? 1400,
+    monthlySalaryDuringProbation: employee?.monthlySalaryDuringProbation ?? "",
+    monthlySalaryAfterProbation: employee?.monthlySalaryAfterProbation ?? "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -121,8 +127,8 @@ export default function AddEditEmployee({
     officeSchedule: formData.officeSchedule,
     probationPeriodStartDate: formData.probationPeriodStartDate,
     probationPeriodEndDate: formData.probationPeriodEndDate,
-    monthlySalaryDuringProbation: Number(formData.monthlySalaryDuringProbation),
-    monthlySalaryAfterProbation: Number(formData.monthlySalaryAfterProbation),
+    monthlySalaryDuringProbation: parseNullableSalary(formData.monthlySalaryDuringProbation),
+    monthlySalaryAfterProbation: parseNullableSalary(formData.monthlySalaryAfterProbation),
     weeklyRecords: employee?.weeklyRecords || [],
   });
 
