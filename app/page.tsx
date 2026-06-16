@@ -224,6 +224,7 @@ export default function Home() {
           employeeId: employee.id,
           name: employee.name,
           email: employee.email,
+          personalEmail: employee.personalEmail,
           department: employee.department,
           manager: employee.manager,
           position: employee.position,

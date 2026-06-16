@@ -284,6 +284,7 @@ export async function GET() {
       id: emp.employeeId,
       name: emp.name,
       email: emp.email,
+      personalEmail: emp.personalEmail || "",
       department: emp.department,
       manager: emp.manager,
       position: emp.position,
@@ -332,6 +333,7 @@ export async function POST(request: Request) {
       employeeId,
       name,
       email,
+      personalEmail,
       department,
       manager,
       position,
@@ -348,6 +350,8 @@ export async function POST(request: Request) {
       typeof employeeId === "string" ? employeeId.trim() : "";
     const normalizedName = typeof name === "string" ? name.trim() : "";
     const normalizedEmail = typeof email === "string" ? email.trim() : "";
+    const normalizedPersonalEmail =
+      typeof personalEmail === "string" ? personalEmail.trim() : "";
     const normalizedDepartment =
       typeof department === "string" ? department.trim() : "";
     const normalizedManager = typeof manager === "string" ? manager.trim() : "";
@@ -394,6 +398,7 @@ export async function POST(request: Request) {
           id: existingEmployee.employeeId,
           name: existingEmployee.name,
           email: existingEmployee.email,
+          personalEmail: existingEmployee.personalEmail || "",
           department: existingEmployee.department,
           manager: existingEmployee.manager,
           position: existingEmployee.position,
@@ -443,6 +448,7 @@ export async function POST(request: Request) {
         employeeId: normalizedEmployeeId,
         name: normalizedName,
         email: normalizedEmail,
+        personalEmail: normalizedPersonalEmail,
         department: normalizedDepartment,
         manager: normalizedManager,
         position: normalizedPosition,
@@ -483,6 +489,7 @@ export async function POST(request: Request) {
       id: employee.employeeId,
       name: employee.name,
       email: employee.email,
+      personalEmail: employee.personalEmail || "",
       department: employee.department,
       manager: employee.manager,
       position: employee.position,

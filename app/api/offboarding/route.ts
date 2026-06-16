@@ -94,11 +94,38 @@ export async function PUT(request: Request) {
 
     const employee = await (prisma as any).employee.findUnique({
       where: { employeeId },
-      select: { employeeId: true },
+      select: { employeeId: true, staffWorkLocation: true },
     });
 
     if (!employee) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+    }
+
+    const isTaiwanEmployee = String(employee.staffWorkLocation || "")
+      .toLowerCase()
+      .includes("taiwan");
+
+    if (isTaiwanEmployee && noticeDate && lastWorkingDate) {
+      const noticeMs = new Date(lastWorkingDate).getTime() - new Date(noticeDate).getTime();
+      const noticeDays = Math.floor(noticeMs / (1000 * 60 * 60 * 24));
+      if (!Number.isFinite(noticeDays)) {
+        return NextResponse.json(
+          {
+            error: "Invalid notice or last working date",
+            details: "Notice Date and Last Working Date must be valid dates.",
+          },
+          { status: 400 }
+        );
+      }
+      if (noticeDays < 30) {
+        return NextResponse.json(
+          {
+            error: "Taiwan notice period requirement not met",
+            details: `Taiwan employees require at least 30 days notice. Current gap is ${noticeDays} day(s).`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const normalized = {
@@ -145,19 +172,35 @@ export async function PUT(request: Request) {
         continuityConfirmed: false,
       }),
       step6: normalizeStepData(step6, {
-        signedConfidentialityObligations: false,
-        signedPropertyReturnClause: false,
-        signedNoDataRetentionClause: false,
+        confidentialityAcknowledged: false,
+        noDataRetentionAcknowledged: false,
+        propertyReturnAcknowledged: false,
+        studentDataProtectionAcknowledged: false,
+        signedOrRefusalDocumented: false,
       }),
       step7: normalizeStepData(step7, {
-        finalWagesIssued: false,
-        accruedCompensationIncluded: false,
+        finalSalaryCalculated: false,
+        ptoVacationPayoutCalculated: false,
+        expenseReimbursementProcessed: false,
+        severanceSeparationPaymentCalculated: false,
+        accountantPayrollNotified: false,
+        paymentDateConfirmed: false,
+        finalCompensationIssued: false,
       }),
       step8: normalizeStepData(step8, {
-        retainedExitAgreement: false,
-        retainedPropertyChecklist: false,
-        retainedAccessTerminationConfirmation: false,
-        retainedPerformanceWarningRecords: false,
+        uploadTerminationNotice: false,
+        uploadOffboardingAcknowledgement: false,
+        resignationLetter: false,
+        resignationAcceptanceLetter: false,
+        propertyReturnChecklistUs: false,
+        accessSuspensionConfirmation: false,
+        finalCompensationWorksheet: false,
+        uploadManagerRecommendationReport: false,
+        uploadPerformanceReports: false,
+        uploadWrittenWarnings: false,
+        uploadPipDocumentation: false,
+        employeeFilesArchived: false,
+        offboardingCaseCompleted: false,
       }),
     };
 
