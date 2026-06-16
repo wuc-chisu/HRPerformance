@@ -54,23 +54,6 @@ export default function MonthlyPerformanceReport({
     return startDate.getFullYear() === year && startDate.getMonth() === month;
   });
 
-  const sortedMonthlyRecords = [...monthlyRecords].sort((a, b) => {
-    const aStart = new Date(`${a.startDate}T12:00:00`).getTime();
-    const bStart = new Date(`${b.startDate}T12:00:00`).getTime();
-    return aStart - bStart;
-  });
-
-  const reportDateRange =
-    sortedMonthlyRecords.length > 0
-      ? `${formatDateInPacific(sortedMonthlyRecords[0].startDate)} - ${formatDateInPacific(
-          sortedMonthlyRecords[sortedMonthlyRecords.length - 1].endDate
-        )}`
-      : "No records";
-  const monthStartDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-  const monthEndDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(
-    new Date(year, month + 1, 0).getDate()
-  ).padStart(2, "0")}`;
-
   const weeklyScores = monthlyRecords.map((record) => {
     const score = calculateWeeklyPerformanceScore(record);
     const taskPriorityBreakdown = getTaskPriorityHandlingBreakdown(record);
@@ -404,10 +387,6 @@ San Jose, CA 95118`;
         <h2 className="text-2xl font-bold text-gray-900 mb-4">
           Monthly Performance Report
         </h2>
-        <p className="text-sm text-gray-600 mb-1">Employee: {employee.name}</p>
-        <p className="text-sm text-gray-600 mb-3">
-          Date Range: {formatDateInPacific(monthStartDate)} - {formatDateInPacific(monthEndDate)}
-        </p>
         <p className="text-gray-600">
           No weekly records found for {monthNames[month]} {year}.
         </p>
@@ -467,9 +446,9 @@ San Jose, CA 95118`;
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               Monthly Performance Report
             </h2>
-            <p className="text-sm text-gray-600">Employee: {employee.name}</p>
-            <p className="text-sm text-gray-600">Period: {monthNames[month]} {year}</p>
-            <p className="text-sm text-gray-600">Date Range: {reportDateRange}</p>
+            <p className="text-sm text-gray-600">
+              {monthNames[month]} {year}
+            </p>
           </div>
           <div className="flex gap-2 print:hidden">
             <button

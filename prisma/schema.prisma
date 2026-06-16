@@ -21,21 +21,21 @@ model Employee {
   employeeId                    String                      @unique
   name                          String
   email                         String                      @default("")
-  personalEmail                 String?                     @default("")
+  personalEmail                 String                      @default("")
   department                    String
   manager                       String                      @default("")
   position                      String
   joinDate                      DateTime
-  workAuthorizationStatus       String                      @default("Taiwan Resident")
+  workAuthorizationStatus       String                      @default("Other Work Visa")
   staffWorkLocation             String                      @default("USA")
   employeeType                  String                      @default("Full time")
   contractWorkHours             Int?
   officeSchedule                Json?
+  overallOverdueTasks           Int                         @default(0)
   probationPeriodStartDate      DateTime?
   probationPeriodEndDate        DateTime?
   monthlySalaryDuringProbation  Float?                      @default(1300)
   monthlySalaryAfterProbation   Float?                      @default(1400)
-  overallOverdueTasks           Int                         @default(0)
   onboardingChecklistAssigned   Boolean                     @default(true)
   systemAccessGmail             Boolean                     @default(true)
   systemAccessClickup           Boolean                     @default(true)
@@ -75,6 +75,7 @@ model OffboardingRecord {
   employeeId        String   @unique
   employee          Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
   separationType    String   @default("Resignation")
+  leaveType         String   @default("Active working notice")
   noticeDate        DateTime?
   lastWorkingDate   DateTime?
   hrResponsible     String   @default("")

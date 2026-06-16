@@ -11,54 +11,6 @@ import {
   REQUIRED_TRAINING_ITEMS,
 } from "@/lib/employees";
 
-type OnboardingPayrollSetup = {
-  paypalConfirmed: boolean;
-  laborInsuranceAmount: number | null;
-  healthInsuranceAmount: number | null;
-  laborInsuranceReceiptProvided: boolean;
-  healthInsuranceReceiptProvided: boolean;
-};
-
-const PAYROLL_META_MARKER = "\n\n[ONBOARDING_META]";
-
-function getDefaultPayrollSetup(): OnboardingPayrollSetup {
-  return {
-    paypalConfirmed: false,
-    laborInsuranceAmount: null,
-    healthInsuranceAmount: null,
-    laborInsuranceReceiptProvided: false,
-    healthInsuranceReceiptProvided: false,
-  };
-}
-
-function parseOnboardingNotes(raw: string | null | undefined) {
-  const source = raw || "";
-  const markerIndex = source.indexOf(PAYROLL_META_MARKER);
-
-  if (markerIndex === -1) {
-    return {
-      notes: source,
-      payrollSetup: getDefaultPayrollSetup(),
-    };
-  }
-
-  const notes = source.slice(0, markerIndex);
-  const metaRaw = source.slice(markerIndex + PAYROLL_META_MARKER.length).trim();
-
-  try {
-    const parsed = JSON.parse(metaRaw) as { payrollSetup?: OnboardingPayrollSetup };
-    return {
-      notes,
-      payrollSetup: parsed?.payrollSetup || getDefaultPayrollSetup(),
-    };
-  } catch {
-    return {
-      notes,
-      payrollSetup: getDefaultPayrollSetup(),
-    };
-  }
-}
-
 function normalizeProfessionalDevelopmentRecords(records: unknown) {
   if (!Array.isArray(records)) return [];
 
@@ -288,7 +240,6 @@ function formatOnboarding(emp: any) {
     moodle: Boolean(emp.systemAccessMoodle),
     googleDrive: Boolean(emp.systemAccessGoogleDrive),
   };
-  const onboardingNotes = parseOnboardingNotes(emp.onboardingStep1Notes);
 
   return {
     checklistAssigned: Boolean(emp.onboardingChecklistAssigned),
@@ -306,8 +257,6 @@ function formatOnboarding(emp: any) {
     step4Completed: getStep4Completed(step4Forms),
     step4Forms,
     step5Completed: Boolean(emp.onboardingStep5Completed),
-    step5PayrollSetup: onboardingNotes.payrollSetup,
-    step6Completed: Boolean(emp.onboardingStep6AnnualTracking || emp.onboardingStep5Completed),
     step6AnnualTracking: Boolean(emp.onboardingStep6AnnualTracking),
     step2CompletedAt: formatDateTimeForResponse(emp.onboardingStep2CompletedAt),
     step3CompletedAt: formatDateTimeForResponse(emp.onboardingStep3CompletedAt),
@@ -317,7 +266,7 @@ function formatOnboarding(emp: any) {
     step6LastReviewAt: formatDateTimeForResponse(emp.onboardingStep6LastReviewAt),
     updatedBy: emp.onboardingStep1UpdatedBy || "System",
     updatedAt: formatDateTimeForResponse(emp.onboardingStep1UpdatedAt),
-    notes: onboardingNotes.notes,
+    notes: emp.onboardingStep1Notes || "",
   };
 }
 
@@ -342,7 +291,6 @@ export async function PUT(
       id: nextEmployeeId,
       name,
       email,
-      personalEmail,
       department,
       manager,
       position,
@@ -355,10 +303,6 @@ export async function PUT(
       overallOverdueTasks,
       onboarding,
       professionalDevelopmentRecords,
-      probationPeriodStartDate,
-      probationPeriodEndDate,
-      monthlySalaryDuringProbation,
-      monthlySalaryAfterProbation,
     } = body;
 
     // Validate required fields
@@ -374,19 +318,6 @@ export async function PUT(
       select: { employeeId: true },
     });
 
-    const existingEmployee = await prisma.employee.findUnique({
-      where: { employeeId },
-      select: {
-        onboardingStep2Forms: true,
-        onboardingStep3Forms: true,
-        onboardingStep4Forms: true,
-      },
-    });
-
-    if (!existingEmployee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
     if (existingByTargetId && nextEmployeeId !== employeeId) {
       return NextResponse.json(
         { error: "Employee ID already exists" },
@@ -395,77 +326,25 @@ export async function PUT(
     }
 
     const normalizedStep2Forms = onboarding
-      ? (() => {
-          // Guard against stale clients posting empty arrays and wiping existing progress.
-          const incoming = onboarding.step2Forms;
-          const existing = existingEmployee.onboardingStep2Forms;
-          if (
-            Array.isArray(incoming) &&
-            incoming.length === 0 &&
-            Array.isArray(existing) &&
-            existing.length > 0
-          ) {
-            return normalizeStep2Forms(
-              existing,
-              parseDateForDatabase(joinDate),
-              Boolean(onboarding.step2Completed)
-            );
-          }
-
-          return normalizeStep2Forms(
-            incoming,
-            parseDateForDatabase(joinDate),
-            Boolean(onboarding.step2Completed)
-          );
-        })()
+      ? normalizeStep2Forms(
+          onboarding.step2Forms,
+          parseDateForDatabase(joinDate),
+          Boolean(onboarding.step2Completed)
+        )
       : null;
     const normalizedStep3Forms = onboarding
-      ? (() => {
-          const incoming = onboarding.step3Forms;
-          const existing = existingEmployee.onboardingStep3Forms;
-          if (
-            Array.isArray(incoming) &&
-            incoming.length === 0 &&
-            Array.isArray(existing) &&
-            existing.length > 0
-          ) {
-            return normalizeStep3Forms(
-              existing,
-              Boolean(onboarding.step3Completed),
-              parseOptionalDate(onboarding.step3CompletedAt)
-            );
-          }
-
-          return normalizeStep3Forms(
-            incoming,
-            Boolean(onboarding.step3Completed),
-            parseOptionalDate(onboarding.step3CompletedAt)
-          );
-        })()
+      ? normalizeStep3Forms(
+          onboarding.step3Forms,
+          Boolean(onboarding.step3Completed),
+          parseOptionalDate(onboarding.step3CompletedAt)
+        )
       : null;
     const normalizedStep4Forms = onboarding
-      ? (() => {
-          const incoming = onboarding.step4Forms;
-          const existing = existingEmployee.onboardingStep4Forms;
-          if (
-            Array.isArray(incoming) &&
-            incoming.length === 0 &&
-            Array.isArray(existing) &&
-            existing.length > 0
-          ) {
-            return normalizeStep4Forms(
-              existing,
-              Boolean(onboarding.step4Completed),
-              parseOptionalDate(onboarding.step4CompletedAt)
-            );
-          }
-
-          return normalizeStep4Forms(
-            incoming,
-            Boolean(onboarding.step4Completed),
-            parseOptionalDate(onboarding.step4CompletedAt)
-          );
-        })()
+      ? normalizeStep4Forms(
+          onboarding.step4Forms,
+          Boolean(onboarding.step4Completed),
+          parseOptionalDate(onboarding.step4CompletedAt)
+        )
       : null;
 
     const employee = await prisma.employee.update({
@@ -474,7 +353,6 @@ export async function PUT(
         employeeId: nextEmployeeId,
         name,
         email: email || "",
-        personalEmail: personalEmail || "",
         department,
         manager: manager || "",
         position,
@@ -485,10 +363,6 @@ export async function PUT(
         contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
         officeSchedule: officeSchedule ?? null,
         overallOverdueTasks: overallOverdueTasks || 0,
-        probationPeriodStartDate: probationPeriodStartDate ? parseDateForDatabase(probationPeriodStartDate) : null,
-        probationPeriodEndDate: probationPeriodEndDate ? parseDateForDatabase(probationPeriodEndDate) : null,
-        monthlySalaryDuringProbation: monthlySalaryDuringProbation !== undefined ? Number(monthlySalaryDuringProbation) : null,
-        monthlySalaryAfterProbation: monthlySalaryAfterProbation !== undefined ? Number(monthlySalaryAfterProbation) : null,
         ...(Array.isArray(professionalDevelopmentRecords)
           ? {
               professionalDevelopmentRecords:
@@ -547,7 +421,6 @@ export async function PUT(
       id: employee.employeeId,
       name: employee.name,
       email: employee.email,
-      personalEmail: employee.personalEmail || "",
       department: employee.department,
       manager: employee.manager,
       position: employee.position,
@@ -557,31 +430,12 @@ export async function PUT(
       employeeType: (employee as any).employeeType || "Full time",
       contractWorkHours: (employee as any).contractWorkHours ?? null,
       officeSchedule: (employee as any).officeSchedule ?? null,
-      probationPeriodStartDate: (employee as any).probationPeriodStartDate
-        ? formatDateForResponse((employee as any).probationPeriodStartDate)
-        : undefined,
-      probationPeriodEndDate: (employee as any).probationPeriodEndDate
-        ? formatDateForResponse((employee as any).probationPeriodEndDate)
-        : undefined,
-      monthlySalaryDuringProbation: (employee as any).monthlySalaryDuringProbation,
-      monthlySalaryAfterProbation: (employee as any).monthlySalaryAfterProbation,
       overallOverdueTasks: employee.overallOverdueTasks,
       professionalDevelopmentRecords: normalizeProfessionalDevelopmentRecords(
         (employee as any).professionalDevelopmentRecords
       ),
       onboarding: formatOnboarding(employee),
-      weeklyRecords: (employee.weeklyRecords as any[]).map((record: {
-        startDate: Date;
-        endDate: Date;
-        plannedWorkHours: number;
-        actualWorkHours: number;
-        assignedTasks: number;
-        assignedTasksDetails?: unknown;
-        weeklyOverdueTasks: number;
-        overdueTasksDetails?: unknown;
-        allOverdueTasks?: number;
-        allOverdueTasksDetails?: unknown;
-      }) => ({
+      weeklyRecords: employee.weeklyRecords.map((record) => ({
         startDate: formatDateForResponse(record.startDate),
         endDate: formatDateForResponse(record.endDate),
         plannedWorkHours: record.plannedWorkHours,

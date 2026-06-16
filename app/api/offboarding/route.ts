@@ -73,6 +73,7 @@ export async function PUT(request: Request) {
     const {
       employeeId,
       separationType,
+      leaveType,
       noticeDate,
       lastWorkingDate,
       hrResponsible,
@@ -102,16 +103,22 @@ export async function PUT(request: Request) {
 
     const normalized = {
       step1: normalizeStepData(step1, {
-        receivedNotice: false,
-        confirmedLastWorkingDate: false,
-        preparedExitAgreement: false,
-        preparedFinalPayrollCalculation: false,
+        receivedManagerRequest: false,
+        emailedItDisable: false,
+        sentTerminationNotice: false,
+        sentOffboardingAcknowledgement: false,
+        receivedResignationNotice: false,
+        sentResignationAcceptance: false,
+        requestedConfirmationOfReceipt: false,
+        savedEmailDeliveryRecord: false,
       }),
       step2: normalizeStepData(step2, {
         notifyDirectManager: false,
         notifyIT: false,
         notifyPayroll: false,
         notifyLeadership: false,
+        notifiedAcademicAffairs: false,
+        notifiedStudentServices: false,
       }),
       step3: normalizeStepData(step3, {
         disableGmail: false,
@@ -122,7 +129,6 @@ export async function PUT(request: Request) {
         disableClickUp: false,
         disableVpnRemoteAccess: false,
         disableOtherSystems: false,
-        transferDriveOwnership: false,
         disableEmailLogin: false,
       }),
       step4: normalizeStepData(step4, {
@@ -161,6 +167,7 @@ export async function PUT(request: Request) {
       where: { employeeId },
       update: {
         separationType: separationType || "Resignation",
+        leaveType: leaveType || "Active working notice",
         noticeDate: parseOptionalDate(noticeDate),
         lastWorkingDate: parseOptionalDate(lastWorkingDate),
         hrResponsible: hrResponsible || "",
@@ -178,6 +185,7 @@ export async function PUT(request: Request) {
       create: {
         employeeId,
         separationType: separationType || "Resignation",
+        leaveType: leaveType || "Active working notice",
         noticeDate: parseOptionalDate(noticeDate),
         lastWorkingDate: parseOptionalDate(lastWorkingDate),
         hrResponsible: hrResponsible || "",

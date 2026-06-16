@@ -87,28 +87,16 @@ export interface OnboardingFormItem {
 }
 
 export const REQUIRED_HR_POLICY_SIGNOFFS: string[] = [
-  "Employee Handbook Acknowledgment",
+  "HR Policy",
+  "Progressive Discipline & Performance Warning Policy",
   "Click Up Useage Acknowledgement",
-  "Copyright Release Authorization",
-  "Portrait Rights Authorization",
-  "Drug & Alcohol-Free Workplace Acknowledgment",
 ];
 
 export const REQUIRED_TRAINING_ITEMS: string[] = [
   "Annual: PD/CEU Training Certification",
   "Annual: FERPA training completed certificate",
   "Annual: Training exam 1/year",
-  "ClickUp Training",
-  "Moodle Training",
 ];
-
-export interface OnboardingPayrollSetup {
-  paypalConfirmed: boolean;
-  laborInsuranceAmount: number | null;
-  healthInsuranceAmount: number | null;
-  laborInsuranceReceiptProvided: boolean;
-  healthInsuranceReceiptProvided: boolean;
-}
 
 export const REQUIRED_ONBOARDING_FORMS: string[] = [
   "Application Form",
@@ -147,8 +135,6 @@ export interface OnboardingState {
   step4Completed: boolean;
   step4Forms: OnboardingFormItem[];
   step5Completed: boolean;
-  step5PayrollSetup: OnboardingPayrollSetup;
-  step6Completed: boolean;
   step6AnnualTracking: boolean;
   step2CompletedAt?: string | null;
   step3CompletedAt?: string | null;
@@ -180,14 +166,6 @@ export interface OnboardingStep4Update {
   forms: OnboardingFormItem[];
 }
 
-export interface OnboardingStep5Update {
-  payrollSetup: OnboardingPayrollSetup;
-}
-
-export interface OnboardingStep6Update {
-  activated: boolean;
-}
-
 export type OfficeDay =
   | "Monday"
   | "Tuesday"
@@ -206,7 +184,6 @@ export interface Employee {
   id: string;
   name: string;
   email: string;
-  personalEmail?: string;
   department: string;
   manager: string;
   position: string;
@@ -216,10 +193,6 @@ export interface Employee {
   employeeType?: "Full time" | "Contract";
   contractWorkHours?: number;
   officeSchedule?: OfficeSchedule | null;
-  probationPeriodStartDate?: string;
-  probationPeriodEndDate?: string;
-  monthlySalaryDuringProbation?: number;
-  monthlySalaryAfterProbation?: number;
   overallOverdueTasks?: number;
   onboarding?: OnboardingState;
   professionalDevelopmentRecords?: ProfessionalDevelopmentRecord[];

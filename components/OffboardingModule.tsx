@@ -18,10 +18,14 @@ type OffboardingRecordSummary = {
 };
 
 const defaultStep1 = {
-  receivedNotice: false,
-  confirmedLastWorkingDate: false,
-  preparedExitAgreement: false,
-  preparedFinalPayrollCalculation: false,
+  receivedManagerRequest: false,
+  emailedItDisable: false,
+  sentTerminationNotice: false,
+  sentOffboardingAcknowledgement: false,
+  receivedResignationNotice: false,
+  sentResignationAcceptance: false,
+  requestedConfirmationOfReceipt: false,
+  savedEmailDeliveryRecord: false,
 };
 
 const defaultStep2 = {
@@ -29,6 +33,8 @@ const defaultStep2 = {
   notifyIT: false,
   notifyPayroll: false,
   notifyLeadership: false,
+  notifiedAcademicAffairs: false,
+  notifiedStudentServices: false,
 };
 
 const defaultStep3 = {
@@ -40,7 +46,6 @@ const defaultStep3 = {
   disableClickUp: false,
   disableVpnRemoteAccess: false,
   disableOtherSystems: false,
-  transferDriveOwnership: false,
   disableEmailLogin: false,
 };
 
@@ -118,6 +123,7 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
   const [hrResponsible, setHrResponsible] = useState<string>("");
   const [itResponsible, setItResponsible] = useState<string>("");
   const [separationType, setSeparationType] = useState<"Resignation" | "Termination">("Resignation");
+  const [leaveType, setLeaveType] = useState<"Active working notice" | "Garden leave" | "Immediate separation">("Active working notice");
   const [noticeDate, setNoticeDate] = useState<string>("");
   const [lastWorkingDate, setLastWorkingDate] = useState<string>("");
   const [saving, setSaving] = useState(false);
@@ -216,6 +222,7 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
 
   const resetForm = () => {
     setSeparationType("Resignation");
+    setLeaveType("Active working notice");
     setNoticeDate("");
     setLastWorkingDate("");
     setHrResponsible(firstHrName);
@@ -248,6 +255,11 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
         }
 
         setSeparationType(record.separationType === "Termination" ? "Termination" : "Resignation");
+        setLeaveType(
+          record.leaveType === "Garden leave" || record.leaveType === "Immediate separation"
+            ? record.leaveType
+            : "Active working notice"
+        );
         setNoticeDate(record.noticeDate ? String(record.noticeDate).split("T")[0] : "");
         setLastWorkingDate(record.lastWorkingDate ? String(record.lastWorkingDate).split("T")[0] : "");
         setHrResponsible(record.hrResponsible || firstHrName);
@@ -285,6 +297,7 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
         body: JSON.stringify({
           employeeId: selectedEmployeeId,
           separationType,
+          leaveType,
           noticeDate: noticeDate || null,
           lastWorkingDate: lastWorkingDate || null,
           hrResponsible,
@@ -302,7 +315,11 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to save offboarding record");
+        throw new Error(
+          data.details
+            ? `${data.error || "Failed to save offboarding record"}: ${data.details}`
+            : data.error || "Failed to save offboarding record"
+        );
       }
 
       const saved = await response.json();
@@ -351,27 +368,32 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
       <p><strong>Exported At:</strong> ${new Date().toLocaleString()}</p>
 
       ${formatChecklist("Step 1 - Separation Confirmation", step1, {
-        receivedNotice: "Receive resignation or termination notice",
-        confirmedLastWorkingDate: "Confirm last working date",
-        preparedExitAgreement: "Prepare Exit Agreement",
-        preparedFinalPayrollCalculation: "Prepare final payroll calculation",
+        receivedManagerRequest: "Received manager offboarding request with supporting reason",
+        emailedItDisable: "Emailed IT to disable employee accounts",
+        sentTerminationNotice: "Sent Termination Notice to employee personal email",
+        sentOffboardingAcknowledgement: "Sent Offboarding Acknowledgement to employee personal email",
+        receivedResignationNotice: "Received employee resignation notice",
+        sentResignationAcceptance: "Sent resignation acceptance confirmation",
+        requestedConfirmationOfReceipt: "Requested employee confirmation of receipt",
+        savedEmailDeliveryRecord: "Saved email delivery record",
       })}
       ${formatChecklist("Step 2 - Internal Notification", step2, {
         notifyDirectManager: "Notify Direct Manager",
         notifyIT: "Notify IT / System Administrator",
         notifyPayroll: "Notify Payroll",
         notifyLeadership: "Notify Leadership (if applicable)",
+        notifiedAcademicAffairs: "Notified Academic Affairs (if applicable)",
+        notifiedStudentServices: "Notified Student Services (if applicable)",
       })}
       ${formatChecklist("Step 3 - Access Suspension (CRITICAL)", step3, {
         disableGmail: "Disable Gmail",
-        disableGoogleDrive: "Disable Google Drive",
+        disableGoogleDrive: "Disable Google Drives",
         disableGoogleAdmin: "Disable Google Admin (if applicable)",
-        disableMoodle: "Disable Moodle (LMS)",
+        disableMoodle: "Disable Moodle",
         disableGoogleClassroom: "Disable Google Classroom",
         disableClickUp: "Disable ClickUp",
         disableVpnRemoteAccess: "Disable VPN / remote access",
         disableOtherSystems: "Disable internal / third-party systems",
-        transferDriveOwnership: "Transfer file ownership (Google Drive)",
         disableEmailLogin: "Disable email login access",
       })}
       ${formatChecklist("Step 4 - Company Property Return", step4, {
@@ -433,9 +455,26 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
     setSaveNotice({ type: "success", message: "PDF export started. Choose 'Save as PDF' in the print dialog." });
   };
 
+  const isTaiwanEmployee = (selectedEmployee?.staffWorkLocation || "").toLowerCase().includes("taiwan");
+
+  const noticeDays = noticeDate && lastWorkingDate
+    ? Math.floor((new Date(lastWorkingDate).getTime() - new Date(noticeDate).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  const taiwanNoticeTooShort = isTaiwanEmployee && noticeDays !== null && noticeDays < 30;
+
   const completion = useMemo(() => {
+    const step1Relevant = [
+      step1.receivedManagerRequest,
+      step1.emailedItDisable,
+      ...(separationType === "Termination"
+        ? [step1.sentTerminationNotice, step1.sentOffboardingAcknowledgement]
+        : [step1.receivedResignationNotice, step1.sentResignationAcceptance]),
+      step1.requestedConfirmationOfReceipt,
+      step1.savedEmailDeliveryRecord,
+    ];
     const checks = [
-      ...Object.values(step1),
+      ...step1Relevant,
       ...Object.values(step2),
       ...Object.values(step3),
       ...Object.values(step4),
@@ -447,7 +486,7 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
     const completed = checks.filter(Boolean).length;
     const total = checks.length;
     return { completed, total, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
-  }, [step1, step2, step3, step4, step5, step6, step7, step8]);
+  }, [step1, step2, step3, step4, step5, step6, step7, step8, separationType]);
 
   const handleStartOffboarding = () => {
     if (!newOffboardEmployeeId) return;
@@ -584,11 +623,14 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
                   {activeEmployees.length === 0 && (
                     <option value="">No active employee available</option>
                   )}
-                  {activeEmployees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} ({emp.id})
-                    </option>
-                  ))}
+                  {activeEmployees.map((emp) => {
+                    const region = (emp.staffWorkLocation || "").toLowerCase().includes("taiwan") ? "Taiwan" : "US";
+                    return (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name} ({emp.id}) — {region}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -667,8 +709,15 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
           <>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   {selectedEmployee?.name || "Selected Employee"} ({selectedEmployeeId})
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    isTaiwanEmployee
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-slate-100 text-slate-700"
+                  }`}>
+                    {isTaiwanEmployee ? "Taiwan" : "US"}
+                  </span>
                 </h3>
                 <p className="text-sm text-gray-600">
                   Direct Manager: <span className="font-semibold text-gray-900">{selectedEmployee?.manager || "Not specified"}</span>
@@ -683,7 +732,7 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Separation Type</label>
                 <select
@@ -696,6 +745,32 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
                 </select>
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Offboarding Process Type</label>
+                <select
+                  value={leaveType}
+                  onChange={(e) => setLeaveType(e.target.value as "Active working notice" | "Garden leave" | "Immediate separation")}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50"
+                >
+                  <option value="Active working notice">Active working notice</option>
+                  <option value="Garden leave">Garden leave</option>
+                  <option value="Immediate separation">Immediate separation</option>
+                </select>
+              </div>
+            </div>
+
+            {isTaiwanEmployee && (
+              <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                <p className="text-sm font-semibold text-blue-800">
+                  🇹🇼 Taiwan Labor Law — Notice Period Requirement
+                </p>
+                <p className="text-sm text-blue-700 mt-1">
+                  By Taiwan law, existing Taiwan employee must have at least 30 days notice period.
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Notice Date</label>
                 <input
@@ -712,10 +787,28 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
                   type="date"
                   value={lastWorkingDate}
                   onChange={(e) => setLastWorkingDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white"
+                  className={`w-full px-3 py-2 rounded-lg border bg-white ${
+                    taiwanNoticeTooShort ? "border-red-400" : "border-slate-300"
+                  }`}
                 />
               </div>
             </div>
+
+            {taiwanNoticeTooShort && (
+              <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2">
+                <p className="text-sm font-semibold text-red-700">
+                  ⚠️ Notice period is only {noticeDays} day{noticeDays === 1 ? "" : "s"} — Taiwan law requires at least 30 days.
+                </p>
+              </div>
+            )}
+
+            {isTaiwanEmployee && noticeDate && lastWorkingDate && !taiwanNoticeTooShort && noticeDays !== null && (
+              <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2">
+                <p className="text-sm text-emerald-700">
+                  ✓ Notice period is {noticeDays} day{noticeDays === 1 ? "" : "s"} — meets Taiwan 30-day requirement.
+                </p>
+              </div>
+            )}
 
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <button
@@ -767,7 +860,7 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
       {showForm && (
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <section className="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 className="text-lg font-bold text-gray-900">Step 1 - Separation Confirmation</h3>
+          <h3 className="text-lg font-bold text-gray-900">Step 1 – Separation Confirmation</h3>
           <p className="text-sm text-gray-600 mt-1">Responsible: HR</p>
           <div className="mt-3 mb-4">
             <label className="block text-sm font-semibold text-gray-700 mb-2">HR Responsible</label>
@@ -781,11 +874,68 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
               ))}
             </select>
           </div>
-          <div className="space-y-2">
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step1.receivedNotice} onChange={(e) => setStep1((p) => ({ ...p, receivedNotice: e.target.checked }))} />Receive resignation or termination notice</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step1.confirmedLastWorkingDate} onChange={(e) => setStep1((p) => ({ ...p, confirmedLastWorkingDate: e.target.checked }))} />Confirm last working date</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step1.preparedExitAgreement} onChange={(e) => setStep1((p) => ({ ...p, preparedExitAgreement: e.target.checked }))} />Prepare Exit Agreement</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step1.preparedFinalPayrollCalculation} onChange={(e) => setStep1((p) => ({ ...p, preparedFinalPayrollCalculation: e.target.checked }))} />Prepare final payroll calculation</label>
+
+          {/* Checklist */}
+          <div className="mt-4 space-y-5">
+            <div>
+              <h4 className="text-sm font-bold text-gray-700 mb-2">Checklist</h4>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={step1.receivedManagerRequest} onChange={(e) => setStep1((p) => ({ ...p, receivedManagerRequest: e.target.checked }))} />
+                  Received manager offboarding request with supporting reason
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={step1.emailedItDisable} onChange={(e) => setStep1((p) => ({ ...p, emailedItDisable: e.target.checked }))} />
+                  Emailed IT to disable employee accounts
+                </label>
+              </div>
+            </div>
+
+            {separationType === "Termination" && (
+              <div className="rounded-lg bg-rose-50 border border-rose-200 p-3">
+                <h4 className="text-sm font-bold text-rose-800 mb-2">If Separation Type = Termination</h4>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-rose-900">
+                    <input type="checkbox" checked={step1.sentTerminationNotice} onChange={(e) => setStep1((p) => ({ ...p, sentTerminationNotice: e.target.checked }))} />
+                    Sent Termination Notice to employee personal email
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-rose-900">
+                    <input type="checkbox" checked={step1.sentOffboardingAcknowledgement} onChange={(e) => setStep1((p) => ({ ...p, sentOffboardingAcknowledgement: e.target.checked }))} />
+                    Sent Offboarding Acknowledgement to employee personal email
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {separationType === "Resignation" && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                <h4 className="text-sm font-bold text-amber-800 mb-2">If Separation Type = Resignation</h4>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-amber-900">
+                    <input type="checkbox" checked={step1.receivedResignationNotice} onChange={(e) => setStep1((p) => ({ ...p, receivedResignationNotice: e.target.checked }))} />
+                    Received employee resignation notice
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-amber-900">
+                    <input type="checkbox" checked={step1.sentResignationAcceptance} onChange={(e) => setStep1((p) => ({ ...p, sentResignationAcceptance: e.target.checked }))} />
+                    Sent resignation acceptance confirmation
+                  </label>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <h4 className="text-sm font-bold text-gray-700 mb-2">Additional Actions</h4>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={step1.requestedConfirmationOfReceipt} onChange={(e) => setStep1((p) => ({ ...p, requestedConfirmationOfReceipt: e.target.checked }))} />
+                  Requested employee confirmation of receipt
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={step1.savedEmailDeliveryRecord} onChange={(e) => setStep1((p) => ({ ...p, savedEmailDeliveryRecord: e.target.checked }))} />
+                  Saved email delivery record
+                </label>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -797,59 +947,59 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
             <label className="flex items-center gap-2"><input type="checkbox" checked={step2.notifyIT} onChange={(e) => setStep2((p) => ({ ...p, notifyIT: e.target.checked }))} />Notify IT / System Administrator</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step2.notifyPayroll} onChange={(e) => setStep2((p) => ({ ...p, notifyPayroll: e.target.checked }))} />Notify Payroll</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step2.notifyLeadership} onChange={(e) => setStep2((p) => ({ ...p, notifyLeadership: e.target.checked }))} />Notify Leadership (if applicable)</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={step2.notifiedAcademicAffairs} onChange={(e) => setStep2((p) => ({ ...p, notifiedAcademicAffairs: e.target.checked }))} />Notified Academic Affairs (if applicable)</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={step2.notifiedStudentServices} onChange={(e) => setStep2((p) => ({ ...p, notifiedStudentServices: e.target.checked }))} />Notified Student Services (if applicable)</label>
           </div>
         </section>
 
         <section className="bg-white rounded-xl border border-rose-200 p-5">
           <h3 className="text-lg font-bold text-rose-700">Step 3 - Access Suspension (CRITICAL)</h3>
-          <p className="text-sm text-gray-600 mt-1">Responsible: IT + HR</p>
+          <p className="text-sm text-gray-600 mt-1">Responsible: IT</p>
           <p className="text-sm text-rose-700 font-semibold mt-1">All access must be revoked no later than the last working day (within 24 hours).</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 mb-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">IT Responsible</label>
-              <select
-                value={itResponsible}
-                onChange={(e) => setItResponsible(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50"
-                disabled={itCandidates.length === 0}
-              >
-                {itCandidates.length === 0 && (
-                  <option value="">No Information Technology employee found</option>
-                )}
-                {itCandidates.map((emp) => (
-                  <option key={emp.id} value={emp.name}>{emp.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">HR Support</label>
-              <div className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-100 text-gray-800">{hrResponsible || "Not assigned"}</div>
-            </div>
+          <div className="mt-3 mb-4 max-w-sm">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">IT Responsible</label>
+            <select
+              value={itResponsible}
+              onChange={(e) => setItResponsible(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50"
+              disabled={itCandidates.length === 0}
+            >
+              {itCandidates.length === 0 && (
+                <option value="">No Information Technology employee found</option>
+              )}
+              {itCandidates.map((emp) => (
+                <option key={emp.id} value={emp.name}>{emp.name}</option>
+              ))}
+            </select>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableGmail} onChange={(e) => setStep3((p) => ({ ...p, disableGmail: e.target.checked }))} />Disable Gmail</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableGoogleDrive} onChange={(e) => setStep3((p) => ({ ...p, disableGoogleDrive: e.target.checked }))} />Disable Google Drive</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableGoogleDrive} onChange={(e) => setStep3((p) => ({ ...p, disableGoogleDrive: e.target.checked }))} />Disable Google Drives</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableGoogleAdmin} onChange={(e) => setStep3((p) => ({ ...p, disableGoogleAdmin: e.target.checked }))} />Disable Google Admin (if applicable)</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableMoodle} onChange={(e) => setStep3((p) => ({ ...p, disableMoodle: e.target.checked }))} />Disable Moodle (LMS)</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableMoodle} onChange={(e) => setStep3((p) => ({ ...p, disableMoodle: e.target.checked }))} />Disable Moodle</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableGoogleClassroom} onChange={(e) => setStep3((p) => ({ ...p, disableGoogleClassroom: e.target.checked }))} />Disable Google Classroom</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableClickUp} onChange={(e) => setStep3((p) => ({ ...p, disableClickUp: e.target.checked }))} />Disable ClickUp</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableVpnRemoteAccess} onChange={(e) => setStep3((p) => ({ ...p, disableVpnRemoteAccess: e.target.checked }))} />Disable VPN / remote access</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableOtherSystems} onChange={(e) => setStep3((p) => ({ ...p, disableOtherSystems: e.target.checked }))} />Disable internal / third-party systems</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step3.transferDriveOwnership} onChange={(e) => setStep3((p) => ({ ...p, transferDriveOwnership: e.target.checked }))} />Transfer file ownership (Google Drive)</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableEmailLogin} onChange={(e) => setStep3((p) => ({ ...p, disableEmailLogin: e.target.checked }))} />Disable email login access</label>
           </div>
         </section>
 
         <section className="bg-white rounded-xl border border-slate-200 p-5">
           <h3 className="text-lg font-bold text-gray-900">Step 4 - Company Property Return</h3>
-          <p className="text-sm text-gray-600 mt-1">Responsible: HR + Manager</p>
-          <div className="space-y-2 mt-4">
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.returnLaptopCharger} onChange={(e) => setStep4((p) => ({ ...p, returnLaptopCharger: e.target.checked }))} />Collect laptop / charger</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.returnIdBadge} onChange={(e) => setStep4((p) => ({ ...p, returnIdBadge: e.target.checked }))} />Collect ID badge</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.returnKeys} onChange={(e) => setStep4((p) => ({ ...p, returnKeys: e.target.checked }))} />Collect keys</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.returnOfficeEquipment} onChange={(e) => setStep4((p) => ({ ...p, returnOfficeEquipment: e.target.checked }))} />Collect office equipment</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.returnDocuments} onChange={(e) => setStep4((p) => ({ ...p, returnDocuments: e.target.checked }))} />Collect documents (physical or digital)</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.signedPropertyChecklist} onChange={(e) => setStep4((p) => ({ ...p, signedPropertyChecklist: e.target.checked }))} />Employee signed Property Return Checklist</label>
+          {isTaiwanEmployee && (
+            <div className="mt-3 mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+              <p className="text-xs font-semibold text-blue-700">🇹🇼 Remote Taiwan employee — physical property return not applicable. This step is disabled.</p>
+            </div>
+          )}
+          <div className={`space-y-2 mt-4 ${isTaiwanEmployee ? "opacity-40 pointer-events-none select-none" : ""}`}>
+            <p className="text-sm text-gray-600 mb-2">Responsible: HR + Manager</p>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.returnLaptopCharger} onChange={(e) => setStep4((p) => ({ ...p, returnLaptopCharger: e.target.checked }))} disabled={isTaiwanEmployee} />Collect laptop / charger</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.returnIdBadge} onChange={(e) => setStep4((p) => ({ ...p, returnIdBadge: e.target.checked }))} disabled={isTaiwanEmployee} />Collect ID badge</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.returnKeys} onChange={(e) => setStep4((p) => ({ ...p, returnKeys: e.target.checked }))} disabled={isTaiwanEmployee} />Collect keys</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.returnOfficeEquipment} onChange={(e) => setStep4((p) => ({ ...p, returnOfficeEquipment: e.target.checked }))} disabled={isTaiwanEmployee} />Collect office equipment</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.returnDocuments} onChange={(e) => setStep4((p) => ({ ...p, returnDocuments: e.target.checked }))} disabled={isTaiwanEmployee} />Collect documents (physical or digital)</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={step4.signedPropertyChecklist} onChange={(e) => setStep4((p) => ({ ...p, signedPropertyChecklist: e.target.checked }))} disabled={isTaiwanEmployee} />Employee signed Property Return Checklist</label>
           </div>
         </section>
 
