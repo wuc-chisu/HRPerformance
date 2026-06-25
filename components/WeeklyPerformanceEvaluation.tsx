@@ -33,13 +33,22 @@ function getTaskCompletionBreakdown(record: WeeklyRecord): {
   incompleteWeighted: number;
   completedWeighted: number;
   completionRate: number;
+  totalScoreDeduction: number;
+  deductionsByPriority: Array<{
+    priority: "urgent" | "high" | "normal" | "low" | "no priority";
+    overdueCount: number;
+    weightedDeduction: number;
+    scoreDeduction: number;
+  }>;
 } {
   const priorityWeights: Record<string, number> = {
     urgent: 3,
     high: 2,
     normal: 1,
+    low: 0,
     "no priority": 0.5,
   };
+  const priorityOrder = ["urgent", "high", "normal", "low", "no priority"] as const;
 
   const assignedDetails = record.assignedTasksDetails || [];
   const overdueDetails = record.overdueTasksDetails || [];
@@ -57,12 +66,30 @@ function getTaskCompletionBreakdown(record: WeeklyRecord): {
   const completedWeighted = totalWeighted - incompleteWeighted;
   const completionRate =
     totalWeighted > 0 ? (completedWeighted / totalWeighted) * 100 : 100;
+  const totalScoreDeduction =
+    totalWeighted > 0 ? (incompleteWeighted / totalWeighted) * 25 : 0;
+  const deductionsByPriority = priorityOrder.map((priority) => {
+    const overdueCount =
+      overdueDetails.find((detail) => detail.priority === priority)?.count || 0;
+    const weightedDeduction = overdueCount * (priorityWeights[priority] || 0);
+    const scoreDeduction =
+      totalWeighted > 0 ? (weightedDeduction / totalWeighted) * 25 : 0;
+
+    return {
+      priority,
+      overdueCount,
+      weightedDeduction,
+      scoreDeduction,
+    };
+  });
 
   return {
     totalWeighted,
     incompleteWeighted,
     completedWeighted,
     completionRate,
+    totalScoreDeduction,
+    deductionsByPriority,
   };
 }
 
@@ -803,6 +830,19 @@ Whitewater University of California
               low: "bg-blue-100 text-blue-700",
               "no priority": "bg-gray-100 text-gray-600",
             };
+            const deductionByPriorityLabel = priorityOrder
+              .map((priority) => {
+                const deduction = breakdown.deductionsByPriority.find(
+                  (d) => d.priority === priority
+                );
+                if (!deduction) {
+                  return `${priority}: −0.00 (0 task(s), weighted −0.0)`;
+                }
+
+                return `${priority}: −${deduction.scoreDeduction.toFixed(2)} (${deduction.overdueCount} task(s), weighted −${deduction.weightedDeduction.toFixed(1)})`;
+              })
+              .join(" | ");
+
             return (
               <div className="text-xs text-gray-500 mt-2 space-y-1">
                 {assignedDetails.length > 0 && (
@@ -825,7 +865,10 @@ Whitewater University of California
                   Total weighted: {breakdown.totalWeighted.toFixed(1)} | Incomplete: {breakdown.incompleteWeighted.toFixed(1)} | Completed: {breakdown.completedWeighted.toFixed(1)}
                 </p>
                 <p>
-                  max 25 points • {breakdown.completionRate.toFixed(1)}% × 25 = {score.taskCompletionRate.toFixed(2)}
+                  Score deduction by overdue priority: {deductionByPriorityLabel}
+                </p>
+                <p>
+                  max 25 points • total deduction: −{breakdown.totalScoreDeduction.toFixed(2)} → {breakdown.completionRate.toFixed(1)}% × 25 = {score.taskCompletionRate.toFixed(2)}
                 </p>
               </div>
             );
