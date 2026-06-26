@@ -10,10 +10,14 @@ export async function POST(request: Request) {
     const body = String(formData.get("body") || "").trim();
     const cc = String(formData.get("cc") || "").trim();
     const bcc = String(formData.get("bcc") || "").trim();
+    const fromAddress =
+      String(formData.get("from") || "").trim() ||
+      process.env.HR_EMAIL_FROM ||
+      "Human Resource <hr@wuc.edu>";
 
-    if (!to || !subject || !body) {
+    if (!to || !subject || !body || !fromAddress) {
       return NextResponse.json(
-        { error: "Missing required fields: to, subject, and body" },
+        { error: "Missing required fields: to, from, subject, and body" },
         { status: 400 }
       );
     }
@@ -23,8 +27,6 @@ export async function POST(request: Request) {
     const smtpUser = process.env.SMTP_USER;
     const smtpPass = process.env.SMTP_PASS;
     const smtpSecure = process.env.SMTP_SECURE === "true";
-    const fromAddress =
-      process.env.HR_EMAIL_FROM || "Human Resources <hr@wuc.edu>";
 
     if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
       return NextResponse.json(

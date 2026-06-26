@@ -24,6 +24,7 @@ import MonthlyPerformanceReport from "@/components/MonthlyPerformanceReport";
 import IncidentTrackingTable from "@/components/IncidentTrackingTable";
 import OnboardingModule from "@/components/OnboardingModule";
 import OffboardingModule from "@/components/OffboardingModule";
+import NewHirePreboardingSOP from "@/components/NewHirePreboardingSOP";
 import ProfessionalDevelopmentManager from "@/components/ProfessionalDevelopmentManager";
 import TimeOffManager from "@/components/TimeOffManager";
 
@@ -35,10 +36,11 @@ export default function Home() {
     null
   );
   const [activeView, setActiveView] = useState<
-    "dashboard" | "employees" | "offboard-employees" | "manage" | "manage-performance" | "onboarding" | "offboarding" | "professional-development" | "incident-tracking" | "time-off"
+    "dashboard" | "employees" | "offboard-employees" | "manage" | "manage-performance" | "onboarding" | "offboarding" | "preboarding" | "professional-development" | "incident-tracking" | "time-off"
   >("dashboard");
   const [selectedEmployeeForPerformance, setSelectedEmployeeForPerformance] =
     useState<string | null>(null);
+  const [lastCreatedEmployeeId, setLastCreatedEmployeeId] = useState<string | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showWeeklyRecordForm, setShowWeeklyRecordForm] = useState(false);
@@ -305,6 +307,10 @@ export default function Home() {
         if (!response.ok) {
           throw new Error(responseData.details || responseData.error || "Failed to create employee");
         }
+
+        setLastCreatedEmployeeId(employee.id);
+        setSelectedEmployeeId(employee.id);
+        setSelectedEmployeeForPerformance(employee.id);
       }
       await fetchEmployees();
       if (editingEmployee && editingEmployee.id !== employee.id) {
@@ -1298,7 +1304,7 @@ export default function Home() {
         {/* Manage Employees View */}
         {activeView === "manage" && (
           <div>
-            <div className="mb-6 flex justify-between items-start">
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
                   Employee Management
@@ -1306,6 +1312,27 @@ export default function Home() {
                 <p className="text-gray-600">
                   Add, edit, or delete employees from your organization
                 </p>
+                {lastCreatedEmployeeId && (
+                  <div className="mt-4 rounded-3xl border border-sky-200 bg-sky-50 p-4 text-slate-900 shadow-sm">
+                    <p className="font-semibold text-slate-900">
+                      New employee {lastCreatedEmployeeId} created successfully.
+                    </p>
+                    <p className="mt-1 text-sm text-slate-700">
+                      Start the New Hire Preboarding Internal SOP for this employee.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveView("preboarding");
+                        setSelectedEmployeeId(lastCreatedEmployeeId);
+                        setLastCreatedEmployeeId(null);
+                      }}
+                      className="mt-3 inline-flex items-center justify-center rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700 transition-colors"
+                    >
+                      Start New Hire Preboarding Internal SOP
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex gap-3">
                 <button
@@ -1322,6 +1349,16 @@ export default function Home() {
                   className="bg-cyan-400 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-500 transition-colors"
                 >
                   🧭 Onboarding
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveView("preboarding");
+                    setSelectedEmployeeId(null);
+                    setLastCreatedEmployeeId(null);
+                  }}
+                  className="bg-sky-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-sky-600 transition-colors"
+                >
+                  📋 New Hire Preboarding
                 </button>
                 <button
                   onClick={() => {
@@ -1653,6 +1690,16 @@ export default function Home() {
             onSaveStep2={handleSaveOnboardingStep2}
             onSaveStep3={handleSaveOnboardingStep3}
             onSaveStep4={handleSaveOnboardingStep4}
+          />
+        )}
+
+        {activeView === "preboarding" && (
+          <NewHirePreboardingSOP
+            key={selectedEmployeeId || "preboarding"}
+            employees={employees}
+            activeEmployees={activeEmployees}
+            selectedEmployeeId={selectedEmployeeId}
+            onSelectEmployee={(employeeId: string | null) => setSelectedEmployeeId(employeeId)}
           />
         )}
 
