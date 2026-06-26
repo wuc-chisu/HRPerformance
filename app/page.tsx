@@ -1343,15 +1343,6 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => {
-                    setActiveView("onboarding");
-                    setSelectedEmployeeId(null);
-                  }}
-                  className="bg-cyan-400 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-500 transition-colors"
-                >
-                  🧭 Onboarding
-                </button>
-                <button
-                  onClick={() => {
                     setActiveView("preboarding");
                     setSelectedEmployeeId(null);
                     setLastCreatedEmployeeId(null);
@@ -1360,6 +1351,16 @@ export default function Home() {
                 >
                   📋 New Hire Preboarding
                 </button>
+                <button
+                  onClick={() => {
+                    setActiveView("onboarding");
+                    setSelectedEmployeeId(null);
+                  }}
+                  className="bg-cyan-400 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-500 transition-colors"
+                >
+                  🧭 Onboarding
+                </button>
+                
                 <button
                   onClick={() => {
                     setActiveView("offboarding");
