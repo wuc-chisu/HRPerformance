@@ -53,6 +53,7 @@ model Employee {
   onboardingStep1UpdatedBy      String                      @default("System")
   onboardingStep1UpdatedAt      DateTime?
   onboardingStep1Notes          String?                     @db.Text
+  preboardingSteps              Json                        @default("{}")
   onboardingStep2CompletedAt    DateTime?
   onboardingStep3CompletedAt    DateTime?
   onboardingStep4CompletedAt    DateTime?

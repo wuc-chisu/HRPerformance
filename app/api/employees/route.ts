@@ -317,6 +317,7 @@ export async function GET() {
         emp.professionalDevelopmentRecords
       ),
       onboarding: formatOnboarding(emp),
+      preboardingSteps: emp.preboardingSteps || {},
       weeklyRecords: emp.weeklyRecords.map((record: any) => ({
         recordId: record.id,
         startDate: formatDateForResponse(record.startDate),
