@@ -6,6 +6,7 @@ import { Employee } from "@/lib/employees";
 interface NewHirePreboardingSOPProps {
   employees: Employee[];
   activeEmployees: Employee[];
+  eligibleEmployees: Employee[];
   selectedEmployeeId: string | null;
   onSelectEmployee: (employeeId: string | null) => void;
 }
@@ -230,12 +231,13 @@ const sendEmailRequest = async (
 export default function NewHirePreboardingSOP({
   employees,
   activeEmployees,
+  eligibleEmployees,
   selectedEmployeeId,
   onSelectEmployee,
 }: NewHirePreboardingSOPProps) {
   const selectedEmployee = useMemo(
-    () => employees.find((employee) => employee.id === selectedEmployeeId) || null,
-    [employees, selectedEmployeeId]
+    () => eligibleEmployees.find((employee) => employee.id === selectedEmployeeId) || null,
+    [eligibleEmployees, selectedEmployeeId]
   );
 
   const defaultStepEmailDrafts = useMemo(
@@ -388,6 +390,7 @@ export default function NewHirePreboardingSOP({
     }
 
     setIsSavingSteps(true);
+    setSaveStatusMessage("Saving progress to database...");
     try {
       const completedFlag = visibleSteps.length > 0 && visibleSteps.every((s) => Boolean(steps[s.key]));
       const payload = { completedSteps: { ...steps, completed: completedFlag } };
@@ -404,42 +407,48 @@ export default function NewHirePreboardingSOP({
       );
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        // fallback to localStorage when server returns error
+        // fallback to localStorage only when DB save fails, but do not mark the checklist as saved.
         try {
-          window.localStorage.setItem(`newHirePreboardingSteps:${selectedEmployeeId}`, JSON.stringify(payload.completedSteps));
-          setSavedCompleted(completedFlag);
-          setSaveStatusMessage("Progress saved locally (server error).");
-          window.setTimeout(() => setSaveStatusMessage(null), 3000);
-          return true;
+          window.localStorage.setItem(
+            `newHirePreboardingSteps:${selectedEmployeeId}`,
+            JSON.stringify(payload.completedSteps)
+          );
+          setSaveStatusMessage(
+            "Database save failed. Progress preserved locally as a draft until database access is restored."
+          );
+          window.setTimeout(() => setSaveStatusMessage(null), 5000);
         } catch {
           setSaveStatusMessage(result?.error || "Unable to save progress.");
-          return false;
         }
+        return false;
       }
+      window.localStorage.removeItem(`newHirePreboardingSteps:${selectedEmployeeId}`);
       setSavedCompleted(completedFlag);
       if (completedFlag) {
         setExpandedSteps(Object.fromEntries(DEFAULT_STEPS.map((step) => [step.key, false])));
       }
-      setSaveStatusMessage("Progress saved.");
+      setSaveStatusMessage("Progress saved successfully to database.");
       window.setTimeout(() => setSaveStatusMessage(null), 3000);
       return true;
     } catch (err) {
-      // network / unexpected error -> fallback to localStorage
+      // network / unexpected error -> fallback to localStorage only as emergency backup
       try {
         const completedFlag = visibleSteps.length > 0 && visibleSteps.every((s) => Boolean(steps[s.key]));
         const payload = { ...steps, completed: completedFlag };
-        window.localStorage.setItem(`newHirePreboardingSteps:${selectedEmployeeId}`, JSON.stringify(payload));
-        setSavedCompleted(completedFlag);
+        window.localStorage.setItem(
+          `newHirePreboardingSteps:${selectedEmployeeId}`,
+          JSON.stringify(payload)
+        );
         if (completedFlag) {
           setExpandedSteps(Object.fromEntries(DEFAULT_STEPS.map((step) => [step.key, false])));
         }
-        setSaveStatusMessage("Progress saved locally (offline).");
-        window.setTimeout(() => setSaveStatusMessage(null), 3000);
-        return true;
+        setSaveStatusMessage(
+          "Unable to save to database. Progress preserved locally as a draft until database access is restored."
+        );
       } catch {
         setSaveStatusMessage("Unable to save progress.");
-        return false;
       }
+      return false;
     } finally {
       setIsSavingSteps(false);
     }
@@ -521,8 +530,7 @@ export default function NewHirePreboardingSOP({
     setStepEmailSubjects(defaultStepEmailSubjects);
   }, [defaultStepEmailSubjects]);
 
-  const showBenefitsStep = selectedEmployee?.staffWorkLocation?.toLowerCase().includes("taiwan");
-  const visibleSteps = DEFAULT_STEPS.filter((step) => step.key !== "notify-benefits" || showBenefitsStep);
+  const visibleSteps = DEFAULT_STEPS;
   const completedCount = Object.entries(completedSteps).filter(
     ([key, value]) => value && visibleSteps.some((step) => step.key === key)
   ).length;
@@ -538,11 +546,11 @@ export default function NewHirePreboardingSOP({
 
   const employeeOptions = useMemo(
     () =>
-      employees
+      eligibleEmployees
         .slice()
         .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: "base" }))
         .map((employee) => ({ id: employee.id, label: `${employee.name} (${employee.id})` })),
-    [employees]
+    [eligibleEmployees]
   );
 
   return (
@@ -569,12 +577,18 @@ export default function NewHirePreboardingSOP({
               onChange={(event) => onSelectEmployee(event.target.value || null)}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100"
             >
-              <option value="">Choose an employee...</option>
-              {employeeOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
+              <option value="">Choose a new hire within 30 days and no preboarding record...</option>
+              {employeeOptions.length === 0 ? (
+                <option value="" disabled>
+                  No new hire candidates available
                 </option>
-              ))}
+              ) : (
+                employeeOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))
+              )}
             </select>
           </div>
         </div>
@@ -650,9 +664,21 @@ export default function NewHirePreboardingSOP({
                 }}
               >
               <summary className="flex items-start justify-between gap-4 cursor-pointer p-6">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{step.title}</p>
-                  <p className="mt-2 text-sm text-slate-600">{step.description}</p>
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-transform duration-200 ${
+                      expandedSteps[step.key] ? "rotate-90" : ""
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 6L13 10L7 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{step.title}</p>
+                    <p className="mt-2 text-sm text-slate-600">{step.description}</p>
+                  </div>
                 </div>
                 <label className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                   <input

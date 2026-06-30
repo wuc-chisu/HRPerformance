@@ -190,11 +190,32 @@ export default function Home() {
 
   const selectedEmployee = activeEmployees.find((e) => e.id === selectedEmployeeId);
 
+  const preboardingCandidates = useMemo(() => {
+    const now = new Date();
+    return activeEmployees.filter((employee) => {
+      const joinDate = new Date(employee.joinDate);
+      if (Number.isNaN(joinDate.getTime())) return false;
+
+      const daysDifference = (now.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24);
+      const withinThirtyDays = daysDifference >= -30 && daysDifference <= 30;
+      const hasNoPreboarding =
+        !employee.preboardingSteps || Object.keys(employee.preboardingSteps).length === 0;
+
+      return withinThirtyDays && hasNoPreboarding;
+    });
+  }, [activeEmployees]);
+
   useEffect(() => {
     if (selectedEmployeeId && !activeEmployeeIds.has(selectedEmployeeId)) {
       setSelectedEmployeeId(null);
     }
   }, [selectedEmployeeId, activeEmployeeIds]);
+
+  useEffect(() => {
+    if (activeView === "preboarding" && selectedEmployeeId && !preboardingCandidates.some((emp) => emp.id === selectedEmployeeId)) {
+      setSelectedEmployeeId(null);
+    }
+  }, [activeView, selectedEmployeeId, preboardingCandidates]);
 
   useEffect(() => {
     if (selectedEmployeeForPerformance && !activeEmployeeIds.has(selectedEmployeeForPerformance)) {
@@ -1686,7 +1707,7 @@ export default function Home() {
 
         {activeView === "onboarding" && (
           <OnboardingModule
-            employees={employees}
+            employees={activeEmployees}
             onSaveStep1={handleSaveOnboardingStep1}
             onSaveStep2={handleSaveOnboardingStep2}
             onSaveStep3={handleSaveOnboardingStep3}
@@ -1697,8 +1718,9 @@ export default function Home() {
         {activeView === "preboarding" && (
           <NewHirePreboardingSOP
             key={selectedEmployeeId || "preboarding"}
-            employees={employees}
+            employees={activeEmployees}
             activeEmployees={activeEmployees}
+            eligibleEmployees={preboardingCandidates}
             selectedEmployeeId={selectedEmployeeId}
             onSelectEmployee={(employeeId: string | null) => setSelectedEmployeeId(employeeId)}
           />

@@ -1,9 +1,17 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export async function GET(request: Request, context: { params: { id: string } }) {
+async function resolveParams(context: { params: { id: string } } | { params: Promise<{ id: string }> }) {
+  if (typeof (context as any).params?.then === "function") {
+    return await (context as any).params;
+  }
+  return (context as any).params;
+}
+
+export async function GET(request: Request, context: { params: { id: string } } | { params: Promise<{ id: string }> }) {
   try {
-    const employeeId = context.params.id;
+    const params = await resolveParams(context);
+    const employeeId = params?.id;
     if (!employeeId) {
       return NextResponse.json({ error: "Employee ID is required" }, { status: 400 });
     }
@@ -29,9 +37,10 @@ export async function GET(request: Request, context: { params: { id: string } })
   }
 }
 
-export async function PATCH(request: Request, context: { params: { id: string } }) {
+export async function PATCH(request: Request, context: { params: { id: string } } | { params: Promise<{ id: string }> }) {
   try {
-    const employeeId = context.params.id;
+    const params = await resolveParams(context);
+    const employeeId = params?.id;
     if (!employeeId) {
       return NextResponse.json({ error: "Employee ID is required" }, { status: 400 });
     }

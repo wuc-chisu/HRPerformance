@@ -203,6 +203,7 @@ export interface Employee {
   professionalDevelopmentRecords?: ProfessionalDevelopmentRecord[];
   weeklyRecords: WeeklyRecord[];
   timeOffRequests?: TimeOffRequest[];
+  preboardingSteps?: Record<string, boolean>;
 }
 
 // Sample employee data
