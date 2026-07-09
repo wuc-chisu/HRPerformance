@@ -56,6 +56,12 @@ const DEFAULT_STEPS: PreboardingStep[] = [
       "After the offer is accepted, HR informs Accountant (Paoying Huang) of the new hire. Send employee name, position, department, start date, salary, payroll method, and signed offer letter. Accounting prepares payroll setup and confirms payment schedule.",
   },
   {
+    key: "notify-paypal-coordinator",
+    title: "Step 6-2 — Notify Administrative & Academic Coordinator for Taiwan PayPal Setup",
+    description:
+      "For Taiwan-based remote employees only, HR asks the Administrative & Academic Coordinator to assist with PayPal payroll account setup and confirmation.",
+  },
+  {
     key: "send-onboarding-email",
     title: "Step 7 — Send Employee Onboarding Email",
     description:
@@ -127,6 +133,16 @@ const getStepEmailTemplate = (
     "IT Engineer";
   const registrarName =
     findEmployeeByPattern(activeEmployees, /registrar|tingyi tung/i)?.name || "Registrar";
+  const adminAcademicCoordinatorName =
+    findEmployeeByPattern(
+      activeEmployees,
+      /administrative\s*&\s*academic coordinator|academic\s*&\s*administrative coordinator/i
+    )?.name ||
+    findEmployeeByPattern(
+      employees,
+      /administrative\s*&\s*academic coordinator|academic\s*&\s*administrative coordinator/i
+    )?.name ||
+    "Administrative & Academic Coordinator";
 
   switch (stepKey) {
     case "offer-letter-sent":
@@ -142,10 +158,16 @@ const getStepEmailTemplate = (
       const hrManagerName =
         findEmployeeByPattern(employees, /hr manager|human resources|human resource|chief people officer|people operations/i)?.name ||
         "Chi Su";
-      return `Dear ${complianceManagerName},\n\nI am pleased to inform you that ${candidate} has accepted our offer of employment and will be joining Whitewater University of California as ${position}, with a start date of ${startDate}.\n\nAs part of the onboarding process for our Taiwan-based remote employee, please contact ${candidate} directly to assist with Taiwan employment compliance and payroll setup.\n\nPlease assist with the following:\n\n- Explain the Labor Insurance (勞工保險) and National Health Insurance (全民健康保險) enrollment process.\n- Advise the employee regarding any required forms or supporting documentation.\n- Confirm the monthly Labor Insurance and National Health Insurance contribution amounts once enrollment is completed.\n- Request the employee to provide the payment receipt for the first month’s Labor and Health Insurance contributions.\n- Assist the employee in creating a PayPal account, if needed, and ensure it is successfully linked to the employee’s Taiwan bank account for payroll payments.\n- Confirm the employee’s PayPal account information for payroll purposes.\n- Inform HR of the confirmed monthly insurance reimbursement amount once available.\n\nAs communicated to the employee, Whitewater University will reimburse the employee’s Labor Insurance and National Health Insurance contributions. The first month’s reimbursement will be included with the following month’s salary after receipt of the payment documentation. Going forward, the approved monthly reimbursement amount, together with applicable PayPal transaction fee reimbursement, will be included in the employee’s regular monthly payroll.\n\nPlease let me know once the insurance enrollment and PayPal setup have been completed or if any additional assistance is required.\n\nThank you for your support.\nBest regards,\n${hrManagerName}\nHuman Resources\nWhitewater University of California`;
+      return `Hi ${complianceManagerName},\n\n${candidate} has officially joined Whitewater University as our new ${position} and has begun the onboarding process.\n\nAs part of the onboarding requirements for Taiwan-based employees, please contact ${candidate} directly to assist with the Taiwan labor union and insurance enrollment process.\n\nEmployee Information:\n\n- Employee Name: ${candidate}\n- Position: ${position}\n- Start Date: ${startDate}\n- Work Location: Taiwan (Remote)\n\nPlease assist the employee with the following:\n\n- Explain the process for joining an appropriate Taiwan labor union (職業工會).\n- Guide the employee through the enrollment process for Labor Insurance (勞保) and National Health Insurance (健保) through the labor union.\n- Answer any questions regarding the enrollment process and required documents.\n- Once enrollment is completed, collect the following documents for HR:\n- Labor Union Membership Certificate (工會會員證明)\n- Labor Insurance enrollment/payment proof (勞保證明及繳費證明)\n- National Health Insurance enrollment/payment proof (健保證明及繳費證明)\n- Provide the documentation to HR so the approved reimbursement amount can be processed through payroll.\n\nPlease keep HR informed of the enrollment status and notify us once the process has been completed.\n\nFor tracking purposes, please use the assigned ClickUp task:\n\n[ClickUp Link]\nThank you for your assistance.\n\nBest regards,\n${hrManagerName}\nHuman Resources\nWhitewater University of California`;
     }
     case "notify-accounting":
       return `Dear Accounting Team,\n\nI am pleased to inform you that ${candidate} has accepted our offer of employment and will be joining Whitewater University of California.\n\nPlease establish the employee’s payroll record and prepare payroll processing based on the information below.\n\nEmployee Information\n\n- Employee Name: ${candidate}\n- Position: ${position}\n- Department: ${department}\n- Employment Type: ${formatEmploymentTypeLabel(employee)}\n- Work Location: ${formatWorkLocationLabel(employee)}\n- Start Date: ${startDate}\n\nCompensation Information\n\n- Probationary Salary: ${monthlyDuringProbation}\n- Post-Probation Salary: ${monthlyAfterProbation}\n- Payroll Method: PayPal / Direct Deposit\n- Payroll Frequency: Monthly\n- Payroll Date: Last business day of each month\n\nSupporting Documents\n\nThe signed Offer Letter is attached for your reference and payroll records.\n\nFor Taiwan-based remote employees, please include the approved monthly Labor Insurance and National Health Insurance reimbursement, along with applicable PayPal transaction fee reimbursement, once HR confirms the reimbursement amount.\n\nPlease let HR know if any additional information is required to complete the employee’s payroll setup.\n\nThank you for your assistance.\n\nBest regards,\nChi Su\nHuman Resources\nWhitewater University of California`;
+    case "notify-paypal-coordinator": {
+      const hrManagerName =
+        findEmployeeByPattern(employees, /hr manager|human resources|human resource|chief people officer|people operations/i)?.name ||
+        "Chi Su";
+      return `Hi ${adminAcademicCoordinatorName},\n\n${candidate} has officially joined Whitewater University as our new ${position} and has begun the onboarding process.\n\nAs part of the onboarding process for Taiwan-based employees, please contact ${candidate} directly to assist with setting up their PayPal account for payroll purposes.\n\nEmployee Information:\n\n- **Employee Name:** ${candidate}\n- **Position:** ${position}\n- **Start Date:** ${startDate}\n- **Work Location:** Taiwan (Remote)\n\nPlease assist the employee with the following:\n\n- Create a PayPal account (if the employee does not already have one).\n- Link and verify the employee’s Taiwan bank account with their PayPal account.\n- Confirm that the PayPal account is fully set up and ready to receive payroll payments.\n- Answer any questions the employee may have regarding the PayPal setup process.\n- Notify HR once the PayPal setup has been successfully completed.\n\nPlease keep HR informed of the progress and let us know if any issues arise during the setup process.\n\nFor tracking purposes, please use the assigned ClickUp task:\n\n[ClickUp Link]\n\nThank you for your assistance.\n\nBest regards,\n${hrManagerName}\nHuman Resources\nWhitewater University of California\n📍 3150 Almaden Expy, Suite 111, San Jose, CA 95118`;
+    }
     case "send-onboarding-email":
       return `Dear ${candidate},\n\nWelcome to Whitewater University of California, and congratulations on joining our team as ${position}.\n\nWe are excited to have you join us and would like to provide an overview of your onboarding process to help you prepare for your first few weeks with the University.\n\nSystem Access\n\nOur IT team will provide your system access credentials separately. Please follow the instructions provided to activate your accounts.\n\nYour system access may include:\n\n- WUC Gmail\n- Moodle\n- ClickUp\n- Google Workspace and Shared Drive (if applicable)\n- Other systems required for your position\n\nPlease activate your accounts as soon as you receive your login credentials and notify us if you encounter any access issues.\n\nPayroll Information\n\n- Salary payments are issued on the last business day of each month.\n- Salary will be paid via Direct Deposit / PayPal.\n- Please ensure all payroll information requested by HR is submitted promptly to avoid payment delays.\n\nEmployee Benefits\n\nHR will contact you regarding any applicable employee benefits and enrollment procedures.\n\nFor eligible employees, additional information regarding insurance, reimbursements, and benefit programs will be provided during the onboarding process.\n\nAdministrative Documentation\n\nOur Administrative Office will contact you regarding the required onboarding forms and supporting documentation.\n\nPlease complete and return all requested forms in a timely manner.\n\nHR Onboarding\n\nDuring your onboarding, HR will guide you through the following:\n\n- Review and sign your Offer Letter (if not already completed)\n- Review and sign the Employee Handbook\n- Review and acknowledge University policies and required agreements\n- Introduction to University policies and procedures\n- Overview of weekly check-ins and monthly performance reviews\n\nSystem Training\n\nAs part of your onboarding, you will be asked to complete the following:\n\n- Activate your WUC Gmail account\n- Activate your Moodle account\n- Accept your ClickUp invitation and complete your account setup\n- Complete the Moodle Getting Started Training\n- Complete ClickUp Training\n- Complete any additional position-specific training assigned by your supervisor\n\nOrientation Certification Requirements\n\nAll new employees are required to complete the University’s Orientation Certification program, which includes:\n\n1. Completion of the New Employee Orientation\n2. Review of the Employee Handbook\n3. Review of the School Catalog\n4. Completion of required compliance and orientation training\n5. Completion of the Orientation Assessment (minimum passing score: 70%)\n\nUpon successful completion, an Orientation Certificate will be issued and added to your personnel file.\n\nIf you have any questions during your onboarding process, please do not hesitate to contact the Human Resources Department.\n\nOnce again, welcome to Whitewater University of California. We are excited to have you on our team and look forward to supporting your success.\n\nSincerely,\nChi Su\nHuman Resources\nWhitewater University of California\n3150 Almaden Expy, Suite 111\nSan Jose, CA 95118`;
     default:
@@ -171,6 +193,10 @@ const getStepEmailSubject = (stepKey: string, employee: Employee | null) => {
       return employee
         ? `Action Required: New Employee Payroll Setup – ${employee.name}`
         : "Action Required: New Employee Payroll Setup";
+    case "notify-paypal-coordinator":
+      return employee
+        ? `Taiwan Employee PayPal Payroll Setup – ${employee.name}`
+        : "Taiwan Employee PayPal Payroll Setup – [Employee Name]";
     case "send-onboarding-email":
       return "Welcome to WUC: Upcoming Onboarding Process";
     default:
@@ -196,6 +222,18 @@ const getStepEmailTo = (
       return findWorkEmailByPattern(activeEmployees, /manager,office of compliance|ziyun fu|jennifer/i) || "";
     case "notify-accounting":
       return findEmailByPattern(employees, /accountant|accounting|paoying huang/i) || "";
+    case "notify-paypal-coordinator":
+      return (
+        findWorkEmailByPattern(
+          activeEmployees,
+          /administrative\s*&\s*academic coordinator|academic\s*&\s*administrative coordinator/i
+        ) ||
+        findWorkEmailByPattern(
+          employees,
+          /administrative\s*&\s*academic coordinator|academic\s*&\s*administrative coordinator/i
+        ) ||
+        ""
+      );
     default:
       return "";
   }
@@ -400,7 +438,7 @@ export default function NewHirePreboardingSOP({
     setIsSavingSteps(true);
     setSaveStatusMessage("Saving progress to database...");
     try {
-      const completedFlag = visibleSteps.length > 0 && visibleSteps.every((s) => Boolean(steps[s.key]));
+      const completedFlag = actionableSteps.length > 0 && actionableSteps.every((s) => Boolean(steps[s.key]));
       const payload = { completedSteps: { ...steps, completed: completedFlag } };
 
       const response = await fetch(
@@ -441,7 +479,7 @@ export default function NewHirePreboardingSOP({
     } catch (err) {
       // network / unexpected error -> fallback to localStorage only as emergency backup
       try {
-        const completedFlag = visibleSteps.length > 0 && visibleSteps.every((s) => Boolean(steps[s.key]));
+        const completedFlag = actionableSteps.length > 0 && actionableSteps.every((s) => Boolean(steps[s.key]));
         const payload = { ...steps, completed: completedFlag };
         window.localStorage.setItem(
           `newHirePreboardingSteps:${selectedEmployeeId}`,
@@ -538,12 +576,34 @@ export default function NewHirePreboardingSOP({
     setStepEmailSubjects(defaultStepEmailSubjects);
   }, [defaultStepEmailSubjects]);
 
-  const visibleSteps = DEFAULT_STEPS;
+  const isUsaBasedEmployee = useMemo(() => {
+    const location = (selectedEmployee?.staffWorkLocation || "").toLowerCase();
+    return location.includes("us") || location.includes("usa") || location.includes("u.s.");
+  }, [selectedEmployee]);
+
+  const isTaiwanBasedEmployee = useMemo(() => {
+    const location = (selectedEmployee?.staffWorkLocation || "").toLowerCase();
+    return location.includes("taiwan");
+  }, [selectedEmployee]);
+
+  const isStepDisabled = (stepKey: string) =>
+    (stepKey === "notify-benefits" || stepKey === "notify-paypal-coordinator") &&
+    isUsaBasedEmployee;
+
+  const visibleSteps = useMemo(
+    () =>
+      DEFAULT_STEPS.filter(
+        (step) => step.key !== "notify-paypal-coordinator" || isTaiwanBasedEmployee
+      ),
+    [isTaiwanBasedEmployee]
+  );
+  const actionableSteps = visibleSteps.filter((step) => !isStepDisabled(step.key));
   const completedCount = Object.entries(completedSteps).filter(
-    ([key, value]) => value && visibleSteps.some((step) => step.key === key)
+    ([key, value]) => value && actionableSteps.some((step) => step.key === key)
   ).length;
 
   const handleToggleStep = (key: string) => {
+    if (isStepDisabled(key)) return;
     setCompletedSteps((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       // mark as unsaved when user changes any step
@@ -610,11 +670,17 @@ export default function NewHirePreboardingSOP({
               <div className="mt-4 h-4 overflow-hidden rounded-full bg-slate-200">
                 <div
                   className="h-full rounded-full bg-sky-500 transition-all"
-                  style={{ width: `${(completedCount / visibleSteps.length) * 100}%` }}
+                  style={{
+                    width: `${
+                      actionableSteps.length > 0
+                        ? (completedCount / actionableSteps.length) * 100
+                        : 0
+                    }%`,
+                  }}
                 />
               </div>
               <p className="mt-3 text-sm text-slate-600">
-                {completedCount} of {visibleSteps.length} steps complete
+                {completedCount} of {actionableSteps.length} steps complete
               </p>
             </div>
 
@@ -658,7 +724,10 @@ export default function NewHirePreboardingSOP({
               <details
                 key={step.key}
                 className={`group rounded-3xl border shadow-sm ${
-                  (savedCompleted || (completedCount === visibleSteps.length && visibleSteps.length > 0))
+                  isStepDisabled(step.key)
+                    ? "border-slate-200 bg-slate-50 opacity-70"
+                    :
+                  (savedCompleted || (completedCount === actionableSteps.length && actionableSteps.length > 0))
                     ? "border-emerald-500 bg-emerald-50"
                     : "border-slate-200 bg-white"
                 }`}
@@ -692,23 +761,34 @@ export default function NewHirePreboardingSOP({
                   <input
                     type="checkbox"
                     checked={completedSteps[step.key]}
+                    disabled={isStepDisabled(step.key)}
                     onChange={(event) => {
                       event.stopPropagation();
                       handleToggleStep(step.key);
                     }}
                     className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                   />
-                  {completedSteps[step.key] ? "Done" : "Pending"}
+                  {isStepDisabled(step.key)
+                    ? "N/A (U.S.-based employee)"
+                    : completedSteps[step.key]
+                    ? "Done"
+                    : "Pending"}
                 </label>
               </summary>
+              {isStepDisabled(step.key) && ["notify-benefits", "notify-paypal-coordinator"].includes(step.key) && (
+                <div className="border-t border-slate-200 bg-slate-100 p-6 text-sm text-slate-700">
+                  This step applies to Taiwan-based remote employees only and is disabled for U.S.-based employees.
+                </div>
+              )}
               {[
                 "offer-letter-sent",
                 "notify-it",
                 "notify-registrar",
                 "notify-benefits",
                 "notify-accounting",
+                "notify-paypal-coordinator",
                 "send-onboarding-email",
-              ].includes(step.key) && (
+              ].includes(step.key) && !isStepDisabled(step.key) && (
                 <div className="space-y-4 border-t border-slate-200 bg-slate-50 p-6">
                   <label className="block text-sm font-semibold text-slate-700">
                     {step.key === "offer-letter-sent" ? "Offer Letter Email Ready to Send" : step.key === "send-onboarding-email" ? "Onboarding Email Ready to Send" : "Email Ready to Send"}
