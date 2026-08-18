@@ -180,6 +180,8 @@ export interface OfficeSchedule {
   endTime: string;
 }
 
+export type SystemRole = "Employee" | "Manager" | "HR Admin" | "Executive";
+
 export interface Employee {
   id: string;
   name: string;
@@ -193,6 +195,7 @@ export interface Employee {
   staffWorkLocation?: string;
   employeeType?: "Full time" | "Contract";
   contractWorkHours?: number;
+  systemRole?: SystemRole;
   officeSchedule?: OfficeSchedule | null;
   probationPeriodStartDate?: string;
   probationPeriodEndDate?: string;

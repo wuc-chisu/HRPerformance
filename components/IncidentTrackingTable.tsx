@@ -306,7 +306,7 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
   };
 
   const handleDeleteRecord = async (recordId: string) => {
-    const confirmed = window.confirm("Are you sure you want to delete this incident record?");
+    const confirmed = window.confirm("are you sure?");
     if (!confirmed) return;
 
     try {

@@ -50,3 +50,6 @@ next-env.d.ts
 # Data exports are version controlled (JSON exports are safe to commit)
 # Uncomment the line below if you DON'T want to track data exports:
 # /data-exports/
+
+# clerk configuration (can include secrets)
+/.clerk/

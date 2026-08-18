@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { formatDateForResponse, formatDateTimeForResponse } from "@/lib/dateUtils";
 import { allocateHoursAcrossOverlaps, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
+import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 class TimeOffRequestError extends Error {
@@ -103,6 +104,63 @@ type TransactionClient = {
 
 const timeOffRequestModel = (prisma as unknown as { timeOffRequest: TimeOffRequestModel }).timeOffRequest;
 
+type ResolvedCurrentEmployee = {
+  id: string;
+  employeeId: string;
+  systemRole: string;
+};
+
+async function resolveCurrentEmployee(): Promise<ResolvedCurrentEmployee | null> {
+  const clerkUser = await currentUser();
+  const email = clerkUser?.primaryEmailAddress?.emailAddress || clerkUser?.emailAddresses[0]?.emailAddress || "";
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const [employees, offboardingRecords] = await Promise.all([
+    prisma.employee.findMany({
+      select: {
+        id: true,
+        employeeId: true,
+        email: true,
+        systemRole: true,
+      },
+    }),
+    prisma.offboardingRecord.findMany({
+      select: {
+        employeeId: true,
+        step8: true,
+      },
+    }),
+  ]);
+
+  const offboardedEmployeeIds = new Set(
+    offboardingRecords
+      .filter((record) => Boolean((record.step8 as { confirmedOffboard?: boolean } | null)?.confirmedOffboard))
+      .map((record) => record.employeeId)
+  );
+
+  const activeEmployees = employees.filter(
+    (entry) => !offboardedEmployeeIds.has(entry.employeeId)
+  );
+
+  const matchedEmployee = activeEmployees.find(
+    (entry) => entry.email.trim().toLowerCase() === normalizedEmail
+  );
+
+  if (!matchedEmployee) {
+    return null;
+  }
+
+  return {
+    id: matchedEmployee.id,
+    employeeId: matchedEmployee.employeeId,
+    systemRole: matchedEmployee.systemRole || "Employee",
+  };
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
@@ -111,9 +169,21 @@ export async function PATCH(
     const { id } = await context.params;
     const body = await request.json();
     const { status, managerNote } = body;
+    const currentEmployee = await resolveCurrentEmployee();
 
     if (!id) {
       return NextResponse.json({ error: "Request ID is required" }, { status: 400 });
+    }
+
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (currentEmployee.systemRole === "Employee") {
+      return NextResponse.json(
+        { error: "Employee accounts cannot update leave request status or notes." },
+        { status: 403 }
+      );
     }
 
     const allowedStatuses = new Set<TimeOffStatus>(["PENDING", "APPROVED", "REJECTED", "CANCELLED"]);
@@ -234,8 +304,51 @@ export async function DELETE(
 ) {
   try {
     const { id } = await context.params;
+    const currentEmployee = await resolveCurrentEmployee();
+    const viewMode = request.headers.get("x-view-mode") === "employee" ? "employee" : "admin";
     if (!id) {
       return NextResponse.json({ error: "Request ID is required" }, { status: 400 });
+    }
+
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    const enforceEmployeeDeleteRules = currentEmployee.systemRole === "Employee" || viewMode === "employee";
+
+    if (enforceEmployeeDeleteRules) {
+      const requestRecord = await prisma.timeOffRequest.findUnique({
+        where: { id },
+        select: {
+          employeeId: true,
+          status: true,
+          startDate: true,
+        },
+      });
+
+      if (!requestRecord) {
+        return NextResponse.json({ error: "Time-off request not found" }, { status: 404 });
+      }
+
+      if (requestRecord.employeeId !== currentEmployee.id) {
+        return NextResponse.json(
+          { error: "You can only delete your own leave requests." },
+          { status: 403 }
+        );
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const requestStart = new Date(requestRecord.startDate);
+      requestStart.setHours(0, 0, 0, 0);
+
+      if (requestRecord.status !== "PENDING" || requestStart <= today) {
+        return NextResponse.json(
+          { error: "Employee leave can only be deleted when it is Pending and the leave date is in the future." },
+          { status: 403 }
+        );
+      }
     }
 
     await timeOffRequestModel.delete({ where: { id } });

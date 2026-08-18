@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Employee, OfficeDay } from "@/lib/employees";
+import { Employee, OfficeDay, SystemRole } from "@/lib/employees";
 
 const OFFICE_DAYS: OfficeDay[] = [
   "Monday",
@@ -54,6 +54,7 @@ export default function AddEditEmployee({
     staffWorkLocation: employee?.staffWorkLocation || "USA",
     employeeType: employee?.employeeType || "Full time",
     contractWorkHours: employee?.contractWorkHours || 0,
+    systemRole: (employee?.systemRole || "Employee") as SystemRole,
     officeSchedule: employee?.officeSchedule || null,
     probationPeriodStartDate: employee?.probationPeriodStartDate || "",
     probationPeriodEndDate: employee?.probationPeriodEndDate || "",
@@ -124,6 +125,7 @@ export default function AddEditEmployee({
     staffWorkLocation: formData.staffWorkLocation,
     contractWorkHours:
       formData.employeeType === "Contract" ? formData.contractWorkHours : undefined,
+    systemRole: formData.systemRole,
     officeSchedule: formData.officeSchedule,
     probationPeriodStartDate: formData.probationPeriodStartDate,
     probationPeriodEndDate: formData.probationPeriodEndDate,
@@ -362,6 +364,24 @@ export default function AddEditEmployee({
             {errors.manager && (
               <p className="text-red-600 text-sm mt-1">{errors.manager}</p>
             )}
+          </div>
+
+          {/* System Role */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              System Role
+            </label>
+            <select
+              name="systemRole"
+              value={formData.systemRole}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+            >
+              <option value="Employee">Employee</option>
+              <option value="Manager">Manager</option>
+              <option value="HR Admin">HR Admin</option>
+              <option value="Executive">Executive</option>
+            </select>
           </div>
 
           {/* Hire Date */}

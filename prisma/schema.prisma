@@ -30,6 +30,7 @@ model Employee {
   staffWorkLocation             String                      @default("USA")
   employeeType                  String                      @default("Full time")
   contractWorkHours             Int?
+  systemRole                    String                      @default("Employee")
   officeSchedule                Json?
   overallOverdueTasks           Int                         @default(0)
   probationPeriodStartDate      DateTime?
@@ -66,6 +67,8 @@ model Employee {
   monthlyComments               MonthlyPerformanceComment[]
   incidentRecords               IncidentRecord[]
   timeOffRequests               TimeOffRequest[]
+  trainingAssignments           EmployeeTrainingAssignment[]
+  trainingCompletionRecords     TrainingCompletionRecord[]
   offboardingRecord             OffboardingRecord?
   createdAt                     DateTime                    @default(now())
   updatedAt                     DateTime                    @updatedAt
@@ -309,4 +312,180 @@ model MonthlyPerformanceComment {
 
   @@unique([employeeId, year, month])
   @@index([employeeId])
+}
+
+enum TrainingCategory {
+  WUC_REQUIRED_TRAINING
+  CALIFORNIA_REQUIRED_TRAINING
+  ACCREDITATION_COMPLIANCE_TRAINING
+  FACULTY_TRAINING
+  CLINIC_SAFETY_TRAINING
+  PROFESSIONAL_DEVELOPMENT
+  OTHER
+}
+
+enum TrainingRequirementType {
+  REQUIRED
+  OPTIONAL
+}
+
+enum TrainingAudience {
+  ALL_EMPLOYEES
+  EMPLOYEES
+  MANAGERS
+  HR_ADMINS
+  EXECUTIVES
+  CALIFORNIA_NON_SUPERVISORY_EMPLOYEES
+  CALIFORNIA_SUPERVISORS_MANAGERS
+  APPLICABLE_CALIFORNIA_EMPLOYEES
+  FACULTY
+  EDUCATIONAL_ADMINISTRATORS
+  CLINIC_PERSONNEL
+  EMPLOYEES_WITH_OCCUPATIONAL_EXPOSURE
+  ONLINE_HYBRID_FACULTY
+  DISTANCE_EDUCATION_ADMINISTRATORS
+  LICENSED_ACUPUNCTURISTS
+  CUSTOM_GROUP
+}
+
+enum TrainingRecurrence {
+  ONE_TIME
+  ANNUAL
+  EVERY_2_YEARS
+  CUSTOM
+}
+
+enum TrainingIntervalUnit {
+  DAYS
+  MONTHS
+  YEARS
+}
+
+enum TrainingMethod {
+  WUC_INTERNAL_COURSE
+  EXTERNAL_TRAINING
+  CERTIFICATE_RECORD_TRACKING
+  PROFESSIONAL_DEVELOPMENT_RECORD
+}
+
+enum TrainingCompletionMethod {
+  EXAM_SCORE
+  CERTIFICATE
+  HOURS_EVIDENCE_REQUIREMENT
+  HOURS_CE_REQUIREMENT
+  HR_VERIFICATION
+}
+
+enum TrainingProgramStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum TrainingCycleStatus {
+  CURRENT
+  UPCOMING
+  ARCHIVED
+}
+
+enum TrainingAssignmentStatus {
+  ASSIGNED
+  COMPLETED
+  WAIVED
+  CANCELLED
+}
+
+model TrainingProgram {
+  id                      String                     @id @default(cuid())
+  programCode             String?                    @unique
+  trainingName            String
+  category                TrainingCategory
+  requirementType         TrainingRequirementType    @default(REQUIRED)
+  appliesTo               TrainingAudience[]
+  customGroupName         String?
+  startDate               DateTime
+  dueDate                 DateTime
+  recurrence              TrainingRecurrence
+  recurrenceIntervalValue Int?
+  recurrenceIntervalUnit  TrainingIntervalUnit?
+  nextCycleDate           DateTime?
+  trainingMethod          TrainingMethod
+  completionMethod        TrainingCompletionMethod
+  examRequired            Boolean                    @default(false)
+  passingScore            Float?
+  certificateRequired     Boolean                    @default(true)
+  status                  TrainingProgramStatus      @default(DRAFT)
+  cycles                  TrainingCycle[]
+  assignments             EmployeeTrainingAssignment[]
+  completionRecords       TrainingCompletionRecord[]
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+
+  @@index([category])
+  @@index([requirementType])
+  @@index([status])
+}
+
+model TrainingCycle {
+  id               String                     @id @default(cuid())
+  trainingProgramId String
+  trainingProgram  TrainingProgram            @relation(fields: [trainingProgramId], references: [id], onDelete: Cascade)
+  cycleStartDate   DateTime
+  cycleDueDate     DateTime
+  status           TrainingCycleStatus        @default(CURRENT)
+  sequence         Int                        @default(1)
+  windowDays       Int                        @default(0)
+  assignments      EmployeeTrainingAssignment[]
+  completionRecords TrainingCompletionRecord[]
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  @@unique([trainingProgramId, cycleStartDate])
+  @@index([trainingProgramId, status])
+}
+
+model EmployeeTrainingAssignment {
+  id                 String                  @id @default(cuid())
+  employeeId         String
+  employee           Employee                @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  trainingProgramId  String
+  trainingProgram    TrainingProgram         @relation(fields: [trainingProgramId], references: [id], onDelete: Cascade)
+  trainingCycleId    String
+  trainingCycle      TrainingCycle           @relation(fields: [trainingCycleId], references: [id], onDelete: Cascade)
+  assignedDate       DateTime
+  dueDate            DateTime
+  status             TrainingAssignmentStatus @default(ASSIGNED)
+  completionDate     DateTime?
+  examScore          Float?
+  certificateReference String?
+  notes              String?                 @db.Text
+  completionRecords  TrainingCompletionRecord[]
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@unique([employeeId, trainingProgramId, trainingCycleId])
+  @@index([employeeId, dueDate])
+  @@index([status])
+}
+
+model TrainingCompletionRecord {
+  id                  String                    @id @default(cuid())
+  employeeId          String
+  employee            Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  trainingProgramId   String
+  trainingProgram     TrainingProgram           @relation(fields: [trainingProgramId], references: [id], onDelete: Cascade)
+  trainingCycleId     String
+  trainingCycle       TrainingCycle             @relation(fields: [trainingCycleId], references: [id], onDelete: Cascade)
+  assignmentId        String?
+  assignment          EmployeeTrainingAssignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  completedAt         DateTime
+  examScore           Float?
+  certificateReference String?
+  notes               String?                   @db.Text
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  @@index([employeeId, completedAt])
+  @@index([trainingProgramId, completedAt])
 }

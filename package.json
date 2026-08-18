@@ -17,6 +17,7 @@
     "lint": "eslint",
     "setup-db": "npx prisma migrate deploy && node prisma/seed-departments.cjs",
     "seed": "node scripts/safe-seed.cjs",
+    "seed:training-programs": "node scripts/seed-training-programs.cjs",
     "force-seed": "node prisma/seed.cjs",
     "backup": "bash scripts/backup-db.sh",
     "restore": "bash scripts/restore-db.sh",
@@ -27,6 +28,7 @@
     "cluster:employees": "node scripts/kmeans-employee-clustering.cjs"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.7.6",
     "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
     "next": "16.1.6",

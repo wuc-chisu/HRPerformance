@@ -310,6 +310,7 @@ export async function PUT(
       staffWorkLocation,
       employeeType,
       contractWorkHours,
+      systemRole,
       officeSchedule,
       overallOverdueTasks,
       onboarding,
@@ -377,6 +378,7 @@ export async function PUT(
         staffWorkLocation: staffWorkLocation || "USA",
         employeeType: employeeType || "Full time",
         contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
+        systemRole: systemRole || "Employee",
         officeSchedule: officeSchedule ?? null,
         overallOverdueTasks: overallOverdueTasks || 0,
         ...(Array.isArray(professionalDevelopmentRecords)
@@ -454,6 +456,7 @@ export async function PUT(
       staffWorkLocation: employee.staffWorkLocation || "USA",
       employeeType: (employee as any).employeeType || "Full time",
       contractWorkHours: (employee as any).contractWorkHours ?? null,
+      systemRole: (employee as any).systemRole || "Employee",
       officeSchedule: (employee as any).officeSchedule ?? null,
       overallOverdueTasks: employee.overallOverdueTasks,
       professionalDevelopmentRecords: normalizeProfessionalDevelopmentRecords(

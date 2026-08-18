@@ -303,6 +303,7 @@ export async function GET() {
       staffWorkLocation: emp.staffWorkLocation || "USA",
       employeeType: emp.employeeType || "Full time",
       contractWorkHours: emp.contractWorkHours ?? null,
+      systemRole: emp.systemRole || "Employee",
       officeSchedule: emp.officeSchedule ?? null,
       probationPeriodStartDate: emp.probationPeriodStartDate
         ? formatDateForResponse(emp.probationPeriodStartDate)
@@ -365,6 +366,7 @@ export async function POST(request: Request) {
       staffWorkLocation,
       employeeType,
       contractWorkHours,
+      systemRole,
       officeSchedule,
       overallOverdueTasks,
     } = body;
@@ -438,6 +440,7 @@ export async function POST(request: Request) {
           staffWorkLocation: existingEmployee.staffWorkLocation || "USA",
           employeeType: (existingEmployee as any).employeeType || "Full time",
           contractWorkHours: (existingEmployee as any).contractWorkHours ?? null,
+          systemRole: (existingEmployee as any).systemRole || "Employee",
           officeSchedule: (existingEmployee as any).officeSchedule ?? null,
           overallOverdueTasks: existingEmployee.overallOverdueTasks,
           professionalDevelopmentRecords: normalizeProfessionalDevelopmentRecords(
@@ -492,6 +495,7 @@ export async function POST(request: Request) {
         staffWorkLocation: staffWorkLocation || "USA",
         employeeType: employeeType || "Full time",
         contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
+        systemRole: systemRole || "Employee",
         officeSchedule: officeSchedule ?? null,
         overallOverdueTasks: overallOverdueTasks || 0,
         onboardingChecklistAssigned: false,
@@ -541,6 +545,7 @@ export async function POST(request: Request) {
       staffWorkLocation: employee.staffWorkLocation || "USA",
       employeeType: (employee as any).employeeType || "Full time",
       contractWorkHours: (employee as any).contractWorkHours ?? null,
+      systemRole: (employee as any).systemRole || "Employee",
       officeSchedule: (employee as any).officeSchedule ?? null,
       overallOverdueTasks: employee.overallOverdueTasks,
       professionalDevelopmentRecords: [],

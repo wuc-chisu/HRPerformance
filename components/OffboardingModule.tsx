@@ -1017,7 +1017,7 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
   };
 
   const handleDeleteOffboardRecord = async (employeeId: string) => {
-    const ok = window.confirm("Delete this offboarding record? This cannot be undone.");
+    const ok = window.confirm("are you sure?");
     if (!ok) return;
 
     try {

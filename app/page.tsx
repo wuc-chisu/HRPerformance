@@ -8,10 +8,11 @@ import {
   OnboardingStep2Update,
   OnboardingStep3Update,
   OnboardingStep4Update,
-  ProfessionalDevelopmentRecord,
+  TaskDetail,
   TimeOffRequest,
   TimeOffStatus,
   TimeOffType,
+  WeeklyRecord,
 } from "@/lib/employees";
 import { formatCompactDate, formatShortDate, parseDateInPacific } from "@/lib/dateUtils";
 import EmployeeCard from "@/components/EmployeeCard";
@@ -25,19 +26,49 @@ import IncidentTrackingTable from "@/components/IncidentTrackingTable";
 import OnboardingModule from "@/components/OnboardingModule";
 import OffboardingModule from "@/components/OffboardingModule";
 import NewHirePreboardingSOP from "@/components/NewHirePreboardingSOP";
-import ProfessionalDevelopmentManager from "@/components/ProfessionalDevelopmentManager";
-import TimeOffManager from "@/components/TimeOffManager";
+import EmployeeTrainingAssignmentsView from "@/components/EmployeeTrainingAssignmentsView";
+import MyEmployeeCard from "@/components/MyEmployeeCard";
+import TrainingProgramsManager from "@/components/TrainingProgramsManager";
+import TimeOffManager from "../components/TimeOffManager";
+import { useCurrentUserContext } from "@/components/CurrentUserContextProvider";
+
+type OffboardingRecord = {
+  employeeId?: string;
+  step8?: {
+    confirmedOffboard?: boolean;
+  };
+};
+
+type AppView =
+  | "my-employee-card"
+  | "dashboard"
+  | "employees"
+  | "offboard-employees"
+  | "manage"
+  | "manage-performance"
+  | "employee-lifecycle"
+  | "onboarding"
+  | "offboarding"
+  | "preboarding"
+  | "professional-development"
+  | "incident-tracking"
+  | "time-off";
 
 export default function Home() {
+  const {
+    loading: currentUserLoading,
+    accessDenied,
+    error: currentUserError,
+    employeeContext,
+    viewMode,
+    isEmployeeView,
+  } = useCurrentUserContext();
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [offboardingRecords, setOffboardingRecords] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [offboardingRecords, setOffboardingRecords] = useState<OffboardingRecord[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(
     null
   );
-  const [activeView, setActiveView] = useState<
-    "dashboard" | "employees" | "offboard-employees" | "manage" | "manage-performance" | "onboarding" | "offboarding" | "preboarding" | "professional-development" | "incident-tracking" | "time-off"
-  >("dashboard");
+  const [activeView, setActiveView] = useState<AppView>("dashboard");
   const [selectedEmployeeForPerformance, setSelectedEmployeeForPerformance] =
     useState<string | null>(null);
   const [lastCreatedEmployeeId, setLastCreatedEmployeeId] = useState<string | null>(null);
@@ -45,7 +76,7 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [showWeeklyRecordForm, setShowWeeklyRecordForm] = useState(false);
   const [editingWeeklyRecord, setEditingWeeklyRecord] = useState<{
-    record: any;
+    record: WeeklyRecord;
     index: number;
   } | null>(null);
   const [selectedWeekFilter, setSelectedWeekFilter] = useState<string | null>(
@@ -80,22 +111,21 @@ export default function Home() {
     (_, i) => currentYear - 5 + i
   );
 
-  // Load employees and departments from API on mount
+  // Load employees and departments from API on mount, and refetch holiday data when the selected year changes.
   useEffect(() => {
+    if (currentUserLoading) {
+      return;
+    }
+
     fetchEmployees();
     fetchOffboardingRecords();
     fetchDepartments();
     fetchTimeOffRequests();
     fetchHolidays(selectedYear);
-  }, []);
-
-  useEffect(() => {
-    fetchHolidays(selectedYear);
-  }, [selectedYear]);
+  }, [currentUserLoading, selectedYear]);
 
   const fetchEmployees = async () => {
     try {
-      setLoading(true);
       const response = await fetch("/api/employees");
       if (!response.ok) throw new Error("Failed to fetch employees");
       const data = await response.json();
@@ -105,8 +135,6 @@ export default function Home() {
       console.error("Error fetching employees:", error);
       alert("Failed to load employees");
       return [] as Employee[];
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -115,7 +143,7 @@ export default function Home() {
       const response = await fetch("/api/departments");
       if (!response.ok) throw new Error("Failed to fetch departments");
       const data = await response.json();
-      setDepartments(data.map((dept: any) => dept.name));
+      setDepartments(data.map((dept: { name: string }) => dept.name));
     } catch (error) {
       console.error("Error fetching departments:", error);
       // Keep the default departments if fetch fails
@@ -136,7 +164,17 @@ export default function Home() {
   const fetchTimeOffRequests = async () => {
     try {
       const response = await fetch("/api/time-off");
-      if (!response.ok) throw new Error("Failed to fetch time-off requests");
+
+      if (response.status === 401 || response.status === 403) {
+        return;
+      }
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        const message = typeof payload.error === "string" ? payload.error : "Failed to fetch time-off requests";
+        throw new Error(message);
+      }
+
       const data = await response.json();
       setTimeOffRequests(data);
     } catch (error) {
@@ -187,6 +225,64 @@ export default function Home() {
     () => offboardEmployees.find((employee) => employee.id === selectedOffboardEmployeeId) || null,
     [offboardEmployees, selectedOffboardEmployeeId]
   );
+
+  const currentEmployeeRecord = useMemo(
+    () =>
+      activeEmployees.find((employee) => employee.id === employeeContext?.employeeId) ||
+      employees.find((employee) => employee.id === employeeContext?.employeeId) ||
+      null,
+    [activeEmployees, employeeContext?.employeeId, employees]
+  );
+
+  const isEmployeeOnly = employeeContext?.systemRole === "Employee";
+  const isEmployeePerspective = isEmployeeOnly || isEmployeeView;
+  const employeeAllowedViews = useMemo(
+    () => new Set<AppView>(["my-employee-card", "professional-development", "time-off"]),
+    []
+  );
+  const adminAllowedViews = useMemo(
+    () =>
+      new Set<AppView>([
+        "dashboard",
+        "employees",
+        "offboard-employees",
+        "manage",
+        "manage-performance",
+        "employee-lifecycle",
+        "onboarding",
+        "offboarding",
+        "preboarding",
+        "professional-development",
+        "incident-tracking",
+        "time-off",
+      ]),
+    []
+  );
+  const allowedViews = isEmployeePerspective ? employeeAllowedViews : adminAllowedViews;
+  const setVisibleView = (nextView: AppView) => {
+    if (allowedViews.has(nextView)) {
+      setActiveView(nextView);
+      return;
+    }
+
+    if (isEmployeePerspective) {
+      setActiveView("my-employee-card");
+    } else {
+      setActiveView("dashboard");
+    }
+  };
+
+  useEffect(() => {
+    if (!allowedViews.has(activeView)) {
+      setActiveView(isEmployeePerspective ? "my-employee-card" : "dashboard");
+    }
+  }, [activeView, allowedViews, isEmployeePerspective]);
+
+  useEffect(() => {
+    if (isEmployeePerspective) {
+      setActiveView((current) => (allowedViews.has(current) ? current : "my-employee-card"));
+    }
+  }, [allowedViews, isEmployeePerspective]);
 
   const selectedEmployee = activeEmployees.find((e) => e.id === selectedEmployeeId);
 
@@ -353,7 +449,7 @@ export default function Home() {
   };
 
   const handleDeleteEmployee = async (employeeId: string) => {
-    if (confirm("Are you sure you want to delete this employee?")) {
+    if (window.confirm("are you sure?")) {
       try {
         const response = await fetch(`/api/employees/${employeeId}`, {
           method: "DELETE",
@@ -408,7 +504,16 @@ export default function Home() {
   };
 
   const handleDeleteTimeOffRequest = async (id: string) => {
-    const response = await fetch(`/api/time-off/${id}`, { method: "DELETE" });
+    if (!window.confirm("are you sure?")) {
+      return;
+    }
+
+    const response = await fetch(`/api/time-off/${id}`, {
+      method: "DELETE",
+      headers: {
+        "X-View-Mode": isEmployeePerspective ? "employee" : "admin",
+      },
+    });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || "Failed to delete time-off request");
@@ -438,6 +543,10 @@ export default function Home() {
   };
 
   const handleDeleteHoliday = async (id: string) => {
+    if (!window.confirm("are you sure?")) {
+      return;
+    }
+
     const response = await fetch(`/api/holidays/${id}`, { method: "DELETE" });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -679,48 +788,18 @@ export default function Home() {
     await fetchEmployees();
   };
 
-  const handleSaveProfessionalDevelopment = async (
-    employeeId: string,
-    records: ProfessionalDevelopmentRecord[]
-  ) => {
-    const employee = employees.find((entry) => entry.id === employeeId);
-    if (!employee) {
-      throw new Error("Employee not found");
-    }
-
-    const response = await fetch(`/api/employees/${employeeId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...employee,
-        professionalDevelopmentRecords: records,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.details ||
-          errorData.error ||
-          "Failed to update professional development records"
-      );
-    }
-
-    await fetchEmployees();
-  };
-
   const handleAddWeeklyRecord = () => {
     setEditingWeeklyRecord(null);
     setShowWeeklyRecordForm(true);
   };
 
-  const handleEditWeeklyRecord = (record: any, index: number) => {
+  const handleEditWeeklyRecord = (record: WeeklyRecord, index: number) => {
     setEditingWeeklyRecord({ record, index });
     setShowWeeklyRecordForm(true);
   };
 
   const handleDeleteWeeklyRecord = async (index: number) => {
-    if (confirm("Are you sure you want to delete this weekly record?")) {
+    if (window.confirm("are you sure?")) {
       if (selectedEmployee && selectedEmployee.weeklyRecords[index]) {
         const record = selectedEmployee.weeklyRecords[index];
         const recordId = record.recordId;
@@ -749,7 +828,7 @@ export default function Home() {
     }
   };
 
-  const handleUpdateOverdueTasks = async (recordId: string, details: any[]) => {
+  const handleUpdateOverdueTasks = async (recordId: string, details: TaskDetail[]) => {
     try {
       const record = selectedEmployee?.weeklyRecords.find(
         (r) => r.recordId === recordId
@@ -761,7 +840,7 @@ export default function Home() {
       }
 
       const totalOverdue = (details || []).reduce(
-        (sum: number, detail: any) => sum + (detail?.count || 0),
+        (sum: number, detail: TaskDetail) => sum + (detail?.count || 0),
         0
       );
 
@@ -786,7 +865,7 @@ export default function Home() {
     }
   };
 
-  const handleUpdateAssignedTasks = async (recordId: string, details: any[]) => {
+  const handleUpdateAssignedTasks = async (recordId: string, details: TaskDetail[]) => {
     try {
       const record = selectedEmployee?.weeklyRecords.find(
         (r) => r.recordId === recordId
@@ -798,7 +877,7 @@ export default function Home() {
       }
 
       const totalAssigned = (details || []).reduce(
-        (sum: number, detail: any) => sum + (detail?.count || 0),
+        (sum: number, detail: TaskDetail) => sum + (detail?.count || 0),
         0
       );
 
@@ -829,7 +908,7 @@ export default function Home() {
       );
     }
   };
-  const handleUpdateAllOverdueTasks = async (recordId: string, details: any[]) => {
+  const handleUpdateAllOverdueTasks = async (recordId: string, details: TaskDetail[]) => {
     try {
       const record = selectedEmployee?.weeklyRecords.find(
         (r) => r.recordId === recordId
@@ -841,7 +920,7 @@ export default function Home() {
       }
 
       const totalAllOverdue = (details || []).reduce(
-        (sum: number, detail: any) => sum + (detail?.count || 0),
+        (sum: number, detail: TaskDetail) => sum + (detail?.count || 0),
         0
       );
 
@@ -872,7 +951,7 @@ export default function Home() {
       );
     }
   };
-  const handleSaveWeeklyRecord = async (record: any) => {
+  const handleSaveWeeklyRecord = async (record: WeeklyRecord) => {
     try {
       if (selectedEmployee) {
         let focusStartDate: string | undefined;
@@ -1040,18 +1119,31 @@ export default function Home() {
     }
   }, [selectedWeekFilter, uniqueFilteredWeekRanges]);
 
-  // Get employee data for selected week
-  const getEmployeeWeekData = (employee: Employee, range: string) => {
-    const [start, end] = range.split("|");
-    return employee.weeklyRecords.find(
-      (r) => r.startDate === start && r.endDate === end
+  useEffect(() => {
+    if (isEmployeePerspective) {
+      setSelectedEmployeeId(employeeContext?.employeeId || null);
+      setSelectedEmployeeForPerformance(employeeContext?.employeeId || null);
+    }
+  }, [employeeContext?.employeeId, isEmployeePerspective]);
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 px-4 py-16">
+        <div className="mx-auto max-w-2xl rounded-3xl border border-rose-200 bg-white p-8 shadow-lg">
+          <h1 className="text-3xl font-bold text-rose-700">Access Error</h1>
+          <p className="mt-4 text-gray-700">{currentUserError}</p>
+          <p className="mt-2 text-sm text-gray-500">
+            Your Google account must match an active employee record before the application can load.
+          </p>
+        </div>
+      </div>
     );
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <header className="bg-gradient-to-r from-blue-300 to-purple-300 text-white shadow-lg">
+      <header className="bg-linear-to-r from-blue-300 to-purple-300 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <h1 className="text-4xl font-bold mb-2">HR Performance Review</h1>
           <p className="text-white opacity-90">
@@ -1060,88 +1152,197 @@ export default function Home() {
         </div>
       </header>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Current Logged-In User
+          </div>
+          {currentUserLoading ? (
+            <p className="mt-3 text-sm text-slate-600">Checking Google sign-in and employee match...</p>
+          ) : employeeContext ? (
+            <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
+              <p>
+                <span className="font-semibold text-slate-900">Logged in as:</span>{" "}
+                {employeeContext.employeeName}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-900">Email:</span>{" "}
+                <a className="text-blue-700 underline" href={`mailto:${employeeContext.workEmail}`}>
+                  {employeeContext.workEmail}
+                </a>
+              </p>
+              <p>
+                <span className="font-semibold text-slate-900">Employee ID:</span>{" "}
+                {employeeContext.employeeId}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-900">System Role:</span>{" "}
+                {employeeContext.systemRole}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-900">Current View Mode:</span>{" "}
+                {isEmployeeView ? "Employee" : "Admin"}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-900">Direct Manager:</span>{" "}
+                {employeeContext.isDirectManager ? "Yes" : "No"}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-900">Direct Reports:</span>{" "}
+                {employeeContext.directReports.length}
+              </p>
+              {employeeContext.directReports.length > 0 && (
+                <div className="md:col-span-2">
+                  <span className="font-semibold text-slate-900">Report IDs:</span>{" "}
+                  {employeeContext.directReports.map((report) => report.employeeId).join(", ")}
+                </div>
+              )}
+            </div>
+          ) : currentUserError ? (
+            <p className="mt-3 text-sm text-rose-700">{currentUserError}</p>
+          ) : (
+            <p className="mt-3 text-sm text-slate-600">
+              No employee context is available yet.
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Navigation Tabs */}
         <div className="flex gap-4 mb-8 flex-wrap">
-          <button
-            onClick={() => {
-              setActiveView("dashboard");
-              setSelectedEmployeeId(null);
-            }}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              activeView === "dashboard"
-                ? "bg-blue-300 text-white shadow-md"
-                : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
-            }`}
-          >
-            📊 Dashboard
-          </button>
-          <button
-            onClick={() => setActiveView("employees")}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              activeView === "employees" || activeView === "manage" || activeView === "offboard-employees"
-                ? "bg-blue-300 text-white shadow-md"
-                : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
-            }`}
-          >
-            👥 Employee
-          </button>
-          <button
-            onClick={() => {
-              setActiveView("manage-performance");
-              setSelectedEmployeeId(null);
-            }}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              activeView === "manage-performance"
-                ? "bg-purple-300 text-white shadow-md"
-                : "bg-purple-100 text-gray-700 border border-purple-200 hover:bg-purple-50"
-            }`}
-          >
-            📈 Performance
-          </button>
-          <button
-            onClick={() => {
-              setActiveView("incident-tracking");
-              setSelectedEmployeeId(null);
-            }}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              activeView === "incident-tracking"
-                ? "bg-red-300 text-white shadow-md"
-                : "bg-red-100 text-gray-700 border border-red-200 hover:bg-red-50"
-            }`}
-          >
-            ⚠️ Mistakes & Warnings
-          </button>
-          <button
-            onClick={() => {
-              setActiveView("professional-development");
-              setSelectedEmployeeId(null);
-            }}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              activeView === "professional-development"
-                ? "bg-amber-400 text-white shadow-md"
-                : "bg-amber-100 text-gray-700 border border-amber-200 hover:bg-amber-50"
-            }`}
-          >
-            🎓 Professional Development
-          </button>
-          <button
-            onClick={() => {
-              setActiveView("time-off");
-              setSelectedEmployeeId(null);
-            }}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              activeView === "time-off"
-                ? "bg-emerald-400 text-white shadow-md"
-                : "bg-emerald-100 text-gray-700 border border-emerald-200 hover:bg-emerald-50"
-            }`}
-          >
-            🗓️ Time Off & Holidays
-          </button>
+          {isEmployeePerspective ? (
+            <>
+              <button
+                onClick={() => {
+                  setVisibleView("my-employee-card");
+                  setSelectedEmployeeId(employeeContext?.employeeId || null);
+                }}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "my-employee-card"
+                    ? "bg-blue-300 text-white shadow-md"
+                    : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
+                }`}
+              >
+                My Employee Card
+              </button>
+              <button
+                onClick={() => setVisibleView("professional-development")}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "professional-development"
+                    ? "bg-amber-400 text-white shadow-md"
+                    : "bg-amber-100 text-gray-700 border border-amber-200 hover:bg-amber-50"
+                }`}
+              >
+                Training & Compliance
+              </button>
+              <button
+                onClick={() => setVisibleView("time-off")}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "time-off"
+                    ? "bg-emerald-400 text-white shadow-md"
+                    : "bg-emerald-100 text-gray-700 border border-emerald-200 hover:bg-emerald-50"
+                }`}
+              >
+                Leave & Holidays
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  setVisibleView("dashboard");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "dashboard"
+                    ? "bg-blue-300 text-white shadow-md"
+                    : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
+                }`}
+              >
+                📊 Dashboard
+              </button>
+              <button
+                onClick={() => setVisibleView("employees")}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "employees" || activeView === "manage" || activeView === "offboard-employees"
+                    ? "bg-blue-300 text-white shadow-md"
+                    : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
+                }`}
+              >
+                👥 Employee
+              </button>
+              <button
+                onClick={() => {
+                  setVisibleView("manage-performance");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "manage-performance"
+                    ? "bg-purple-300 text-white shadow-md"
+                    : "bg-purple-100 text-gray-700 border border-purple-200 hover:bg-purple-50"
+                }`}
+              >
+                📈 Performance
+              </button>
+              <button
+                onClick={() => {
+                  setVisibleView("incident-tracking");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "incident-tracking"
+                    ? "bg-red-300 text-white shadow-md"
+                    : "bg-red-100 text-gray-700 border border-red-200 hover:bg-red-50"
+                }`}
+              >
+                ⚠️ Corrective Actions
+              </button>
+              <button
+                onClick={() => {
+                  setVisibleView("professional-development");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "professional-development"
+                    ? "bg-amber-400 text-white shadow-md"
+                    : "bg-amber-100 text-gray-700 border border-amber-200 hover:bg-amber-50"
+                }`}
+              >
+                🎓 Training & Compliance
+              </button>
+              <button
+                onClick={() => {
+                  setVisibleView("time-off");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "time-off"
+                    ? "bg-emerald-400 text-white shadow-md"
+                    : "bg-emerald-100 text-gray-700 border border-emerald-200 hover:bg-emerald-50"
+                }`}
+              >
+                🗓️ Leave & Holidays
+              </button>
+              <button
+                onClick={() => {
+                  setVisibleView("employee-lifecycle");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "employee-lifecycle" || activeView === "preboarding" || activeView === "onboarding" || activeView === "offboarding"
+                    ? "bg-teal-400 text-white shadow-md"
+                    : "bg-teal-100 text-gray-700 border border-teal-200 hover:bg-teal-50"
+                }`}
+              >
+                👥 Employee Lifecycle
+              </button>
+            </>
+          )}
         </div>
 
-        {(activeView === "employees" || activeView === "manage" || activeView === "offboard-employees") && (
+        {!isEmployeePerspective && (activeView === "employees" || activeView === "manage" || activeView === "offboard-employees") && (
           <div className="mb-8 rounded-xl border border-blue-200 bg-white/90 shadow-sm p-3 sm:p-4">
             <div className="text-xs font-semibold tracking-wide text-blue-700 uppercase mb-3">
               Employee Sub-Menu
@@ -1190,13 +1391,72 @@ export default function Home() {
           </div>
         )}
 
+        {!isEmployeePerspective && (activeView === "employee-lifecycle" || activeView === "preboarding" || activeView === "onboarding" || activeView === "offboarding") && (
+          <div className="mb-8 rounded-xl border border-teal-200 bg-white/90 shadow-sm p-3 sm:p-4">
+            <div className="text-xs font-semibold tracking-wide text-teal-700 uppercase mb-3">
+              Employee Lifecycle
+            </div>
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={() => {
+                  setActiveView("preboarding");
+                  setSelectedEmployeeId(null);
+                  setLastCreatedEmployeeId(null);
+                }}
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "preboarding"
+                    ? "bg-sky-600 text-white shadow"
+                    : "bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100"
+                }`}
+              >
+                New Hire Preboarding
+              </button>
+              <button
+                onClick={() => {
+                  setActiveView("onboarding");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "onboarding"
+                    ? "bg-cyan-500 text-white shadow"
+                    : "bg-cyan-50 text-cyan-800 border border-cyan-200 hover:bg-cyan-100"
+                }`}
+              >
+                Onboarding
+              </button>
+              <button
+                onClick={() => {
+                  setActiveView("offboarding");
+                  setSelectedEmployeeId(null);
+                }}
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  activeView === "offboarding"
+                    ? "bg-rose-500 text-white shadow"
+                    : "bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100"
+                }`}
+              >
+                Off-boarding
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!isEmployeePerspective && activeView === "employee-lifecycle" && (
+          <div className="rounded-xl border border-teal-200 bg-white shadow-sm p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Employee Lifecycle</h2>
+            <p className="text-gray-600">
+              Select a lifecycle process above to manage preboarding, onboarding, or off-boarding for employees.
+            </p>
+          </div>
+        )}
+
         {/* Dashboard View */}
-        {activeView === "dashboard" && (
+        {!isEmployeePerspective && activeView === "dashboard" && (
           <PerformanceDashboard employees={activeEmployees} />
         )}
 
         {/* Employees View */}
-        {activeView === "employees" && (
+        {!isEmployeePerspective && activeView === "employees" && (
           <div>
             <div className="mb-6">
               <div>
@@ -1240,7 +1500,7 @@ export default function Home() {
           </div>
         )}
 
-        {activeView === "offboard-employees" && (
+        {!isEmployeePerspective && activeView === "offboard-employees" && (
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Off-board Employees</h2>
@@ -1284,7 +1544,7 @@ export default function Home() {
                   <select
                     value={selectedOffboardEmployeeId || ""}
                     onChange={(e) => setSelectedOffboardEmployeeId(e.target.value || null)}
-                    className="w-full md:w-[28rem] px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    className="w-full md:w-md px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
                   >
                     <option value="">Choose an off-board employee...</option>
                     {[...offboardEmployees]
@@ -1323,7 +1583,7 @@ export default function Home() {
         )}
 
         {/* Manage Employees View */}
-        {activeView === "manage" && (
+        {!isEmployeePerspective && activeView === "manage" && (
           <div>
             <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start">
               <div>
@@ -1361,35 +1621,6 @@ export default function Home() {
                   className="bg-green-300 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-400 transition-colors"
                 >
                   + Add New Employee
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveView("preboarding");
-                    setSelectedEmployeeId(null);
-                    setLastCreatedEmployeeId(null);
-                  }}
-                  className="bg-sky-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-sky-600 transition-colors"
-                >
-                  📋 New Hire Preboarding
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveView("onboarding");
-                    setSelectedEmployeeId(null);
-                  }}
-                  className="bg-cyan-400 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-500 transition-colors"
-                >
-                  🧭 Onboarding
-                </button>
-                
-                <button
-                  onClick={() => {
-                    setActiveView("offboarding");
-                    setSelectedEmployeeId(null);
-                  }}
-                  className="bg-rose-400 text-white font-semibold py-2 px-6 rounded-lg hover:bg-rose-500 transition-colors"
-                >
-                  🚪 Off-boarding
                 </button>
                 <button
                   onClick={() => setShowDepartmentManager(true)}
@@ -1488,7 +1719,7 @@ export default function Home() {
         )}
 
         {/* Manage Performance View */}
-        {activeView === "manage-performance" && (
+        {!isEmployeePerspective && activeView === "manage-performance" && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-md p-6 print:shadow-none">
               <h2 className="text-2xl font-bold text-gray-900 mb-6 print:hidden">
@@ -1624,12 +1855,15 @@ export default function Home() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            {
+                            {`${
                               activeEmployees.find(
                                 (e) => e.id === selectedEmployeeForPerformance
                               )?.name
-                            }
-                            's {performanceView === "weekly" ? "Weekly Performance Records" : "Monthly Performance Report"}
+                            }'s ${
+                              performanceView === "weekly"
+                                ? "Weekly Performance Records"
+                                : "Monthly Performance Report"
+                            }`}
                           </h3>
                           <p className="text-sm text-gray-600">
                             {performanceView === "weekly" 
@@ -1705,7 +1939,7 @@ export default function Home() {
           </div>
         )}
 
-        {activeView === "onboarding" && (
+        {!isEmployeePerspective && activeView === "onboarding" && (
           <OnboardingModule
             employees={activeEmployees}
             onSaveStep1={handleSaveOnboardingStep1}
@@ -1715,7 +1949,7 @@ export default function Home() {
           />
         )}
 
-        {activeView === "preboarding" && (
+        {!isEmployeePerspective && activeView === "preboarding" && (
           <NewHirePreboardingSOP
             key={selectedEmployeeId || "preboarding"}
             employees={activeEmployees}
@@ -1726,27 +1960,45 @@ export default function Home() {
           />
         )}
 
-        {activeView === "offboarding" && (
+        {!isEmployeePerspective && activeView === "offboarding" && (
           <OffboardingModule employees={employees} onRecordsChanged={fetchOffboardingRecords} />
         )}
 
         {activeView === "professional-development" && (
-          <ProfessionalDevelopmentManager
-            employees={activeEmployees}
-            onSaveRecords={handleSaveProfessionalDevelopment}
-          />
+          isEmployeePerspective ? (
+            <EmployeeTrainingAssignmentsView />
+          ) : (
+            <div className="space-y-4">
+              {employeeContext && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Training & Compliance
+                  </div>
+                  <div className="mt-1 text-sm text-slate-700">
+                    Viewing as <span className="font-semibold text-slate-900">{viewMode === "employee" ? "Employee" : "Admin"}</span>.
+                  </div>
+                </div>
+              )}
+              <TrainingProgramsManager viewMode={viewMode} />
+            </div>
+          )
         )}
 
-        {activeView === "incident-tracking" && (
+        {!isEmployeePerspective && activeView === "incident-tracking" && (
           <IncidentTrackingTable employees={activeEmployees} />
+        )}
+
+        {activeView === "my-employee-card" && currentEmployeeRecord && (
+          <MyEmployeeCard employee={currentEmployeeRecord} />
         )}
 
         {activeView === "time-off" && (
           <TimeOffManager
-            employees={activeEmployees}
-            requests={activeTimeOffRequests}
+            employees={isEmployeePerspective && currentEmployeeRecord ? [currentEmployeeRecord] : activeEmployees}
+            requests={isEmployeePerspective && currentEmployeeRecord ? activeTimeOffRequests.filter((request) => request.employeeId === currentEmployeeRecord.id) : activeTimeOffRequests}
             holidays={holidays}
             selectedYear={selectedYear}
+            mode={isEmployeePerspective ? "employee" : "admin"}
             onCreateRequest={handleCreateTimeOffRequest}
             onUpdateRequest={handleUpdateTimeOffRequest}
             onDeleteRequest={handleDeleteTimeOffRequest}
