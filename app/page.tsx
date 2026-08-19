@@ -1153,59 +1153,61 @@ export default function Home() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Current Logged-In User
-          </div>
-          {currentUserLoading ? (
-            <p className="mt-3 text-sm text-slate-600">Checking Google sign-in and employee match...</p>
-          ) : employeeContext ? (
-            <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
-              <p>
-                <span className="font-semibold text-slate-900">Logged in as:</span>{" "}
-                {employeeContext.employeeName}
-              </p>
-              <p>
-                <span className="font-semibold text-slate-900">Email:</span>{" "}
-                <a className="text-blue-700 underline" href={`mailto:${employeeContext.workEmail}`}>
-                  {employeeContext.workEmail}
-                </a>
-              </p>
-              <p>
-                <span className="font-semibold text-slate-900">Employee ID:</span>{" "}
-                {employeeContext.employeeId}
-              </p>
-              <p>
-                <span className="font-semibold text-slate-900">System Role:</span>{" "}
-                {employeeContext.systemRole}
-              </p>
-              <p>
-                <span className="font-semibold text-slate-900">Current View Mode:</span>{" "}
-                {isEmployeeView ? "Employee" : "Admin"}
-              </p>
-              <p>
-                <span className="font-semibold text-slate-900">Direct Manager:</span>{" "}
-                {employeeContext.isDirectManager ? "Yes" : "No"}
-              </p>
-              <p>
-                <span className="font-semibold text-slate-900">Direct Reports:</span>{" "}
-                {employeeContext.directReports.length}
-              </p>
-              {employeeContext.directReports.length > 0 && (
-                <div className="md:col-span-2">
-                  <span className="font-semibold text-slate-900">Report IDs:</span>{" "}
-                  {employeeContext.directReports.map((report) => report.employeeId).join(", ")}
-                </div>
-              )}
+        {isEmployeeView && (
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Current Logged-In User
             </div>
-          ) : currentUserError ? (
-            <p className="mt-3 text-sm text-rose-700">{currentUserError}</p>
-          ) : (
-            <p className="mt-3 text-sm text-slate-600">
-              No employee context is available yet.
-            </p>
-          )}
-        </div>
+            {currentUserLoading ? (
+              <p className="mt-3 text-sm text-slate-600">Checking Google sign-in and employee match...</p>
+            ) : employeeContext ? (
+              <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
+                <p>
+                  <span className="font-semibold text-slate-900">Logged in as:</span>{" "}
+                  {employeeContext.employeeName}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Email:</span>{" "}
+                  <a className="text-blue-700 underline" href={`mailto:${employeeContext.workEmail}`}>
+                    {employeeContext.workEmail}
+                  </a>
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Employee ID:</span>{" "}
+                  {employeeContext.employeeId}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">System Role:</span>{" "}
+                  {employeeContext.systemRole}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Current View Mode:</span>{" "}
+                  {isEmployeeView ? "Employee" : "Admin"}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Direct Manager:</span>{" "}
+                  {employeeContext.isDirectManager ? "Yes" : "No"}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Direct Reports:</span>{" "}
+                  {employeeContext.directReports.length}
+                </p>
+                {employeeContext.directReports.length > 0 && (
+                  <div className="md:col-span-2">
+                    <span className="font-semibold text-slate-900">Report IDs:</span>{" "}
+                    {employeeContext.directReports.map((report) => report.employeeId).join(", ")}
+                  </div>
+                )}
+              </div>
+            ) : currentUserError ? (
+              <p className="mt-3 text-sm text-rose-700">{currentUserError}</p>
+            ) : (
+              <p className="mt-3 text-sm text-slate-600">
+                No employee context is available yet.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
