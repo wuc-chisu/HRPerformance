@@ -8,7 +8,7 @@ export default function AuthUserButton() {
   const { employeeContext, canSwitchView, viewMode, setViewMode } = useCurrentUserContext();
 
   return (
-    <div className="fixed right-4 top-4 z-50 flex items-start gap-3">
+    <div className="fixed right-4 top-4 z-50 flex items-start gap-3 print:hidden">
       {employeeContext && canSwitchView && (
         <div className="rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">View As</div>

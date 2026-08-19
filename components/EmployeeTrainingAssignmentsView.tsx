@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useCurrentUserContext } from "@/components/CurrentUserContextProvider";
 import {
@@ -129,12 +130,13 @@ export default function EmployeeTrainingAssignmentsView() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Due</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Completed</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Course</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {(payload?.assignments || []).length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-slate-500">
                     <div className="space-y-2">
                       <div>No training assignments were found for this employee yet.</div>
                       {canSwitchView && (
@@ -159,6 +161,14 @@ export default function EmployeeTrainingAssignmentsView() {
                       <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${STATUS_STYLE[assignment.calculatedStatus]}`}>
                         {assignment.calculatedStatus.replace("_", " ")}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <Link
+                        href={`/training/assignments/${assignment.id}`}
+                        className="inline-flex items-center rounded-lg bg-indigo-100 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-200"
+                      >
+                        Open Course
+                      </Link>
                     </td>
                   </tr>
                 ))

@@ -68,7 +68,10 @@ model Employee {
   incidentRecords               IncidentRecord[]
   timeOffRequests               TimeOffRequest[]
   trainingAssignments           EmployeeTrainingAssignment[]
+  trainingModuleProgress        EmployeeTrainingModuleProgress[]
   trainingCompletionRecords     TrainingCompletionRecord[]
+  trainingQuizAttempts          EmployeeTrainingQuizAttempt[]
+  trainingCertificates          TrainingCertificate[]
   offboardingRecord             OffboardingRecord?
   createdAt                     DateTime                    @default(now())
   updatedAt                     DateTime                    @updatedAt
@@ -376,6 +379,22 @@ enum TrainingCompletionMethod {
   HR_VERIFICATION
 }
 
+enum TrainingModuleType {
+  VIDEO
+  READING
+  DOCUMENT
+  EXTERNAL_LINK
+  QUIZ
+  OTHER
+}
+
+enum TrainingModuleStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
 enum TrainingProgramStatus {
   DRAFT
   ACTIVE
@@ -396,10 +415,44 @@ enum TrainingAssignmentStatus {
   CANCELLED
 }
 
+enum TrainingModuleProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  LOCKED
+}
+
+enum TrainingQuizQuestionStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum TrainingQuizChoice {
+  A
+  B
+  C
+  D
+}
+
+enum TrainingQuizAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+}
+
+enum TrainingCertificateStatus {
+  ACTIVE
+  REVOKED
+  ARCHIVED
+}
+
 model TrainingProgram {
   id                      String                     @id @default(cuid())
   programCode             String?                    @unique
   trainingName            String
+  description             String?                    @db.Text
   category                TrainingCategory
   requirementType         TrainingRequirementType    @default(REQUIRED)
   appliesTo               TrainingAudience[]
@@ -416,9 +469,13 @@ model TrainingProgram {
   passingScore            Float?
   certificateRequired     Boolean                    @default(true)
   status                  TrainingProgramStatus      @default(DRAFT)
+  modules                 TrainingProgramModule[]
   cycles                  TrainingCycle[]
   assignments             EmployeeTrainingAssignment[]
   completionRecords       TrainingCompletionRecord[]
+  quizQuestions           TrainingProgramQuizQuestion[]
+  quizAttempts            EmployeeTrainingQuizAttempt[]
+  certificates            TrainingCertificate[]
   createdAt               DateTime                   @default(now())
   updatedAt               DateTime                   @updatedAt
 
@@ -438,6 +495,8 @@ model TrainingCycle {
   windowDays       Int                        @default(0)
   assignments      EmployeeTrainingAssignment[]
   completionRecords TrainingCompletionRecord[]
+  quizAttempts     EmployeeTrainingQuizAttempt[]
+  certificates     TrainingCertificate[]
   createdAt        DateTime                   @default(now())
   updatedAt        DateTime                   @updatedAt
 
@@ -460,7 +519,10 @@ model EmployeeTrainingAssignment {
   examScore          Float?
   certificateReference String?
   notes              String?                 @db.Text
+  moduleProgress     EmployeeTrainingModuleProgress[]
   completionRecords  TrainingCompletionRecord[]
+  quizAttempts       EmployeeTrainingQuizAttempt[]
+  certificates       TrainingCertificate[]
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
@@ -483,9 +545,148 @@ model TrainingCompletionRecord {
   examScore           Float?
   certificateReference String?
   notes               String?                   @db.Text
+  certificates        TrainingCertificate[]
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
 
   @@index([employeeId, completedAt])
   @@index([trainingProgramId, completedAt])
+}
+
+model TrainingCertificate {
+  id                          String                      @id @default(cuid())
+  certificateId               String                      @unique
+  employeeId                  String
+  employee                    Employee                    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeNameSnapshot        String
+  employeeCodeSnapshot        String
+  trainingProgramId           String
+  trainingProgram             TrainingProgram             @relation(fields: [trainingProgramId], references: [id], onDelete: Cascade)
+  trainingProgramNameSnapshot String
+  trainingProgramCodeSnapshot String?
+  trainingCycleId             String
+  trainingCycle               TrainingCycle               @relation(fields: [trainingCycleId], references: [id], onDelete: Cascade)
+  assignmentId                String
+  assignment                  EmployeeTrainingAssignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  completionRecordId          String?
+  completionRecord            TrainingCompletionRecord?   @relation(fields: [completionRecordId], references: [id], onDelete: SetNull)
+  finalQuizAttemptId          String?
+  finalQuizAttempt            EmployeeTrainingQuizAttempt? @relation(fields: [finalQuizAttemptId], references: [id], onDelete: SetNull)
+  completionDate              DateTime
+  finalScore                  Float?
+  requiredPassingScore        Float?
+  status                      TrainingCertificateStatus   @default(ACTIVE)
+  createdAt                   DateTime                    @default(now())
+  updatedAt                   DateTime                    @updatedAt
+
+  @@index([employeeId, completionDate])
+  @@index([assignmentId])
+  @@unique([employeeId, assignmentId, trainingCycleId, status])
+}
+
+model TrainingProgramModule {
+  id                  String                         @id @default(cuid())
+  trainingProgramId   String
+  trainingProgram     TrainingProgram                @relation(fields: [trainingProgramId], references: [id], onDelete: Cascade)
+  title               String
+  description         String?                        @db.Text
+  moduleType          TrainingModuleType             @default(VIDEO)
+  displayOrder        Int                            @default(1)
+  isRequired          Boolean                        @default(true)
+  status              TrainingModuleStatus           @default(DRAFT)
+  contentReference    String?                        @db.Text
+  contentStorageKey   String?
+  contentFileName     String?
+  contentMimeType     String?
+  contentSizeBytes    Int?
+  isActive            Boolean                        @default(true)
+  progressRecords     EmployeeTrainingModuleProgress[]
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+
+  @@index([trainingProgramId, status, displayOrder])
+}
+
+model EmployeeTrainingModuleProgress {
+  id                      String                       @id @default(cuid())
+  employeeId              String
+  employee                Employee                     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  assignmentId            String
+  assignment              EmployeeTrainingAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  trainingProgramModuleId String
+  trainingProgramModule   TrainingProgramModule        @relation(fields: [trainingProgramModuleId], references: [id], onDelete: Cascade)
+  status                  TrainingModuleProgressStatus @default(NOT_STARTED)
+  startedAt               DateTime?
+  completedAt             DateTime?
+  lastAccessedAt          DateTime?
+  notes                   String?                      @db.Text
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+
+  @@unique([assignmentId, trainingProgramModuleId])
+  @@index([employeeId, status])
+}
+
+model TrainingProgramQuizQuestion {
+  id                String                     @id @default(cuid())
+  trainingProgramId String
+  trainingProgram   TrainingProgram            @relation(fields: [trainingProgramId], references: [id], onDelete: Cascade)
+  question          String                     @db.Text
+  displayOrder      Int                        @default(1)
+  status            TrainingQuizQuestionStatus @default(DRAFT)
+  answerA           String
+  answerB           String
+  answerC           String
+  answerD           String
+  correctAnswer     TrainingQuizChoice
+  isActive          Boolean                    @default(true)
+  quizAnswers       EmployeeTrainingQuizAnswer[]
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  @@index([trainingProgramId, status, displayOrder])
+}
+
+model EmployeeTrainingQuizAttempt {
+  id                String                      @id @default(cuid())
+  employeeId        String
+  employee          Employee                    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  assignmentId      String
+  assignment        EmployeeTrainingAssignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  trainingProgramId String
+  trainingProgram   TrainingProgram             @relation(fields: [trainingProgramId], references: [id], onDelete: Cascade)
+  trainingCycleId   String
+  trainingCycle     TrainingCycle               @relation(fields: [trainingCycleId], references: [id], onDelete: Cascade)
+  attemptNumber     Int
+  status            TrainingQuizAttemptStatus   @default(IN_PROGRESS)
+  startedAt         DateTime                    @default(now())
+  submittedAt       DateTime?
+  gradedAt          DateTime?
+  scorePercent      Float?
+  passingScoreUsed  Float?
+  passed            Boolean?
+  answers           EmployeeTrainingQuizAnswer[]
+  certificates      TrainingCertificate[]
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+
+  @@index([employeeId, trainingProgramId, createdAt])
+  @@index([assignmentId, createdAt])
+  @@unique([assignmentId, attemptNumber])
+}
+
+model EmployeeTrainingQuizAnswer {
+  id                            String                    @id @default(cuid())
+  quizAttemptId                 String
+  quizAttempt                   EmployeeTrainingQuizAttempt @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
+  trainingProgramQuizQuestionId String
+  trainingProgramQuizQuestion   TrainingProgramQuizQuestion @relation(fields: [trainingProgramQuizQuestionId], references: [id], onDelete: Restrict)
+  selectedAnswer                TrainingQuizChoice
+  isCorrect                     Boolean
+  answeredAt                    DateTime                  @default(now())
+  createdAt                     DateTime                  @default(now())
+  updatedAt                     DateTime                  @updatedAt
+
+  @@index([quizAttemptId])
+  @@index([trainingProgramQuizQuestionId])
 }

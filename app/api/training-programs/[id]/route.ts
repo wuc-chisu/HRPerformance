@@ -171,6 +171,7 @@ function mapProgram(program: any) {
   const currentCycle = [...program.cycles].sort(
     (a, b) => new Date(b.cycleStartDate).getTime() - new Date(a.cycleStartDate).getTime()
   )[0] || null;
+  const configuredModuleCount = (program.modules || []).filter((module: any) => module.isActive !== false).length;
 
   const computedStatuses = (currentCycle?.assignments || []).map((assignment: any) =>
     calculateAssignmentComputedStatus({
@@ -210,6 +211,7 @@ function mapProgram(program: any) {
     currentCycleId: currentCycle?.id || null,
     assignmentCount: program._count.assignments,
     completionCount: program._count.completionRecords,
+    configuredModuleCount,
     createdAt: program.createdAt,
     updatedAt: program.updatedAt,
   };
@@ -254,6 +256,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
           select: {
             assignments: true,
             completionRecords: true,
+          },
+        },
+        modules: {
+          select: {
+            isActive: true,
           },
         },
       },
@@ -464,6 +471,11 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
           select: {
             assignments: true,
             completionRecords: true,
+          },
+        },
+        modules: {
+          select: {
+            isActive: true,
           },
         },
       },

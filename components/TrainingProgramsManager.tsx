@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useCurrentUserContext } from "@/components/CurrentUserContextProvider";
 import {
   TRAINING_APPLIES_TO_LABELS,
   TRAINING_APPLIES_TO_OPTIONS,
@@ -49,6 +51,7 @@ type TrainingProgramListItem = {
   certificateRequired: boolean;
   status: TrainingProgramStatus;
   canDelete: boolean;
+  configuredModuleCount: number;
   alerts: {
     dueSoon: number;
     urgent: number;
@@ -166,6 +169,7 @@ function mapProgramToForm(program: TrainingProgramListItem): FormState {
 }
 
 export default function TrainingProgramsManager({ viewMode }: { viewMode: "admin" | "employee" }) {
+  const { employeeContext } = useCurrentUserContext();
   const [programs, setPrograms] = useState<TrainingProgramListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -194,6 +198,14 @@ export default function TrainingProgramsManager({ viewMode }: { viewMode: "admin
     const next = calculateNextCycleDate(start, form.recurrence, interval.value, interval.unit);
     return next ? toDateInput(next.toISOString()) : "None";
   }, [form.startDate, form.recurrence, form.customRecurrenceIntervalValue, form.customRecurrenceIntervalUnit]);
+
+  const currentEditingProgram = useMemo(
+    () => programs.find((program) => program.id === editingId) || null,
+    [editingId, programs]
+  );
+
+  const canManageCourseContent =
+    employeeContext?.systemRole?.trim().toLowerCase() === "hr admin" && viewMode === "admin";
 
   const fetchPrograms = async () => {
     setLoading(true);
@@ -776,6 +788,30 @@ export default function TrainingProgramsManager({ viewMode }: { viewMode: "admin
                     ))}
                   </select>
                 </div>
+
+                {editingId && form.trainingMethod === "WUC_INTERNAL_COURSE" && canManageCourseContent ? (
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Course Content</div>
+                    <div className="mt-1 text-sm text-indigo-900">
+                      {(currentEditingProgram?.configuredModuleCount || 0).toString()} modules configured
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link
+                        href={`/training/programs/${editingId}/content`}
+                        className="inline-flex rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+                      >
+                        Manage Course Content
+                      </Link>
+
+                      <Link
+                        href={`/training/programs/${editingId}/quiz`}
+                        className="inline-flex rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                      >
+                        Manage Quiz
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
               </section>
             </div>
 
