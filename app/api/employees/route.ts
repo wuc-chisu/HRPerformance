@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import {
   formatDateForResponse,
   formatDateTimeForResponse,
@@ -109,8 +110,9 @@ function normalizeStep2Forms(step2Forms: unknown, joinDate: Date, completed: boo
         .map((item: any) => [item.name, item])
     );
 
-    return REQUIRED_ONBOARDING_FORMS.map((name) => {
-      const item = lookup.get(name);
+    return Array.from(lookup.entries())
+      .filter(([name]) => typeof name === "string" && name.trim())
+      .map(([name, item]) => {
       return {
         name,
         status:
@@ -366,6 +368,7 @@ export async function POST(request: Request) {
       staffWorkLocation,
       employeeType,
       contractWorkHours,
+      employmentStatus,
       systemRole,
       officeSchedule,
       overallOverdueTasks,
@@ -389,7 +392,6 @@ export async function POST(request: Request) {
       !normalizedName ||
       !normalizedEmail ||
       !normalizedDepartment ||
-      !normalizedManager ||
       !normalizedPosition ||
       !normalizedJoinDate
     ) {
@@ -401,69 +403,15 @@ export async function POST(request: Request) {
 
     const existingEmployee = await prisma.employee.findUnique({
       where: { employeeId: normalizedEmployeeId },
-      include: {
-        weeklyRecords: {
-          orderBy: {
-            startDate: "desc",
-          },
-        },
+      select: {
+        employeeId: true,
+        name: true,
+        email: true,
+        createdAt: true,
       },
     });
 
     if (existingEmployee) {
-      const sameName =
-        (existingEmployee.name || "").trim().toLowerCase() ===
-        normalizedName.toLowerCase();
-      const sameEmail =
-        (existingEmployee.email || "").trim().toLowerCase() ===
-        normalizedEmail.toLowerCase();
-
-      if (sameName && sameEmail) {
-        return NextResponse.json({
-          id: existingEmployee.employeeId,
-          name: existingEmployee.name,
-          email: existingEmployee.email,
-          personalEmail: existingEmployee.personalEmail || "",
-          department: existingEmployee.department,
-          manager: existingEmployee.manager,
-          position: existingEmployee.position,
-          joinDate: formatDateForResponse(existingEmployee.joinDate),
-          probationPeriodStartDate: existingEmployee.probationPeriodStartDate
-            ? formatDateForResponse(existingEmployee.probationPeriodStartDate)
-            : "",
-          probationPeriodEndDate: existingEmployee.probationPeriodEndDate
-            ? formatDateForResponse(existingEmployee.probationPeriodEndDate)
-            : "",
-          monthlySalaryDuringProbation: existingEmployee.monthlySalaryDuringProbation ?? null,
-          monthlySalaryAfterProbation: existingEmployee.monthlySalaryAfterProbation ?? null,
-          workAuthorizationStatus: existingEmployee.workAuthorizationStatus,
-          staffWorkLocation: existingEmployee.staffWorkLocation || "USA",
-          employeeType: (existingEmployee as any).employeeType || "Full time",
-          contractWorkHours: (existingEmployee as any).contractWorkHours ?? null,
-          systemRole: (existingEmployee as any).systemRole || "Employee",
-          officeSchedule: (existingEmployee as any).officeSchedule ?? null,
-          overallOverdueTasks: existingEmployee.overallOverdueTasks,
-          professionalDevelopmentRecords: normalizeProfessionalDevelopmentRecords(
-            (existingEmployee as any).professionalDevelopmentRecords
-          ),
-          onboarding: formatOnboarding(existingEmployee),
-          weeklyRecords: existingEmployee.weeklyRecords.map((record) => ({
-            startDate: formatDateForResponse(record.startDate),
-            endDate: formatDateForResponse(record.endDate),
-            plannedWorkHours: record.plannedWorkHours,
-            actualWorkHours: record.actualWorkHours,
-            assignedTasks: record.assignedTasks,
-            assignedTasksDetails: (record as any).assignedTasksDetails || [],
-            weeklyOverdueTasks: record.weeklyOverdueTasks,
-            overdueTasksDetails: (record as any).overdueTasksDetails || [],
-            allOverdueTasks: (record as any).allOverdueTasks || 0,
-            allOverdueTasksDetails: (record as any).allOverdueTasksDetails || [],
-            managerComment: (record as any).managerComment || "",
-          })),
-          alreadyExists: true,
-        });
-      }
-
       return NextResponse.json(
         {
           error: "Employee ID already exists",
@@ -495,6 +443,7 @@ export async function POST(request: Request) {
         staffWorkLocation: staffWorkLocation || "USA",
         employeeType: employeeType || "Full time",
         contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
+        employmentStatus: employmentStatus === "Faculty" ? "Faculty" : "Employee",
         systemRole: systemRole || "Employee",
         officeSchedule: officeSchedule ?? null,
         overallOverdueTasks: overallOverdueTasks || 0,
@@ -545,6 +494,7 @@ export async function POST(request: Request) {
       staffWorkLocation: employee.staffWorkLocation || "USA",
       employeeType: (employee as any).employeeType || "Full time",
       contractWorkHours: (employee as any).contractWorkHours ?? null,
+      employmentStatus: (employee as any).employmentStatus || "Employee",
       systemRole: (employee as any).systemRole || "Employee",
       officeSchedule: (employee as any).officeSchedule ?? null,
       overallOverdueTasks: employee.overallOverdueTasks,
@@ -553,6 +503,19 @@ export async function POST(request: Request) {
       weeklyRecords: [],
     });
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Employee ID already exists",
+          details: "This employee ID already exists and the existing record was not changed.",
+        },
+        { status: 409 }
+      );
+    }
+
     console.error("Error creating employee:", error);
     return NextResponse.json(
       { error: "Failed to create employee" },

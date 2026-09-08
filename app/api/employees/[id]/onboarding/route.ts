@@ -153,8 +153,9 @@ function normalizeStep2Forms(step2Forms: unknown) {
       .map((item: OnboardingForm) => [item.name, item])
   );
 
-  return REQUIRED_ONBOARDING_FORMS.map((name) => {
-    const item = lookup.get(name);
+  return Array.from(lookup.entries())
+    .filter(([name]) => typeof name === "string" && name.trim())
+    .map(([name, item]) => {
     return {
       name,
       status:

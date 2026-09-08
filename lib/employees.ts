@@ -99,20 +99,6 @@ export const REQUIRED_TRAINING_ITEMS: string[] = [
 ];
 
 export const REQUIRED_ONBOARDING_FORMS: string[] = [
-  "Application Form",
-  "Direct Deposit Form",
-  "Self-Identification Form",
-  "Background Check Form",
-  "Copyright Releasing Authorization Form",
-  "Portrait Right Authorization Form",
-  "Acknowledgement of Drug and Alcohol-Free Form",
-  "Emergency Contact Form",
-  "Faculty Handbook Signature Form",
-  "Form W-4",
-  "Form I-9 (Work Authorization)",
-  "Verification Form",
-  "Form W-2 (Employee)",
-  "Form W-9 (Contractor)",
   "ID Copy (U.S. Passport or Green Card)",
   "Current Resume",
   "Copy of Diplomas or Degrees",
@@ -193,8 +179,9 @@ export interface Employee {
   joinDate: string;
   workAuthorizationStatus?: string;
   staffWorkLocation?: string;
-  employeeType?: "Full time" | "Contract";
+  employeeType?: "Full time" | "Part Time" | "Contract";
   contractWorkHours?: number;
+  employmentStatus?: "Employee" | "Faculty";
   systemRole?: SystemRole;
   officeSchedule?: OfficeSchedule | null;
   probationPeriodStartDate?: string;

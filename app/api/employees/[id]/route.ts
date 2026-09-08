@@ -109,8 +109,9 @@ function normalizeStep2Forms(step2Forms: unknown, joinDate: Date, completed: boo
         .map((item: any) => [item.name, item])
     );
 
-    return REQUIRED_ONBOARDING_FORMS.map((name) => {
-      const item = lookup.get(name);
+    return Array.from(lookup.entries())
+      .filter(([name]) => typeof name === "string" && name.trim())
+      .map(([name, item]) => {
       return {
         name,
         status:
@@ -310,6 +311,7 @@ export async function PUT(
       staffWorkLocation,
       employeeType,
       contractWorkHours,
+      employmentStatus,
       systemRole,
       officeSchedule,
       overallOverdueTasks,
@@ -378,6 +380,7 @@ export async function PUT(
         staffWorkLocation: staffWorkLocation || "USA",
         employeeType: employeeType || "Full time",
         contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
+        employmentStatus: employmentStatus === "Faculty" ? "Faculty" : "Employee",
         systemRole: systemRole || "Employee",
         officeSchedule: officeSchedule ?? null,
         overallOverdueTasks: overallOverdueTasks || 0,
@@ -456,6 +459,7 @@ export async function PUT(
       staffWorkLocation: employee.staffWorkLocation || "USA",
       employeeType: (employee as any).employeeType || "Full time",
       contractWorkHours: (employee as any).contractWorkHours ?? null,
+      employmentStatus: (employee as any).employmentStatus || "Employee",
       systemRole: (employee as any).systemRole || "Employee",
       officeSchedule: (employee as any).officeSchedule ?? null,
       overallOverdueTasks: employee.overallOverdueTasks,

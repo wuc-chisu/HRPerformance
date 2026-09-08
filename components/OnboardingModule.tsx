@@ -13,6 +13,9 @@ import {
   REQUIRED_ONBOARDING_FORMS,
   REQUIRED_TRAINING_ITEMS,
 } from "@/lib/employees";
+import Step2FormsManager from "@/components/Step2FormsManager";
+import Step2FormsEmailModal from "@/components/Step2FormsEmailModal";
+import { useCurrentUserContext } from "@/components/CurrentUserContextProvider";
 
 interface OnboardingModuleProps {
   employees: Employee[];
@@ -60,6 +63,17 @@ type Step2ChecklistItem = {
   allowNotApplicable?: boolean;
 };
 
+type Step2FormTemplate = {
+  id: string;
+  title: string;
+  googleDriveUrl: string;
+  displayOrder: number;
+  isActive: boolean;
+  appliesTo: Array<"Employee" | "Faculty" | "Contractor">;
+  appliesToLocation: Array<"US" | "Taiwan">;
+  allowNotApplicable: boolean;
+};
+
 type Step2ActorRole =
   | "HR"
   | "Registrar"
@@ -102,23 +116,8 @@ const STEP2_ACTOR_ROLE_OPTIONS: Array<{
 
 const STEP2_SECTIONS: Array<{ title: string; items: Step2ChecklistItem[] }> = [
   {
-    title: "Sub-step 1: Staff to fill out",
-    items: [
-      { name: "Application Form" },
-      { name: "Direct Deposit Form" },
-      { name: "Self-Identification Form" },
-      { name: "Background Check Form" },
-      { name: "Copyright Releasing Authorization Form" },
-      { name: "Portrait Right Authorization Form" },
-      { name: "Acknowledgement of Drug and Alcohol-Free Form" },
-      { name: "Emergency Contact Form" },
-      { name: "Faculty Handbook Signature Form" },
-      { name: "Form W-4" },
-      { name: "Form I-9 (Work Authorization)" },
-      { name: "Verification Form" },
-      { name: "Form W-2 (Employee)", allowNotApplicable: true },
-      { name: "Form W-9 (Contractor)", allowNotApplicable: true },
-    ],
+    title: "Sub-step 1: Forms to submit",
+    items: [],
   },
   {
     title: "Sub-step 2: Collect from staff",
@@ -466,6 +465,7 @@ export default function OnboardingModule({
   onSaveStep3,
   onSaveStep4,
 }: OnboardingModuleProps) {
+  const { employeeContext, viewMode } = useCurrentUserContext();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [activeStep, setActiveStep] = useState<number>(1);
   const [saving, setSaving] = useState(false);
@@ -482,6 +482,9 @@ export default function OnboardingModule({
     },
   });
   const [step2Forms, setStep2Forms] = useState<OnboardingFormItem[]>(getDefaultStep2Forms());
+  const [staffFormTemplates, setStaffFormTemplates] = useState<Step2FormTemplate[]>([]);
+  const [showFormsManager, setShowFormsManager] = useState(false);
+  const [showFormsEmailModal, setShowFormsEmailModal] = useState(false);
   const [step3Forms, setStep3Forms] = useState<OnboardingFormItem[]>(getDefaultStep3Forms());
   const [step4Forms, setStep4Forms] = useState<OnboardingFormItem[]>(getDefaultStep4Forms());
   const [actingRole, setActingRole] = useState<Step2ActorRole>("HR");
@@ -550,6 +553,40 @@ export default function OnboardingModule({
 
   const selectedEmployee = sortedEmployees.find((emp) => emp.id === selectedEmployeeId) || null;
   const onboarding = getResolvedOnboarding(selectedEmployee);
+  const canManageStep2Forms =
+    viewMode === "admin" &&
+    ["hr admin", "executive"].includes(employeeContext?.systemRole?.trim().toLowerCase() || "");
+  const workerType = selectedEmployee?.employeeType === "Contract"
+    ? "Contractor"
+    : selectedEmployee?.employmentStatus === "Faculty" ? "Faculty" : "Employee";
+  const workLocation = selectedEmployee?.staffWorkLocation === "Taiwan (Remote)" ? "Taiwan" : "US";
+
+  const loadStaffFormTemplates = async () => {
+    if (!selectedEmployee) return;
+    const response = await fetch(`/api/onboarding-step2-forms?workerType=${workerType}&location=${workLocation}`);
+    if (!response.ok) throw new Error("Failed to load required staff forms.");
+    const templates = await response.json() as Step2FormTemplate[];
+    setStaffFormTemplates(templates);
+    setStep2Forms((current) => [
+      ...current,
+      ...templates
+        .filter((template) => !current.some((form) => form.name === template.title))
+        .map((template) => ({
+          name: template.title,
+          status: "Pending" as const,
+          dateCompleted: null,
+          verifiedBy: getDefaultVerifierForForm(template.title, roleVerifierLookup),
+          url: "",
+          extraUrls: [],
+        })),
+    ]);
+  };
+
+  useEffect(() => {
+    void loadStaffFormTemplates().catch((error) =>
+      setSaveStatus({ ok: false, msg: error instanceof Error ? error.message : "Failed to load required staff forms." })
+    );
+  }, [selectedEmployeeId, workerType, workLocation]);
 
   useEffect(() => {
     if (!selectedEmployee) return;
@@ -706,7 +743,20 @@ export default function OnboardingModule({
     try {
       setSaving(true);
       setSaveStatus(null);
-      await onSaveStep2(selectedEmployee.id, { forms: step2Forms });
+      const activeStaffForms = staffFormTemplates.map((template) =>
+        step2Forms.find((form) => form.name === template.title) || {
+          name: template.title,
+          status: "Pending" as const,
+          dateCompleted: null,
+          verifiedBy: getDefaultVerifierForForm(template.title, roleVerifierLookup),
+          url: "",
+          extraUrls: [],
+        }
+      );
+      const historicalForms = step2Forms.filter(
+        (form) => !staffFormTemplates.some((template) => template.title === form.name)
+      );
+      await onSaveStep2(selectedEmployee.id, { forms: [...historicalForms, ...activeStaffForms] });
       setSaveStatus({ ok: true, msg: "Saved successfully." });
     } catch (error) {
       console.error("Failed to save onboarding step 2:", error);
@@ -858,6 +908,16 @@ export default function OnboardingModule({
   };
 
   const renderStepContent = () => {
+    if (showFormsManager) {
+      return (
+        <Step2FormsManager
+          viewMode={viewMode}
+          onBack={() => setShowFormsManager(false)}
+          onChanged={() => void loadStaffFormTemplates()}
+        />
+      );
+    }
+
     if (activeStep === 1) {
       return (
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -976,7 +1036,18 @@ export default function OnboardingModule({
 
     if (activeStep === 2) {
       const formMap = new Map(step2Forms.map((form) => [form.name, form]));
-      const allSectionItems = STEP2_SECTIONS.flatMap((s) => s.items);
+      const step2Sections: Array<{ title: string; items: Step2ChecklistItem[] }> = STEP2_SECTIONS.map((section) =>
+        section.title === "Sub-step 1: Forms to submit"
+          ? {
+              ...section,
+              items: staffFormTemplates.map((template) => ({
+                name: template.title,
+                allowNotApplicable: template.allowNotApplicable,
+              })),
+            }
+          : section
+      );
+      const allSectionItems = step2Sections.flatMap((section) => section.items);
       const approvedCount = allSectionItems.filter(
         (item) => { const s = formMap.get(item.name)?.status; return s === "Approved" || s === "N/A"; }
       ).length;
@@ -991,8 +1062,10 @@ export default function OnboardingModule({
                 Each form starts as Pending. Submitted is limited to the assigned role or HR, and Approved is HR-only.
               </p>
             </div>
-            <div className="text-sm font-semibold text-gray-700 bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-200">
-              Approved forms: {approvedCount}/{totalCount}
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-semibold text-gray-700 bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-200">
+                Approved forms: {approvedCount}/{totalCount}
+              </div>
             </div>
           </div>
 
@@ -1033,24 +1106,46 @@ export default function OnboardingModule({
           </div>
 
           <div className="space-y-5">
-            {STEP2_SECTIONS.map((section) => {
+            {step2Sections.map((section) => {
               const isOpen = openSections.has(section.title);
               return (
                 <div key={section.title} className="rounded-lg border border-cyan-100">
-                  <button
-                    type="button"
-                    onClick={() => toggleSection(section.title)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-cyan-50 border-b border-cyan-100 hover:bg-cyan-100 transition-colors"
-                  >
-                    <h5 className="font-semibold text-gray-900">{section.title}</h5>
-                    <span className="text-gray-500 text-lg select-none">{isOpen ? "▲" : "▼"}</span>
-                  </button>
+                  <div className="flex items-center bg-cyan-50 border-b border-cyan-100">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(section.title)}
+                      className="flex-1 flex items-center justify-between px-4 py-3 hover:bg-cyan-100 transition-colors text-left"
+                    >
+                      <h5 className="font-semibold text-gray-900">{section.title}</h5>
+                      <span className="text-gray-500 text-lg select-none">{isOpen ? "▲" : "▼"}</span>
+                    </button>
+                    {section.title === "Sub-step 1: Forms to submit" && viewMode === "admin" && (
+                      <div className="mr-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowFormsEmailModal(true)}
+                          className="border border-cyan-300 bg-white px-3 py-1.5 rounded-lg text-sm font-semibold text-cyan-700 hover:bg-cyan-50"
+                        >
+                          ✉ Send Forms Request
+                        </button>
+                        {canManageStep2Forms && (
+                          <button
+                            type="button"
+                            onClick={() => setShowFormsManager(true)}
+                            className="border border-cyan-300 bg-white px-3 py-1.5 rounded-lg text-sm font-semibold text-cyan-700 hover:bg-cyan-50"
+                          >
+                            ⚙ Manage Forms
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   {isOpen && (
                     <div className="p-4 space-y-4">
                       {section.items.map((item) => {
                         const verifierLocked = section.title === "Sub-step 3: Follow-up actions";
                         const anyRoleCanSubmit =
-                          section.title === "Sub-step 1: Staff to fill out" ||
+                          section.title === "Sub-step 1: Forms to submit" ||
                           section.title === "Sub-step 2: Collect from staff";
                         const form = formMap.get(item.name) || {
                           name: item.name,
@@ -1648,6 +1743,18 @@ export default function OnboardingModule({
           )}
         </div>
       </div>
+
+      {showFormsEmailModal && selectedEmployee && (
+        <Step2FormsEmailModal
+          employeeName={selectedEmployee.name}
+          workEmail={selectedEmployee.email}
+          personalEmail={selectedEmployee.personalEmail || ""}
+          workerType={workerType}
+          workLocation={workLocation}
+          forms={staffFormTemplates.filter((template) => template.isActive)}
+          onClose={() => setShowFormsEmailModal(false)}
+        />
+      )}
     </div>
   );
 }

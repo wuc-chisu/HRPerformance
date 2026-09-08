@@ -11,7 +11,7 @@ if (process.env.NODE_ENV === "production") {
 } else {
   // Avoid instantiating multiple PrismaClient instances during development
   // @ts-ignore
-  if (!global.prisma) {
+  if (!global.prisma || !global.prisma.onboardingStep2FormTemplate) {
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     const adapter = new PrismaPg(pool);
     // @ts-ignore

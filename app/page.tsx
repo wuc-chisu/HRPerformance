@@ -294,10 +294,9 @@ export default function Home() {
 
       const daysDifference = (now.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24);
       const withinThirtyDays = daysDifference >= -30 && daysDifference <= 30;
-      const hasNoPreboarding =
-        !employee.preboardingSteps || Object.keys(employee.preboardingSteps).length === 0;
+      const preboardingNotCompleted = !employee.preboardingSteps?.completed;
 
-      return withinThirtyDays && hasNoPreboarding;
+      return withinThirtyDays && preboardingNotCompleted;
     });
   }, [activeEmployees]);
 
@@ -338,7 +337,10 @@ export default function Home() {
     setShowForm(true);
   };
 
-  const handleSaveEmployee = async (employee: Employee) => {
+  const handleSaveEmployee = async (
+    employee: Employee,
+    setApiError?: (message: string) => void
+  ) => {
     if (isSavingEmployeeRef.current) {
       return;
     }
@@ -355,7 +357,10 @@ export default function Home() {
         });
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.details || "Failed to update employee");
+          setApiError?.(
+            errorData.details || errorData.error || "Failed to update employee"
+          );
+          return;
         }
       } else {
         // Add new employee - transform id to employeeId for API
@@ -372,6 +377,7 @@ export default function Home() {
           staffWorkLocation: employee.staffWorkLocation,
           employeeType: employee.employeeType,
           contractWorkHours: employee.contractWorkHours,
+          employmentStatus: employee.employmentStatus,
           officeSchedule: employee.officeSchedule,
           probationPeriodStartDate: employee.probationPeriodStartDate,
           probationPeriodEndDate: employee.probationPeriodEndDate,
@@ -387,42 +393,18 @@ export default function Home() {
 
         const responseData = await response.json().catch(() => ({}));
 
-        if (response.ok && responseData?.alreadyExists) {
-          const refreshedEmployees = await fetchEmployees();
-          const existingEmployee = refreshedEmployees.find(
-            (entry) => entry.id === responseData.id
+        if (!response.ok && response.status === 409) {
+          setApiError?.(
+            responseData.details || responseData.error || "Employee ID already exists"
           );
-
-          if (existingEmployee) {
-            setEditingEmployee(existingEmployee);
-            setSelectedEmployeeId(existingEmployee.id);
-            setSelectedEmployeeForPerformance(existingEmployee.id);
-          }
-
-          setShowForm(false);
           return;
         }
 
-        if (!response.ok && response.status === 409) {
-          const existingId = responseData?.employeeId || employee.id;
-          const refreshedEmployees = await fetchEmployees();
-          const existingEmployee = refreshedEmployees.find(
-            (entry) => entry.id === existingId
-          );
-
-          if (existingEmployee) {
-            setEditingEmployee(existingEmployee);
-            setSelectedEmployeeId(existingEmployee.id);
-            setSelectedEmployeeForPerformance(existingEmployee.id);
-            setShowForm(true);
-            return;
-          }
-
-          throw new Error(responseData.details || responseData.error || "Employee ID already exists");
-        }
-
         if (!response.ok) {
-          throw new Error(responseData.details || responseData.error || "Failed to create employee");
+          setApiError?.(
+            responseData.details || responseData.error || "Failed to create employee"
+          );
+          return;
         }
 
         setLastCreatedEmployeeId(employee.id);
@@ -442,7 +424,9 @@ export default function Home() {
       setEditingEmployee(null);
     } catch (error) {
       console.error("Error saving employee:", error);
-      alert(`Failed to save employee: ${error instanceof Error ? error.message : String(error)}`);
+      setApiError?.(
+        `Failed to save employee: ${error instanceof Error ? error.message : String(error)}`
+      );
     } finally {
       isSavingEmployeeRef.current = false;
     }
@@ -1145,7 +1129,7 @@ export default function Home() {
       {/* Header */}
       <header className="bg-linear-to-r from-blue-300 to-purple-300 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-4xl font-bold mb-2">HR Performance Review</h1>
+          <h1 className="text-4xl font-bold mb-2">HR Management</h1>
           <p className="text-white opacity-90">
             Monitor employee performance, tasks, and work hours
           </p>

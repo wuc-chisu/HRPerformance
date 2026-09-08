@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Employee, OfficeDay, SystemRole } from "@/lib/employees";
 
 const OFFICE_DAYS: OfficeDay[] = [
@@ -14,7 +14,10 @@ const OFFICE_DAYS: OfficeDay[] = [
 
 interface AddEditEmployeeProps {
   employee?: Employee;
-  onSave: (employee: Employee) => void | Promise<void>;
+  onSave: (
+    employee: Employee,
+    setApiError?: (message: string) => void
+  ) => void | Promise<void>;
   onCancel: () => void;
   departments?: string[];
   employees?: Employee[];
@@ -60,11 +63,40 @@ export default function AddEditEmployee({
     probationPeriodEndDate: employee?.probationPeriodEndDate || "",
     monthlySalaryDuringProbation: employee?.monthlySalaryDuringProbation ?? "",
     monthlySalaryAfterProbation: employee?.monthlySalaryAfterProbation ?? "",
+    employmentStatus: employee?.employmentStatus || "Employee",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const apiErrorRef = useRef<HTMLDivElement>(null);
+  const employeeIdInputRef = useRef<HTMLInputElement>(null);
   const salaryCurrencyCode = "USD";
+
+  useEffect(() => {
+    if (!apiError) return;
+
+    const employeeIdError = /employee id/i.test(apiError);
+    const target = employeeIdError ? employeeIdInputRef.current : apiErrorRef.current;
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    if (employeeIdError) {
+      employeeIdInputRef.current?.focus({ preventScroll: true });
+    } else {
+      apiErrorRef.current?.focus({ preventScroll: true });
+    }
+  }, [apiError]);
+
+  useEffect(() => {
+    const firstInvalidField = Object.keys(errors)[0];
+    if (!firstInvalidField) return;
+
+    const target = document.querySelector<HTMLElement>(
+      `[name="${firstInvalidField}"]`
+    );
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    target?.focus({ preventScroll: true });
+  }, [errors]);
 
   const managerOptions = employees
     .filter((entry) => entry.id !== formData.id)
@@ -107,7 +139,8 @@ export default function AddEditEmployee({
     if (validateForm()) {
       try {
         setIsSubmitting(true);
-        await Promise.resolve(onSave(buildEmployeePayload()));
+        setApiError(null);
+        await Promise.resolve(onSave(buildEmployeePayload(), setApiError));
       } finally {
         setIsSubmitting(false);
       }
@@ -205,12 +238,22 @@ export default function AddEditEmployee({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {apiError && (
+            <div
+              ref={apiErrorRef}
+              tabIndex={-1}
+              className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded"
+            >
+              {apiError}
+            </div>
+          )}
           {/* Employee ID */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
               Employee ID *
             </label>
             <input
+              ref={employeeIdInputRef}
               type="text"
               name="id"
               value={formData.id}
@@ -518,7 +561,24 @@ export default function AddEditEmployee({
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
               >
                 <option value="Full time">Full time</option>
+                <option value="Part Time">Part Time</option>
                 <option value="Contract">Contract</option>
+              </select>
+            </div>
+
+            {/* Employment Status */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Employment Status
+              </label>
+              <select
+                name="employmentStatus"
+                value={formData.employmentStatus}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+              >
+                <option value="Employee">Employee</option>
+                <option value="Faculty">Faculty</option>
               </select>
             </div>
           </div>
