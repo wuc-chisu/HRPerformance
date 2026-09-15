@@ -267,6 +267,8 @@ function formatOnboarding(emp: any) {
     step5Completed: Boolean(emp.onboardingStep5Completed),
     step6AnnualTracking: Boolean(emp.onboardingStep6AnnualTracking),
     step2CompletedAt: formatDateTimeForResponse(emp.onboardingStep2CompletedAt),
+    step2FormsEmailSentAt: formatDateTimeForResponse(emp.onboardingStep2FormsEmailSentAt),
+    step2DocumentsEmailSentAt: formatDateTimeForResponse(emp.onboardingStep2DocumentsEmailSentAt),
     step3CompletedAt: formatDateTimeForResponse(emp.onboardingStep3CompletedAt),
     step4CompletedAt: formatDateTimeForResponse(emp.onboardingStep4CompletedAt),
     step5CompletedAt: formatDateTimeForResponse(emp.onboardingStep5CompletedAt),

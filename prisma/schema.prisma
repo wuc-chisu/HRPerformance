@@ -57,6 +57,8 @@ model Employee {
   onboardingStep1Notes          String?                     @db.Text
   preboardingSteps              Json                        @default("{}")
   onboardingStep2CompletedAt    DateTime?
+  onboardingStep2FormsEmailSentAt DateTime?
+  onboardingStep2DocumentsEmailSentAt DateTime?
   onboardingStep3CompletedAt    DateTime?
   onboardingStep4CompletedAt    DateTime?
   onboardingStep5CompletedAt    DateTime?

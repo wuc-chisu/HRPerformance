@@ -87,7 +87,6 @@ export interface OnboardingFormItem {
 }
 
 export const REQUIRED_HR_POLICY_SIGNOFFS: string[] = [
-  "HR Policy",
   "Progressive Discipline & Performance Warning Policy",
   "Click Up Useage Acknowledgement",
 ];
@@ -123,6 +122,8 @@ export interface OnboardingState {
   step5Completed: boolean;
   step6AnnualTracking: boolean;
   step2CompletedAt?: string | null;
+  step2FormsEmailSentAt?: string | null;
+  step2DocumentsEmailSentAt?: string | null;
   step3CompletedAt?: string | null;
   step4CompletedAt?: string | null;
   step5CompletedAt?: string | null;

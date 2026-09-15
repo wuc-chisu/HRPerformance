@@ -15,6 +15,9 @@ import {
 } from "@/lib/employees";
 import Step2FormsManager from "@/components/Step2FormsManager";
 import Step2FormsEmailModal from "@/components/Step2FormsEmailModal";
+import Step2DocumentRequestEmailModal from "@/components/Step2DocumentRequestEmailModal";
+import Step3HRPoliciesEmailModal from "@/components/Step3HRPoliciesEmailModal";
+import Step4TrainingEmailModal from "@/components/Step4TrainingEmailModal";
 import { useCurrentUserContext } from "@/components/CurrentUserContextProvider";
 
 interface OnboardingModuleProps {
@@ -485,6 +488,11 @@ export default function OnboardingModule({
   const [staffFormTemplates, setStaffFormTemplates] = useState<Step2FormTemplate[]>([]);
   const [showFormsManager, setShowFormsManager] = useState(false);
   const [showFormsEmailModal, setShowFormsEmailModal] = useState(false);
+  const [showDocumentRequestEmailModal, setShowDocumentRequestEmailModal] = useState(false);
+  const [showPoliciesEmailModal, setShowPoliciesEmailModal] = useState(false);
+  const [showTrainingEmailModal, setShowTrainingEmailModal] = useState(false);
+  const [formsRequestSentForEmployeeId, setFormsRequestSentForEmployeeId] = useState<string | null>(null);
+  const [documentRequestSentForEmployeeId, setDocumentRequestSentForEmployeeId] = useState<string | null>(null);
   const [step3Forms, setStep3Forms] = useState<OnboardingFormItem[]>(getDefaultStep3Forms());
   const [step4Forms, setStep4Forms] = useState<OnboardingFormItem[]>(getDefaultStep4Forms());
   const [actingRole, setActingRole] = useState<Step2ActorRole>("HR");
@@ -503,12 +511,24 @@ export default function OnboardingModule({
 
   const sortedEmployees = useMemo(
     () =>
-      [...employees].sort((a, b) =>
-        a.id.localeCompare(b.id, undefined, {
+      [...employees].sort((a, b) => {
+        const leftJoinDate = Date.parse(a.joinDate || "");
+        const rightJoinDate = Date.parse(b.joinDate || "");
+        const leftTimestamp = Number.isNaN(leftJoinDate) ? 0 : leftJoinDate;
+        const rightTimestamp = Number.isNaN(rightJoinDate) ? 0 : rightJoinDate;
+
+        if (leftTimestamp !== rightTimestamp) {
+          return rightTimestamp - leftTimestamp;
+        }
+
+        const nameComparison = a.name.localeCompare(b.name, undefined, {
+          sensitivity: "base",
+        });
+        return nameComparison || a.id.localeCompare(b.id, undefined, {
           numeric: true,
           sensitivity: "base",
-        })
-      ),
+        });
+      }),
     [employees]
   );
 
@@ -1126,7 +1146,9 @@ export default function OnboardingModule({
                           onClick={() => setShowFormsEmailModal(true)}
                           className="border border-cyan-300 bg-white px-3 py-1.5 rounded-lg text-sm font-semibold text-cyan-700 hover:bg-cyan-50"
                         >
-                          ✉ Send Forms Request
+                          {formsRequestSentForEmployeeId === selectedEmployeeId || selectedEmployee?.onboarding?.step2FormsEmailSentAt
+                            ? "Sent"
+                            : "✉ Send Forms Request"}
                         </button>
                         {canManageStep2Forms && (
                           <button
@@ -1137,6 +1159,19 @@ export default function OnboardingModule({
                             ⚙ Manage Forms
                           </button>
                         )}
+                      </div>
+                    )}
+                    {section.title === "Sub-step 2: Collect from staff" && viewMode === "admin" && (
+                      <div className="mr-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowDocumentRequestEmailModal(true)}
+                          className="border border-cyan-300 bg-white px-3 py-1.5 rounded-lg text-sm font-semibold text-cyan-700 hover:bg-cyan-50"
+                        >
+                          {documentRequestSentForEmployeeId === selectedEmployeeId || selectedEmployee?.onboarding?.step2DocumentsEmailSentAt
+                            ? "Sent"
+                            : "✉ Send Document Request"}
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1326,8 +1361,19 @@ export default function OnboardingModule({
                 Each policy starts as Pending. Submit records the sign-off date, and approval is HR-only.
               </p>
             </div>
-            <div className="text-sm font-semibold text-gray-700 bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-200">
-              Approved items: {approvedCount}/{step3Forms.length}
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <div className="text-sm font-semibold text-gray-700 bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-200">
+                Approved items: {approvedCount}/{step3Forms.length}
+              </div>
+              {viewMode === "admin" && (
+                <button
+                  type="button"
+                  onClick={() => setShowPoliciesEmailModal(true)}
+                  className="rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-600"
+                >
+                  ✉ Send HR Policies Email
+                </button>
+              )}
             </div>
           </div>
 
@@ -1408,7 +1454,7 @@ export default function OnboardingModule({
 
           <div className="mt-6 flex items-center justify-between gap-4">
             <p className="text-sm text-gray-500">
-              Step 3 completes only when all three HR policy acknowledgements are approved.
+              Step 3 completes only when both HR policy acknowledgements are approved.
             </p>
             <div className="flex items-center gap-3">
               {saveStatus && (
@@ -1441,8 +1487,19 @@ export default function OnboardingModule({
                 Training items start as Pending. Submit records the completion date, and approval confirms the training record.
               </p>
             </div>
-            <div className="text-sm font-semibold text-gray-700 bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-200">
-              Approved items: {approvedCount}/{step4Forms.length}
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <div className="text-sm font-semibold text-gray-700 bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-200">
+                Approved items: {approvedCount}/{step4Forms.length}
+              </div>
+              {viewMode === "admin" && (
+                <button
+                  type="button"
+                  onClick={() => setShowTrainingEmailModal(true)}
+                  className="rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-600"
+                >
+                  ✉ Send Training Email
+                </button>
+              )}
             </div>
           </div>
 
@@ -1623,62 +1680,39 @@ export default function OnboardingModule({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Onboarding Module</h2>
-        <p className="text-gray-600">
-          Flow: Pre-Onboarding → Forms Completed → HR Policies Sign Off → Trainings → Activated
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-4 py-3 bg-cyan-100 border-b border-cyan-200">
-            <h3 className="text-lg font-semibold text-gray-900">Employees</h3>
+    <div className="w-full space-y-6">
+      <div className="w-full bg-white rounded-lg shadow-md p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Onboarding Module</h2>
+            <p className="text-gray-600">
+              Flow: Pre-Onboarding → Forms Completed → HR Policies Sign Off → Trainings → Activated
+            </p>
           </div>
-          <div style={{ maxHeight: "620px" }} className="overflow-y-auto divide-y divide-gray-100">
-            {sortedEmployees.map((employee) => {
-              const employeeOnboarding = getResolvedOnboarding(employee);
-              const enrolled = employeeOnboarding.checklistAssigned;
-              const employeeCompleted = [
-                employeeOnboarding.step1Completed,
-                employeeOnboarding.step2Completed,
-                employeeOnboarding.step3Completed,
-                employeeOnboarding.step4Completed,
-                employeeOnboarding.step5Completed,
-              ].filter(Boolean).length;
 
-              return (
-                <button
-                  key={employee.id}
-                  onClick={() => setSelectedEmployeeId(employee.id)}
-                  className={`w-full text-left p-4 transition-colors ${
-                    selectedEmployeeId === employee.id
-                      ? "bg-cyan-50"
-                      : "hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="font-semibold text-gray-900">{employee.name}</div>
-                  <div className="text-sm text-gray-600">{employee.id}</div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span
-                      className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                        enrolled
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-amber-100 text-amber-700"
-                      }`}
-                    >
-                      {enrolled ? "Enrolled" : "Not enrolled"}
-                    </span>
-                    <span className="text-xs text-gray-500">{employeeCompleted}/5 done</span>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="w-full lg:w-[min(100%,28rem)]">
+            <label htmlFor="onboarding-employee" className="block text-sm font-semibold text-gray-700 mb-2">
+              Employee
+            </label>
+            <select
+              id="onboarding-employee"
+              value={selectedEmployeeId}
+              onChange={(event) => setSelectedEmployeeId(event.target.value)}
+              disabled={sortedEmployees.length === 0}
+              className="w-full px-3 py-2.5 rounded-lg border border-cyan-200 bg-white text-gray-900 shadow-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-200 disabled:bg-gray-100"
+            >
+              {sortedEmployees.length === 0 && <option value="">No employees available</option>}
+              {sortedEmployees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.name} ({employee.id})
+                </option>
+              ))}
+            </select>
           </div>
         </div>
+      </div>
 
-        <div className="lg:col-span-2 space-y-6">
+      <div className="w-full space-y-6">
           {!selectedEmployee && (
             <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-600">
               Select an employee to manage onboarding.
@@ -1687,7 +1721,7 @@ export default function OnboardingModule({
 
           {selectedEmployee && (
             <>
-              <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="w-full bg-white rounded-lg shadow-md p-6">
                 <div className="flex flex-wrap gap-3 items-center justify-between">
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">
@@ -1700,7 +1734,7 @@ export default function OnboardingModule({
                   </div>
                 </div>
 
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-5 gap-3">
                   {stepLabels.map((label, index) => {
                     const completed = [
                       onboarding.step1Completed,
@@ -1742,10 +1776,10 @@ export default function OnboardingModule({
             </>
           )}
         </div>
-      </div>
 
       {showFormsEmailModal && selectedEmployee && (
         <Step2FormsEmailModal
+          employeeId={selectedEmployee.id}
           employeeName={selectedEmployee.name}
           workEmail={selectedEmployee.email}
           personalEmail={selectedEmployee.personalEmail || ""}
@@ -1753,6 +1787,33 @@ export default function OnboardingModule({
           workLocation={workLocation}
           forms={staffFormTemplates.filter((template) => template.isActive)}
           onClose={() => setShowFormsEmailModal(false)}
+          onSent={() => setFormsRequestSentForEmployeeId(selectedEmployee.id)}
+        />
+      )}
+      {showDocumentRequestEmailModal && selectedEmployee && viewMode === "admin" && (
+        <Step2DocumentRequestEmailModal
+          employeeId={selectedEmployee.id}
+          employeeName={selectedEmployee.name}
+          workEmail={selectedEmployee.email}
+          personalEmail={selectedEmployee.personalEmail || ""}
+          onClose={() => setShowDocumentRequestEmailModal(false)}
+          onSent={() => setDocumentRequestSentForEmployeeId(selectedEmployee.id)}
+        />
+      )}
+      {showPoliciesEmailModal && selectedEmployee && viewMode === "admin" && (
+        <Step3HRPoliciesEmailModal
+          employeeName={selectedEmployee.name}
+          employeeEmail={selectedEmployee.email || selectedEmployee.personalEmail || ""}
+          personalEmail={selectedEmployee.personalEmail || ""}
+          onClose={() => setShowPoliciesEmailModal(false)}
+        />
+      )}
+      {showTrainingEmailModal && selectedEmployee && viewMode === "admin" && (
+        <Step4TrainingEmailModal
+          employeeName={selectedEmployee.name}
+          employeeEmail={selectedEmployee.email || selectedEmployee.personalEmail || ""}
+          personalEmail={selectedEmployee.personalEmail || ""}
+          onClose={() => setShowTrainingEmailModal(false)}
         />
       )}
     </div>

@@ -16,6 +16,7 @@ type Step2FormTemplate = {
 };
 
 interface Step2FormsEmailModalProps {
+  employeeId: string;
   employeeName: string;
   workEmail: string;
   personalEmail: string;
@@ -23,6 +24,7 @@ interface Step2FormsEmailModalProps {
   workLocation: WorkLocation;
   forms: Step2FormTemplate[];
   onClose: () => void;
+  onSent: () => void;
 }
 
 function getFirstName(fullName: string): string {
@@ -59,6 +61,7 @@ Whitewater University of California
 const EMAIL_SUBJECT = "WUC Onboarding Forms – Action Required";
 
 export default function Step2FormsEmailModal({
+  employeeId,
   employeeName,
   workEmail,
   personalEmail,
@@ -66,6 +69,7 @@ export default function Step2FormsEmailModal({
   workLocation,
   forms,
   onClose,
+  onSent,
 }: Step2FormsEmailModalProps) {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ error: boolean; message: string } | null>(null);
@@ -91,6 +95,9 @@ export default function Step2FormsEmailModal({
     () => buildEmailBody(firstName, applicableForms, workerType),
     [firstName, applicableForms, workerType]
   );
+  const [subject, setSubject] = useState(EMAIL_SUBJECT);
+  const [body, setBody] = useState(emailBody);
+  const [cc, setCc] = useState("hr@wuc.edu");
 
   const sendEmail = async () => {
     if (recipients.length === 0) {
@@ -103,14 +110,24 @@ export default function Step2FormsEmailModal({
     try {
       const formData = new FormData();
       formData.append("to", recipients.join(", "));
-      formData.append("subject", EMAIL_SUBJECT);
-      formData.append("body", emailBody);
+      formData.append("cc", cc.trim());
+      formData.append("subject", subject.trim());
+      formData.append("body", body.trim());
 
       const response = await fetch("/api/email/send", { method: "POST", body: formData });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Failed to send email.");
 
+      const recordResponse = await fetch(`/api/employees/${employeeId}/onboarding-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailType: "forms" }),
+      });
+      const recordPayload = await recordResponse.json().catch(() => ({}));
+      if (!recordResponse.ok) throw new Error(recordPayload.error || "Email sent, but it could not be recorded.");
+
       setResult({ error: false, message: "Email sent successfully." });
+      onSent();
     } catch (error) {
       setResult({ error: true, message: error instanceof Error ? error.message : "Failed to send email." });
     } finally {
@@ -155,14 +172,33 @@ export default function Step2FormsEmailModal({
               <p className="text-sm text-gray-900">{recipients.length > 0 ? recipients.join(", ") : "No email on file"}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase">Subject</p>
-              <p className="text-sm text-gray-900">{EMAIL_SUBJECT}</p>
+              <label htmlFor="forms-email-subject" className="text-xs font-semibold text-gray-500 uppercase">Subject</label>
+              <input
+                id="forms-email-subject"
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900"
+              />
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Email Body</p>
-              <pre className="whitespace-pre-wrap text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 font-sans">
-                {emailBody}
-              </pre>
+              <label htmlFor="forms-email-cc" className="text-xs font-semibold text-gray-500 uppercase">CC</label>
+              <input
+                id="forms-email-cc"
+                value={cc}
+                onChange={(event) => setCc(event.target.value)}
+                placeholder="hr@wuc.edu, another@example.com"
+                className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900"
+              />
+            </div>
+            <div>
+              <label htmlFor="forms-email-body" className="text-xs font-semibold text-gray-500 uppercase mb-1">Email Body</label>
+              <textarea
+                id="forms-email-body"
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                rows={16}
+                className="mt-1 w-full whitespace-pre-wrap text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-4 font-sans"
+              />
             </div>
           </div>
         )}
