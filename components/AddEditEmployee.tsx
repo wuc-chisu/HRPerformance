@@ -156,6 +156,7 @@ export default function AddEditEmployee({
     manager: formData.manager.trim(),
     position: formData.position.trim(),
     staffWorkLocation: formData.staffWorkLocation,
+    employmentStatus: formData.employmentStatus,
     contractWorkHours:
       formData.employeeType === "Contract" ? formData.contractWorkHours : undefined,
     systemRole: formData.systemRole,

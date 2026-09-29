@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { formatDateForResponse, parseDateForDatabase } from "@/lib/dateUtils";
+import { getPerformanceScoringVersion } from "@/lib/performanceScoring";
 import { NextResponse } from "next/server";
 
 // GET single weekly record by id
@@ -25,6 +26,7 @@ export async function GET(
       endDate: formatDateForResponse(record.endDate),
       plannedWorkHours: record.plannedWorkHours,
       actualWorkHours: record.actualWorkHours,
+      averageQualityOfWorkScore: record.averageQualityOfWorkScore,
       assignedTasks: record.assignedTasks,
       assignedTasksDetails: (record as any).assignedTasksDetails || [],
       weeklyOverdueTasks: record.weeklyOverdueTasks,
@@ -60,6 +62,7 @@ export async function PUT(
       endDate,
       plannedWorkHours,
       actualWorkHours,
+      averageQualityOfWorkScore,
       assignedTasks,
       assignedTasksDetails,
       weeklyOverdueTasks,
@@ -92,6 +95,29 @@ export async function PUT(
     const ped = endDate
       ? parseDateForDatabase(endDate)
       : existingRecord.endDate;
+    const recordDate = startDate || formatDateForResponse(existingRecord.startDate);
+    const hasQualityScore =
+      averageQualityOfWorkScore !== undefined &&
+      averageQualityOfWorkScore !== null;
+    const qualityScore =
+      hasQualityScore
+        ? Number(averageQualityOfWorkScore)
+        : existingRecord.averageQualityOfWorkScore;
+
+    if (
+      getPerformanceScoringVersion(recordDate) === "QUALITY_OF_WORK" &&
+      hasQualityScore &&
+      (qualityScore == null ||
+        !Number.isFinite(qualityScore) ||
+        qualityScore < 1 ||
+        qualityScore > 5 ||
+        !/^\d+(\.\d{1,2})?$/.test(String(averageQualityOfWorkScore ?? qualityScore)))
+    ) {
+      return NextResponse.json(
+        { error: "Average Quality of Work Score must be between 1.00 and 5.00 with up to 2 decimal places" },
+        { status: 400 }
+      );
+    }
 
     console.log("🗓️ Dates parsed");
 
@@ -111,6 +137,7 @@ export async function PUT(
           actualWorkHours !== undefined
             ? Number(actualWorkHours) || 0
             : existingRecord.actualWorkHours,
+        averageQualityOfWorkScore: qualityScore,
         assignedTasks:
           assignedTasks !== undefined
             ? Number(assignedTasks) || 0

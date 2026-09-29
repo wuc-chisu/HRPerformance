@@ -65,6 +65,12 @@ export default function MonthlyPerformanceReport({
       taskPriorityBreakdown,
     };
   });
+  const hasLegacyScoring = weeklyScores.some(
+    ({ breakdown }) => breakdown.scoringVersion === "LEGACY_WORK_HOURS"
+  );
+  const hasQualityScoring = weeklyScores.some(
+    ({ breakdown }) => breakdown.scoringVersion === "QUALITY_OF_WORK"
+  );
 
   const monthlyAverage =
     weeklyScores.length > 0
@@ -611,7 +617,13 @@ San Jose, CA 95118`;
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Week</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Total Score</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Rating</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Work Hours</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">
+                    {hasLegacyScoring && hasQualityScoring
+                      ? "Versioned 25-Point Category"
+                      : hasLegacyScoring
+                        ? "Work Hours Fulfillment"
+                        : "Quality of Work"}
+                  </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Priority</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Completion</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Past Due</th>
@@ -642,7 +654,9 @@ San Jose, CA 95118`;
                       {ws.rating}
                     </td>
                     <td className="px-4 py-3 text-center text-sm text-gray-600">
-                      {ws.breakdown.workHoursFulfillment.toFixed(1)}/25
+                      {ws.breakdown.scoringVersion === "LEGACY_WORK_HOURS"
+                        ? `Work Hours Fulfillment: ${ws.breakdown.workHoursFulfillment.toFixed(1)}/25`
+                        : `Quality: ${ws.breakdown.qualityOfWork.toFixed(1)}/25`}
                     </td>
                     <td className="px-4 py-3 text-center text-sm text-gray-600">
                       {ws.breakdown.taskPriorityHandling.toFixed(1)}/20

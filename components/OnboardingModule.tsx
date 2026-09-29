@@ -16,6 +16,7 @@ import {
 import Step2FormsManager from "@/components/Step2FormsManager";
 import Step2FormsEmailModal from "@/components/Step2FormsEmailModal";
 import Step2DocumentRequestEmailModal from "@/components/Step2DocumentRequestEmailModal";
+import PayrollSetupEmailModal from "@/components/PayrollSetupEmailModal";
 import Step3HRPoliciesEmailModal from "@/components/Step3HRPoliciesEmailModal";
 import Step4TrainingEmailModal from "@/components/Step4TrainingEmailModal";
 import { useCurrentUserContext } from "@/components/CurrentUserContextProvider";
@@ -65,6 +66,8 @@ type Step2ChecklistItem = {
   urlFieldLabels?: string[];
   allowNotApplicable?: boolean;
 };
+
+const PAYROLL_EMAIL_ACTION = "Send Payroll Setup Email to Accountant";
 
 type Step2FormTemplate = {
   id: string;
@@ -141,6 +144,10 @@ const STEP2_SECTIONS: Array<{ title: string; items: Step2ChecklistItem[] }> = [
           "Includes: 1. Completed the orientation seminar/videos 2. Read the employee manual 3. Read the school catalog 4. Read the Distance Education training handbook 5. Read the emergency preparation plan 6. Completed the orientation exam (minimum score of 70% or higher)",
       },
       { name: "Notify Admin Assistant: Generate Staff Contract" },
+      {
+        name: PAYROLL_EMAIL_ACTION,
+        detailText: "Send Accounting the hiring/offer letter and the employee's location-specific payment authorization form.",
+      },
     ],
   },
   {
@@ -171,7 +178,7 @@ const LEGACY_STEP2_FORM_NAME_MAP: Record<string, string> = {
 };
 
 function getDefaultStep2Forms(): OnboardingFormItem[] {
-  return REQUIRED_ONBOARDING_FORMS.map((name) => ({
+  return [...REQUIRED_ONBOARDING_FORMS, PAYROLL_EMAIL_ACTION].map((name) => ({
     name,
     status: "Pending",
     dateCompleted: null,
@@ -188,6 +195,21 @@ function getTodayPacificDate(): string {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+function getYearsInCurrentPosition(joinDate?: string | null): string {
+  if (!joinDate) {
+    return "{{Years in Current Position}}";
+  }
+
+  const start = new Date(joinDate);
+  if (Number.isNaN(start.getTime())) {
+    return "{{Years in Current Position}}";
+  }
+
+  const diffMs = Date.now() - start.getTime();
+  const years = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+  return `${Math.max(0, Math.floor(years))}`;
 }
 
 function getDefaultStep3Forms(completed = false): OnboardingFormItem[] {
@@ -387,6 +409,17 @@ function sanitizeStep2Forms(forms: OnboardingFormItem[]): OnboardingFormItem[] {
     }
   });
 
+  if (!dedupedByName.has(PAYROLL_EMAIL_ACTION)) {
+    dedupedByName.set(PAYROLL_EMAIL_ACTION, {
+      name: PAYROLL_EMAIL_ACTION,
+      status: "Pending",
+      dateCompleted: null,
+      verifiedBy: "HR",
+      url: "",
+      extraUrls: [],
+    });
+  }
+
   return Array.from(dedupedByName.values());
 }
 
@@ -489,8 +522,16 @@ export default function OnboardingModule({
   const [showFormsManager, setShowFormsManager] = useState(false);
   const [showFormsEmailModal, setShowFormsEmailModal] = useState(false);
   const [showDocumentRequestEmailModal, setShowDocumentRequestEmailModal] = useState(false);
+  const [showPayrollEmailModal, setShowPayrollEmailModal] = useState(false);
   const [showPoliciesEmailModal, setShowPoliciesEmailModal] = useState(false);
   const [showTrainingEmailModal, setShowTrainingEmailModal] = useState(false);
+  const [showComplianceReportEmailModal, setShowComplianceReportEmailModal] = useState(false);
+  const [complianceReportEmailTo, setComplianceReportEmailTo] = useState("");
+  const [complianceReportEmailCc, setComplianceReportEmailCc] = useState("hr@wuc.edu");
+  const [complianceReportEmailSubject, setComplianceReportEmailSubject] = useState("");
+  const [complianceReportEmailBody, setComplianceReportEmailBody] = useState("");
+  const [sendingComplianceReportEmail, setSendingComplianceReportEmail] = useState(false);
+  const [complianceReportEmailResult, setComplianceReportEmailResult] = useState<{ error: boolean; message: string } | null>(null);
   const [formsRequestSentForEmployeeId, setFormsRequestSentForEmployeeId] = useState<string | null>(null);
   const [documentRequestSentForEmployeeId, setDocumentRequestSentForEmployeeId] = useState<string | null>(null);
   const [step3Forms, setStep3Forms] = useState<OnboardingFormItem[]>(getDefaultStep3Forms());
@@ -572,6 +613,76 @@ export default function OnboardingModule({
   }, [actingRole, actingUserName, actorsByRole]);
 
   const selectedEmployee = sortedEmployees.find((emp) => emp.id === selectedEmployeeId) || null;
+  const complianceSpecialist = useMemo(
+    () =>
+      sortedEmployees.find((employee) => {
+        const position = (employee.position || "").toLowerCase();
+        return position.includes("compliance specialist") || position.includes("compliance");
+      }) || null,
+    [sortedEmployees]
+  );
+
+  const openComplianceReportEmailModal = () => {
+    const complianceName = complianceSpecialist?.name || "Compliance Specialist";
+    setComplianceReportEmailTo(complianceSpecialist?.email || complianceSpecialist?.personalEmail || "");
+    setComplianceReportEmailCc("hr@wuc.edu");
+    const employeeName = selectedEmployee?.name || "{{Employee Name}}";
+    const position = selectedEmployee?.position || "{{Position/Title}}";
+    const initialEmploymentDate = selectedEmployee?.joinDate || "{{Initial Employment Date}}";
+    const currentPositionYears = getYearsInCurrentPosition(selectedEmployee?.joinDate);
+    const employmentStatus = selectedEmployee?.employeeType || "{{Full-Time / Part-Time}}";
+
+    setComplianceReportEmailSubject(`Personnel Report Request – ${employeeName} – ${position}`);
+    setComplianceReportEmailBody(
+      `Hi ${complianceName},\n\n` +
+        "Please help prepare the Staff Personnel Report for the following new hire:\n\n" +
+        "Employee Information\n\n" +
+        `Employee Name: ${employeeName}\n` +
+        `Position/Title: ${position}\n` +
+        `Initial Employment Date: ${initialEmploymentDate}\n` +
+        `Years in Current Position: ${currentPositionYears}\n` +
+        `Employment Status: ${employmentStatus}\n\n` +
+        "The employee’s resume and offer letter can be found in the New Hire Google Drive folder below:\n\n" +
+        "Google Drive: ______________________________\n\n" +
+        "Please use the resume, offer letter, and the information above to prepare the Personnel Report.\n\n" +
+        "If any additional information or documentation is needed, please let HR know.\n\n" +
+        "Thank you,\n\n" +
+        "HR"
+    );
+    setComplianceReportEmailResult(null);
+    setShowComplianceReportEmailModal(true);
+  };
+
+  const sendComplianceReportEmail = async () => {
+    if (!complianceReportEmailTo.trim() || !complianceReportEmailSubject.trim() || !complianceReportEmailBody.trim()) {
+      setComplianceReportEmailResult({ error: true, message: "To, subject, and email body are required." });
+      return;
+    }
+
+    setSendingComplianceReportEmail(true);
+    setComplianceReportEmailResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("to", complianceReportEmailTo.trim());
+      formData.append("cc", complianceReportEmailCc.trim());
+      formData.append("subject", complianceReportEmailSubject.trim());
+      formData.append("body", complianceReportEmailBody.trim());
+
+      const response = await fetch("/api/email/send", { method: "POST", body: formData });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Failed to send personnel report email.");
+
+      setComplianceReportEmailResult({ error: false, message: "Personnel report request email sent successfully." });
+    } catch (error) {
+      setComplianceReportEmailResult({
+        error: true,
+        message: error instanceof Error ? error.message : "Failed to send personnel report email.",
+      });
+    } finally {
+      setSendingComplianceReportEmail(false);
+    }
+  };
+
   const onboarding = getResolvedOnboarding(selectedEmployee);
   const canManageStep2Forms =
     viewMode === "admin" &&
@@ -580,6 +691,12 @@ export default function OnboardingModule({
     ? "Contractor"
     : selectedEmployee?.employmentStatus === "Faculty" ? "Faculty" : "Employee";
   const workLocation = selectedEmployee?.staffWorkLocation === "Taiwan (Remote)" ? "Taiwan" : "US";
+  const accountingEmail = useMemo(() => {
+    const accountant = sortedEmployees.find((employee) =>
+      /accountant|accounting|paoying huang/i.test(`${employee.position} ${employee.department} ${employee.name}`)
+    );
+    return accountant?.email || accountant?.personalEmail || "";
+  }, [sortedEmployees]);
 
   const loadStaffFormTemplates = async () => {
     if (!selectedEmployee) return;
@@ -784,6 +901,24 @@ export default function OnboardingModule({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePayrollEmailSent = async () => {
+    if (!selectedEmployee) return;
+
+    const nextForms = step2Forms.map((form) =>
+      form.name === PAYROLL_EMAIL_ACTION
+        ? {
+            ...form,
+            status: "Approved" as const,
+            dateCompleted: getTodayPacificDate(),
+            verifiedBy: "HR",
+          }
+        : form
+    );
+    setStep2Forms(nextForms);
+    await onSaveStep2(selectedEmployee.id, { forms: nextForms });
+    setSaveStatus({ ok: true, msg: "Payroll email sent and follow-up action completed." });
   };
 
   const handleStep3StatusAction = (
@@ -1174,6 +1309,17 @@ export default function OnboardingModule({
                         </button>
                       </div>
                     )}
+                    {section.title === "Sub-step 4: Annual renewal items" && viewMode === "admin" && (
+                      <div className="mr-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={openComplianceReportEmailModal}
+                          className="border border-violet-300 bg-white px-3 py-1.5 rounded-lg text-sm font-semibold text-violet-700 hover:bg-violet-50"
+                        >
+                          ✉ Send Email
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {isOpen && (
                     <div className="p-4 space-y-4">
@@ -1216,6 +1362,23 @@ export default function OnboardingModule({
 
                               {/* Context-sensitive action buttons */}
                               <div className="flex items-center gap-2 shrink-0">
+                                {item.name === PAYROLL_EMAIL_ACTION ? (
+                                  form.status === "Approved" ? (
+                                    <span className="text-xs font-semibold text-emerald-700">
+                                      Sent {form.dateCompleted || ""}
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowPayrollEmailModal(true)}
+                                      disabled={saving || viewMode !== "admin"}
+                                      className="px-3 py-1 rounded-md border border-cyan-300 bg-cyan-50 text-cyan-800 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-cyan-100"
+                                    >
+                                      Send Payroll Email
+                                    </button>
+                                  )
+                                ) : (
+                                  <>
                                 {form.status === "Pending" && (
                                   <>
                                     <button
@@ -1265,6 +1428,8 @@ export default function OnboardingModule({
                                   >
                                     Reset
                                   </button>
+                                )}
+                                  </>
                                 )}
                               </div>
 
@@ -1800,6 +1965,19 @@ export default function OnboardingModule({
           onSent={() => setDocumentRequestSentForEmployeeId(selectedEmployee.id)}
         />
       )}
+      {showPayrollEmailModal && selectedEmployee && viewMode === "admin" && (
+        <PayrollSetupEmailModal
+          employeeId={selectedEmployee.id}
+          employeeName={selectedEmployee.name}
+          jobTitle={selectedEmployee.position}
+          startDate={selectedEmployee.joinDate}
+          monthlySalary={selectedEmployee.monthlySalaryDuringProbation ?? selectedEmployee.monthlySalaryAfterProbation}
+          workLocation={workLocation}
+          accountingEmail={accountingEmail}
+          onClose={() => setShowPayrollEmailModal(false)}
+          onSent={() => void handlePayrollEmailSent()}
+        />
+      )}
       {showPoliciesEmailModal && selectedEmployee && viewMode === "admin" && (
         <Step3HRPoliciesEmailModal
           employeeName={selectedEmployee.name}
@@ -1813,8 +1991,51 @@ export default function OnboardingModule({
           employeeName={selectedEmployee.name}
           employeeEmail={selectedEmployee.email || selectedEmployee.personalEmail || ""}
           personalEmail={selectedEmployee.personalEmail || ""}
+          employmentStatus={selectedEmployee.employmentStatus}
           onClose={() => setShowTrainingEmailModal(false)}
         />
+      )}
+      {showComplianceReportEmailModal && selectedEmployee && viewMode === "admin" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h5 className="text-lg font-bold text-gray-900">Send Personnel Report Request Email</h5>
+              <button type="button" onClick={() => setShowComplianceReportEmailModal(false)} className="text-xl text-gray-500 hover:text-gray-800" aria-label="Close">x</button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="compliance-report-email-to" className="text-xs font-semibold uppercase text-gray-500">To</label>
+                <input id="compliance-report-email-to" value={complianceReportEmailTo} onChange={(event) => setComplianceReportEmailTo(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
+              </div>
+              <div>
+                <label htmlFor="compliance-report-email-cc" className="text-xs font-semibold uppercase text-gray-500">CC</label>
+                <input id="compliance-report-email-cc" value={complianceReportEmailCc} onChange={(event) => setComplianceReportEmailCc(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
+              </div>
+              <div>
+                <label htmlFor="compliance-report-email-subject" className="text-xs font-semibold uppercase text-gray-500">Subject</label>
+                <input id="compliance-report-email-subject" value={complianceReportEmailSubject} onChange={(event) => setComplianceReportEmailSubject(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
+              </div>
+              <div>
+                <label htmlFor="compliance-report-email-body" className="mb-1 text-xs font-semibold uppercase text-gray-500">Email Body</label>
+                <textarea id="compliance-report-email-body" value={complianceReportEmailBody} onChange={(event) => setComplianceReportEmailBody(event.target.value)} rows={14} className="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 p-4 font-sans text-sm text-gray-800" />
+              </div>
+            </div>
+
+            {complianceReportEmailResult && (
+              <p className={`mt-4 text-sm font-medium ${complianceReportEmailResult.error ? "text-red-600" : "text-emerald-600"}`}>
+                {complianceReportEmailResult.message}
+              </p>
+            )}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setShowComplianceReportEmailModal(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={() => void sendComplianceReportEmail()} disabled={sendingComplianceReportEmail} className="rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-600 disabled:bg-violet-300">
+                {sendingComplianceReportEmail ? "Sending..." : "Send Email"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

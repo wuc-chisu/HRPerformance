@@ -380,7 +380,9 @@ export async function PUT(
         staffWorkLocation: staffWorkLocation || "USA",
         employeeType: employeeType || "Full time",
         contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
-        employmentStatus: employmentStatus === "Faculty" ? "Faculty" : "Employee",
+        employmentStatus: employmentStatus === "Faculty" || employmentStatus === "Employee"
+          ? employmentStatus
+          : "Employee",
         systemRole: systemRole || "Employee",
         officeSchedule: officeSchedule ?? null,
         overallOverdueTasks: overallOverdueTasks || 0,
@@ -472,6 +474,7 @@ export async function PUT(
         endDate: formatDateForResponse(record.endDate),
         plannedWorkHours: record.plannedWorkHours,
         actualWorkHours: record.actualWorkHours,
+        averageQualityOfWorkScore: record.averageQualityOfWorkScore,
         assignedTasks: record.assignedTasks,
         assignedTasksDetails: (record as any).assignedTasksDetails || [],
         weeklyOverdueTasks: record.weeklyOverdueTasks,

@@ -2,7 +2,10 @@
 
 import { AssignedTaskDetail, Employee, HolidayRecord, OverdueTaskDetail, TimeOffRequest, WeeklyRecord } from "@/lib/employees";
 import { allocateHoursAcrossOverlaps, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
-import { calculateWeeklyPerformanceScore } from "@/lib/performanceScoring";
+import {
+  calculateWeeklyPerformanceScore,
+  getPerformanceScoringVersion,
+} from "@/lib/performanceScoring";
 import { formatDateInPacific } from "@/lib/dateUtils";
 import { useMemo, useState } from "react";
 import AssignedTaskManager from "./AssignedTaskManager";
@@ -134,8 +137,15 @@ export default function WeeklyRecordsTable({
   }, [employee.weeklyRecords, employee.staffWorkLocation, holidays]);
 
   const getPerformanceStatus = (record: WeeklyRecord) => {
+    const scoringVersion = getPerformanceScoringVersion(record.startDate);
     const hoursStatus =
-      record.actualWorkHours >= record.plannedWorkHours ? "good" : "poor";
+      scoringVersion === "LEGACY_WORK_HOURS"
+        ? record.actualWorkHours >= record.plannedWorkHours
+          ? "good"
+          : "poor"
+        : (record.averageQualityOfWorkScore ?? 0) >= 3.5
+          ? "good"
+          : "poor";
     const tasksStatus = record.weeklyOverdueTasks === 0 ? "good" : "poor";
 
     return {
@@ -414,7 +424,7 @@ export default function WeeklyRecordsTable({
                 Week End
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Hours (Actual/Planned)
+                Average Quality Rating
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                 Assigned Tasks
@@ -440,6 +450,7 @@ export default function WeeklyRecordsTable({
               const rowUpdates =
                 (record.recordId && pendingUpdates[record.recordId]) || undefined;
               const status = getPerformanceStatus(record);
+              const scoringVersion = getPerformanceScoringVersion(record.startDate);
               const assignedDetailsTotal = (
                 rowUpdates?.assignedTasksDetails || record.assignedTasksDetails || []
               ).reduce((sum, detail) => sum + detail.count, 0);
@@ -475,13 +486,12 @@ export default function WeeklyRecordsTable({
                       year: "numeric",
                     })}
                   </td>
-                  <td
-                    className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${
-                      status.hours === "good"
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${status.hours === "good" ? "text-green-600" : "text-red-600"}`}>
+                    {scoringVersion === "QUALITY_OF_WORK" ? (
+                      <span>
+                        {record.averageQualityOfWorkScore?.toFixed(2) ?? "N/A"} / 5
+                      </span>
+                    ) : (
                     <div>
                       <div className="relative inline-block group">
                         {record.actualWorkHours}/
@@ -511,6 +521,7 @@ export default function WeeklyRecordsTable({
                         })()}
                       </div>
                     </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                     <div className="flex items-center gap-3">

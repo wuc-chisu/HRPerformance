@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { WeeklyRecord } from "@/lib/employees";
 import { parseDateInPacific } from "@/lib/dateUtils";
+import { getPerformanceScoringVersion } from "@/lib/performanceScoring";
 
 interface AddEditWeeklyRecordProps {
   record?: WeeklyRecord;
@@ -34,8 +35,10 @@ export default function AddEditWeeklyRecord({
       new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0],
-    plannedWorkHours: defaultPlannedHours,
-    actualWorkHours: record?.actualWorkHours || defaultPlannedHours,
+    plannedWorkHours: record?.plannedWorkHours ?? defaultPlannedHours,
+    actualWorkHours: record?.actualWorkHours ?? defaultPlannedHours,
+    averageQualityOfWorkScore:
+      record?.averageQualityOfWorkScore?.toFixed(2) || "",
     assignedTasks: record?.assignedTasks || 0,
     weeklyOverdueTasks: record?.weeklyOverdueTasks || 0,
   });
@@ -46,6 +49,7 @@ export default function AddEditWeeklyRecord({
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+    const scoringVersion = getPerformanceScoringVersion(formData.startDate);
 
     if (!formData.startDate) newErrors.startDate = "Start date is required";
     if (!formData.endDate) newErrors.endDate = "End date is required";
@@ -58,14 +62,23 @@ export default function AddEditWeeklyRecord({
       }
     }
 
-    if (formData.plannedWorkHours < 0)
-      newErrors.plannedWorkHours = "Planned hours cannot be negative";
-    if (formData.plannedWorkHours > 168)
-      newErrors.plannedWorkHours = "Planned hours cannot exceed 168";
-    if (formData.actualWorkHours < 0)
-      newErrors.actualWorkHours = "Actual hours cannot be negative";
-    if (formData.actualWorkHours > 168)
-      newErrors.actualWorkHours = "Actual hours cannot exceed 168";
+    if (scoringVersion === "LEGACY_WORK_HOURS") {
+      if (formData.plannedWorkHours < 0 || formData.plannedWorkHours > 168) {
+        newErrors.plannedWorkHours = "Planned hours must be between 0 and 168";
+      }
+      if (formData.actualWorkHours < 0 || formData.actualWorkHours > 168) {
+        newErrors.actualWorkHours = "Actual hours must be between 0 and 168";
+      }
+    } else {
+      const qualityScore = Number(formData.averageQualityOfWorkScore);
+      if (!formData.averageQualityOfWorkScore || !Number.isFinite(qualityScore)) {
+        newErrors.averageQualityOfWorkScore = "Average Quality of Work Score is required";
+      } else if (qualityScore < 1 || qualityScore > 5) {
+        newErrors.averageQualityOfWorkScore = "Enter a score from 1.00 to 5.00";
+      } else if (!/^\d+(\.\d{1,2})?$/.test(formData.averageQualityOfWorkScore)) {
+        newErrors.averageQualityOfWorkScore = "Enter no more than 2 decimal places";
+      }
+    }
     if (formData.assignedTasks < 0)
       newErrors.assignedTasks = "Assigned tasks cannot be negative";
     if (formData.weeklyOverdueTasks < 0)
@@ -83,7 +96,16 @@ export default function AddEditWeeklyRecord({
 
     try {
       setIsSubmitting(true);
-      await onSave(formData, setApiError);
+      await onSave(
+        {
+          ...formData,
+          averageQualityOfWorkScore:
+            getPerformanceScoringVersion(formData.startDate) === "QUALITY_OF_WORK"
+              ? Number(formData.averageQualityOfWorkScore)
+              : record?.averageQualityOfWorkScore ?? null,
+        },
+        setApiError
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -97,7 +119,9 @@ export default function AddEditWeeklyRecord({
       ...prev,
       [name]: ["startDate", "endDate"].includes(name)
         ? value
-        : Math.max(0, parseFloat(value) || 0),
+        : name === "averageQualityOfWorkScore"
+          ? value
+          : Math.max(0, parseFloat(value) || 0),
     }));
     // Clear error for this field
     if (errors[name]) {
@@ -178,62 +202,61 @@ export default function AddEditWeeklyRecord({
             </div>
           </div>
 
-          {/* Work Hours - 2 columns */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Planned Hours */}
+          {getPerformanceScoringVersion(formData.startDate) ===
+          "LEGACY_WORK_HOURS" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(["plannedWorkHours", "actualWorkHours"] as const).map((field) => (
+                <div key={field}>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    {field === "plannedWorkHours" ? "Planned Hours *" : "Actual Work Hours *"}
+                  </label>
+                  <input
+                    type="number"
+                    name={field}
+                    value={formData[field]}
+                    onChange={handleChange}
+                    min="0"
+                    max="168"
+                    step="0.5"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition ${
+                      errors[field]
+                        ? "border-red-500 bg-red-50"
+                        : "border-gray-300 hover:border-gray-400"
+                    }`}
+                  />
+                  {errors[field] && (
+                    <p className="text-red-600 text-sm mt-1">{errors[field]}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Planned Work Hours *
+                Average Quality of Work Score *
               </label>
               <input
                 type="number"
-                name="plannedWorkHours"
-                value={formData.plannedWorkHours}
+                name="averageQualityOfWorkScore"
+                value={formData.averageQualityOfWorkScore}
                 onChange={handleChange}
-                min="0"
-                max="168"
-                step="0.5"
-                placeholder="e.g., 40"
+                min="1"
+                max="5"
+                step="0.01"
+                placeholder="e.g., 3.80"
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition ${
-                  errors.plannedWorkHours
+                  errors.averageQualityOfWorkScore
                     ? "border-red-500 bg-red-50"
                     : "border-gray-300 hover:border-gray-400"
                 }`}
               />
-              {errors.plannedWorkHours && (
+              {errors.averageQualityOfWorkScore && (
                 <p className="text-red-600 text-sm mt-1">
-                  {errors.plannedWorkHours}
+                  {errors.averageQualityOfWorkScore}
                 </p>
               )}
             </div>
-
-            {/* Actual Hours */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Actual Work Hours *
-              </label>
-              <input
-                type="number"
-                name="actualWorkHours"
-                value={formData.actualWorkHours}
-                onChange={handleChange}
-                min="0"
-                max="168"
-                step="0.5"
-                placeholder="e.g., 40"
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition ${
-                  errors.actualWorkHours
-                    ? "border-red-500 bg-red-50"
-                    : "border-gray-300 hover:border-gray-400"
-                }`}
-              />
-              {errors.actualWorkHours && (
-                <p className="text-red-600 text-sm mt-1">
-                  {errors.actualWorkHours}
-                </p>
-              )}
-            </div>
-          </div>
+          )}
 
           {/* Tasks - 2 columns */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

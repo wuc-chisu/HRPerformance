@@ -2,6 +2,7 @@
 
 import { Employee } from "@/lib/employees";
 import { formatCompactDate, formatShortDate } from "@/lib/dateUtils";
+import { getPerformanceScoringVersion } from "@/lib/performanceScoring";
 
 const SHOW_LATEST_WEEK_PERFORMANCE = false;
 
@@ -15,10 +16,15 @@ export default function EmployeeCard({
   onSelect,
 }: EmployeeCardProps) {
   const latestWeek = employee.weeklyRecords[0];
-  const hoursStatus =
-    latestWeek && latestWeek.actualWorkHours >= latestWeek.plannedWorkHours
-      ? "text-green-600"
-      : "text-red-600";
+  const hoursStatus = latestWeek
+    ? getPerformanceScoringVersion(latestWeek.startDate) === "LEGACY_WORK_HOURS"
+      ? latestWeek.actualWorkHours >= latestWeek.plannedWorkHours
+        ? "text-green-600"
+        : "text-red-600"
+      : (latestWeek.averageQualityOfWorkScore ?? 0) >= 4.5
+        ? "text-green-600"
+        : "text-red-600"
+    : "text-gray-600";
 
   // Debug logging
   if (!employee.department) {

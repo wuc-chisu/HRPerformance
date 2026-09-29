@@ -986,8 +986,9 @@ export default function Home() {
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            const message = errorData.details
-              ? `${errorData.error || "Failed to update weekly record"}: ${errorData.details}`
+            const errorDetails = errorData.details || errorData.message;
+            const message = errorDetails
+              ? `${errorData.error || "Failed to update weekly record"}: ${errorDetails}`
               : errorData.error || "Failed to update weekly record";
             throw new Error(message);
           }

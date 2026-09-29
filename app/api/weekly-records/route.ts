@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { formatDateForResponse, parseDateForDatabase } from "@/lib/dateUtils";
 import { allocateHoursAcrossOverlaps, countOverlappingDays, getDateSpanDays, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
+import { getPerformanceScoringVersion } from "@/lib/performanceScoring";
 import { NextResponse } from "next/server";
 
 type PendingApprovedTimeOffRequest = {
@@ -30,6 +31,7 @@ type WeeklyRecordModel = {
       endDate: Date;
       plannedWorkHours: number;
       actualWorkHours: number;
+      averageQualityOfWorkScore: number | null;
       assignedTasks: number;
       assignedTasksDetails: unknown[];
       weeklyOverdueTasks: number;
@@ -44,6 +46,7 @@ type WeeklyRecordModel = {
     endDate: Date;
     plannedWorkHours: number;
     actualWorkHours: number;
+    averageQualityOfWorkScore: number | null;
     assignedTasks: number;
     assignedTasksDetails: unknown[];
     weeklyOverdueTasks: number;
@@ -92,6 +95,7 @@ export async function POST(request: Request) {
       endDate,
       plannedWorkHours,
       actualWorkHours,
+      averageQualityOfWorkScore,
       assignedTasks,
       assignedTasksDetails,
       weeklyOverdueTasks,
@@ -100,6 +104,19 @@ export async function POST(request: Request) {
       allOverdueTasksDetails,
       managerComment,
     } = body;
+
+    if (
+      getPerformanceScoringVersion(startDate) === "QUALITY_OF_WORK" &&
+      (!Number.isFinite(Number(averageQualityOfWorkScore)) ||
+        Number(averageQualityOfWorkScore) < 1 ||
+        Number(averageQualityOfWorkScore) > 5 ||
+        !/^\d+(\.\d{1,2})?$/.test(String(averageQualityOfWorkScore)))
+    ) {
+      return NextResponse.json(
+        { error: "Average Quality of Work Score must be between 1.00 and 5.00 with up to 2 decimal places" },
+        { status: 400 }
+      );
+    }
 
     const employee = await prisma.employee.findUnique({
       where: { employeeId },
@@ -145,6 +162,7 @@ export async function POST(request: Request) {
             endDate: formatDateForResponse(duplicateRecord.endDate),
             plannedWorkHours: duplicateRecord.plannedWorkHours,
             actualWorkHours: duplicateRecord.actualWorkHours,
+            averageQualityOfWorkScore: duplicateRecord.averageQualityOfWorkScore,
           },
         },
         { status: 409 }
@@ -161,6 +179,10 @@ export async function POST(request: Request) {
           endDate: parsedEndDate,
           plannedWorkHours,
           actualWorkHours,
+          averageQualityOfWorkScore:
+            averageQualityOfWorkScore == null
+              ? null
+              : Number(averageQualityOfWorkScore),
           assignedTasks: assignedTasksValue,
           assignedTasksDetails: safeAssignedTasksDetails,
           weeklyOverdueTasks: Array.isArray(overdueTasksDetails)
@@ -339,6 +361,7 @@ export async function POST(request: Request) {
       endDate: formatDateForResponse(record.endDate),
       plannedWorkHours: record.plannedWorkHours,
       actualWorkHours: record.actualWorkHours,
+      averageQualityOfWorkScore: record.averageQualityOfWorkScore,
       assignedTasks: record.assignedTasks,
       assignedTasksDetails: record.assignedTasksDetails || [],
       weeklyOverdueTasks: record.weeklyOverdueTasks,

@@ -69,7 +69,6 @@ const DEFAULT_STEPS: PreboardingStep[] = [
   },
 ];
 
-const DEFAULT_FROM = "Human Resource <hr@wuc.edu>";
 const DEFAULT_BCC = "yannhuang@wuc.edu,coo@wuc.edu";
 
 const findEmployeeByPattern = (employees: Employee[], pattern: RegExp): Employee | undefined =>
@@ -282,7 +281,6 @@ const sendEmailRequest = async (
   to: string,
   subject: string,
   body: string,
-  from: string,
   cc: string,
   bcc: string,
   attachments: File[] = []
@@ -291,9 +289,6 @@ const sendEmailRequest = async (
   formData.append("to", to);
   formData.append("subject", subject);
   formData.append("body", body);
-  if (from) {
-    formData.append("from", from);
-  }
   if (cc) {
     formData.append("cc", cc);
   }
@@ -566,7 +561,6 @@ export default function NewHirePreboardingSOP({
     to: string,
     subject: string,
     body: string,
-    from: string,
     cc: string,
     bcc: string,
     attachments: File[] = []
@@ -576,7 +570,6 @@ export default function NewHirePreboardingSOP({
     const trimmedTo = to.trim();
     const trimmedSubject = subject.trim();
     const trimmedBody = body.trim();
-    const trimmedFrom = from.trim();
     const trimmedCc = cc.trim();
     const trimmedBcc = bcc.trim();
 
@@ -623,7 +616,6 @@ export default function NewHirePreboardingSOP({
         toAddresses[0],
         trimmedSubject,
         trimmedBody,
-        trimmedFrom,
         trimmedCc,
         trimmedBcc,
         attachments
@@ -983,7 +975,6 @@ export default function NewHirePreboardingSOP({
                           stepEmailTos[step.key] || getStepEmailTo(step.key, employees, activeEmployees, selectedEmployee),
                           stepEmailSubjects[step.key] || getStepEmailSubject(step.key, selectedEmployee),
                           stepEmailDrafts[step.key] || "",
-                          "Human Resource <hr@wuc.edu>",
                           stepEmailCcs[step.key] !== undefined
                             ? stepEmailCcs[step.key]
                             : getStepEmailCc(step.key, employees, activeEmployees),

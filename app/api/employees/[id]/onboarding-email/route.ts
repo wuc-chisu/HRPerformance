@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-type OnboardingEmailType = "forms" | "documents";
+type OnboardingEmailType = "forms" | "documents" | "payroll";
 
 export async function POST(
   request: Request,
@@ -12,13 +12,15 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const emailType = body?.emailType as OnboardingEmailType;
 
-    if (!employeeId || !["forms", "documents"].includes(emailType)) {
+    if (!employeeId || !["forms", "documents", "payroll"].includes(emailType)) {
       return NextResponse.json({ error: "A valid employee ID and email type are required." }, { status: 400 });
     }
 
     const field = emailType === "forms"
       ? "onboardingStep2FormsEmailSentAt"
-      : "onboardingStep2DocumentsEmailSentAt";
+      : emailType === "documents"
+        ? "onboardingStep2DocumentsEmailSentAt"
+        : "onboardingStep2PayrollEmailSentAt";
 
     const updated = await prisma.employee.updateMany({
       where: { employeeId },

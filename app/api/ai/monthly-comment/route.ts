@@ -12,7 +12,9 @@ interface MonthlyCommentRequest {
     totalScore: number;
     rating: string;
     breakdown: {
+      scoringVersion: "LEGACY_WORK_HOURS" | "QUALITY_OF_WORK";
       workHoursFulfillment: number;
+      qualityOfWork: number;
       taskPriorityHandling: number;
       taskCompletionRate: number;
       pastDueTaskManagement: number;
@@ -36,9 +38,12 @@ function buildMonthlyFallbackComment(params: {
   monthlyRating: string;
   weeklyCount: number;
   avgWorkHours: number;
+  avgQuality: number;
   avgPriority: number;
   avgCompletion: number;
   avgPastDue: number;
+  hasLegacyWeeks: boolean;
+  hasQualityWeeks: boolean;
   trend: string;
   lowAreas: string[];
   priorityDeductionSummary?: string;
@@ -52,9 +57,12 @@ function buildMonthlyFallbackComment(params: {
     monthlyRating,
     weeklyCount,
     avgWorkHours,
+    avgQuality,
     avgPriority,
     avgCompletion,
     avgPastDue,
+    hasLegacyWeeks,
+    hasQualityWeeks,
     trend,
     lowAreas,
     isExcellentPerformance,
@@ -69,6 +77,9 @@ function buildMonthlyFallbackComment(params: {
   }
   if (avgWorkHours >= 20) {
     strengths.push("you generally fulfilled work hour expectations and maintained reliable contribution");
+  }
+  if (avgQuality >= 20) {
+    strengths.push("your Quality of Work ratings reflected consistently strong work quality");
   }
   if (avgPastDue >= 27) {
     strengths.push("your past due task management was excellent with minimal overdue exposure throughout the month");
@@ -106,9 +117,16 @@ function buildMonthlyFallbackComment(params: {
   const lowAreaText = lowAreas.length
     ? lowAreas.join(", ")
     : "Past Due Task Management";
+  const categoryAverages = [
+    ...(hasLegacyWeeks ? [`Work Hours Fulfillment ${avgWorkHours.toFixed(1)}/25`] : []),
+    ...(hasQualityWeeks ? [`Quality of Work ${avgQuality.toFixed(1)}/25`] : []),
+    `Task Priority Handling ${avgPriority.toFixed(1)}/20`,
+    `Task Completion Rate ${avgCompletion.toFixed(1)}/25`,
+    `Past Due Task Management ${avgPastDue.toFixed(1)}/30`,
+  ].join(", ");
   const paragraphTwo =
     `Critical areas now require immediate correction: ${lowAreaText}. ` +
-    `Your category averages are Work Hours Fulfillment ${avgWorkHours.toFixed(1)}/25, Task Priority Handling ${avgPriority.toFixed(1)}/20, Task Completion Rate ${avgCompletion.toFixed(1)}/25, and Past Due Task Management ${avgPastDue.toFixed(1)}/30, which indicates ongoing execution gaps that must be addressed right away. ` +
+    `Your category averages are ${categoryAverages}, which indicates ongoing execution gaps that must be addressed right away. ` +
     `Please correct this immediately to prevent continued risk to overall monthly performance.`;
 
   const paragraphThree =
@@ -186,8 +204,19 @@ export async function POST(request: Request) {
     const bestWeek = sortedByScore[0];
     const worstWeek = sortedByScore[sortedByScore.length - 1];
 
-    // Calculate average breakdown scores
-    const avgWorkHours = weeklyScores.reduce((sum, ws) => sum + ws.breakdown.workHoursFulfillment, 0) / weeklyScores.length;
+    // Average each version-specific first category only across records that use it.
+    const legacyWeeks = weeklyScores.filter(
+      (ws) => ws.breakdown.scoringVersion === "LEGACY_WORK_HOURS"
+    );
+    const qualityWeeks = weeklyScores.filter(
+      (ws) => ws.breakdown.scoringVersion === "QUALITY_OF_WORK"
+    );
+    const avgWorkHours = legacyWeeks.length
+      ? legacyWeeks.reduce((sum, ws) => sum + ws.breakdown.workHoursFulfillment, 0) / legacyWeeks.length
+      : 0;
+    const avgQuality = qualityWeeks.length
+      ? qualityWeeks.reduce((sum, ws) => sum + ws.breakdown.qualityOfWork, 0) / qualityWeeks.length
+      : 0;
     const avgPriority = weeklyScores.reduce((sum, ws) => sum + ws.breakdown.taskPriorityHandling, 0) / weeklyScores.length;
     const avgCompletion = weeklyScores.reduce((sum, ws) => sum + ws.breakdown.taskCompletionRate, 0) / weeklyScores.length;
     const avgPastDue = weeklyScores.reduce((sum, ws) => sum + ws.breakdown.pastDueTaskManagement, 0) / weeklyScores.length;
@@ -212,8 +241,11 @@ export async function POST(request: Request) {
     const pastDueThreshold = 21;
     const lowAreas: string[] = [];
 
-    if (avgWorkHours < workHoursThreshold) {
+    if (legacyWeeks.length > 0 && avgWorkHours < workHoursThreshold) {
       lowAreas.push("Work Hours Fulfillment");
+    }
+    if (qualityWeeks.length > 0 && avgQuality < workHoursThreshold) {
+      lowAreas.push("Quality of Work");
     }
     if (avgPriority < taskPriorityThreshold) {
       lowAreas.push("Task Priority Handling");
@@ -226,6 +258,21 @@ export async function POST(request: Request) {
     }
 
     const isExcellentPerformance = lowAreas.length === 0;
+
+    const categoryAveragesPrompt = [
+      ...(legacyWeeks.length > 0 ? [`- Work Hours Fulfillment: ${avgWorkHours.toFixed(1)}/25`] : []),
+      ...(qualityWeeks.length > 0 ? [`- Quality of Work: ${avgQuality.toFixed(1)}/25`] : []),
+      `- Task Priority Handling: ${avgPriority.toFixed(1)}/20`,
+      `- Task Completion Rate: ${avgCompletion.toFixed(1)}/25`,
+      `- Past Due Task Management: ${avgPastDue.toFixed(1)}/30`,
+    ].join("\n");
+    const categoryStatusPrompt = [
+      ...(legacyWeeks.length > 0 ? [`- Work Hours Fulfillment: ${avgWorkHours < workHoursThreshold ? "LOW" : "OK"}`] : []),
+      ...(qualityWeeks.length > 0 ? [`- Quality of Work: ${avgQuality < workHoursThreshold ? "LOW" : "OK"}`] : []),
+      `- Task Priority Handling: ${avgPriority < taskPriorityThreshold ? "LOW" : "OK"}`,
+      `- Task Completion Rate: ${avgCompletion < taskCompletionThreshold ? "LOW" : "OK"}`,
+      `- Past Due Task Management: ${avgPastDue < pastDueThreshold ? "LOW" : "OK"}`,
+    ].join("\n");
 
     const promptBase = `You are a professional HR performance evaluation assistant.
 
@@ -264,7 +311,7 @@ Monthly performance data for ${monthName} ${year}:
 - Lowest week score: ${worstWeek.totalScore.toFixed(2)} (${worstWeek.rating})
 
 Average scores by category:
-- Work Hours Fulfillment: ${avgWorkHours.toFixed(1)}/25
+${categoryAveragesPrompt}
 - Task Priority Handling: ${avgPriority.toFixed(1)}/20
 - Task Priority Handling direct deduction rule: urgent overdue tasks, high overdue tasks, and assigned tasks with no priority create direct deductions.
 - Weekly task priority direct deduction summary: ${priorityDeductionSummary}
@@ -272,10 +319,7 @@ Average scores by category:
 - Past Due Task Management: ${avgPastDue.toFixed(1)}/30
 
 Category status:
-- Work Hours Fulfillment: ${avgWorkHours < workHoursThreshold ? "LOW" : "OK"}
-- Task Priority Handling: ${avgPriority < taskPriorityThreshold ? "LOW" : "OK"}
-- Task Completion Rate: ${avgCompletion < taskCompletionThreshold ? "LOW" : "OK"}
-- Past Due Task Management: ${avgPastDue < pastDueThreshold ? "LOW" : "OK"}
+${categoryStatusPrompt}
 - LOW categories that MUST be addressed: ${lowAreas.length ? lowAreas.join(", ") : "none"}
 
 Weekly scores: ${weeklyScores.map(ws => ws.totalScore.toFixed(1)).join(", ")}
@@ -425,9 +469,12 @@ Return only the monthly summary comment.`;
         monthlyRating,
         weeklyCount: weeklyScores.length,
         avgWorkHours,
+        avgQuality,
         avgPriority,
         avgCompletion,
         avgPastDue,
+        hasLegacyWeeks: legacyWeeks.length > 0,
+        hasQualityWeeks: qualityWeeks.length > 0,
         trend,
         lowAreas,
         priorityDeductionSummary,

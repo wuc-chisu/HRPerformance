@@ -10,10 +10,7 @@ export async function POST(request: Request) {
     const body = String(formData.get("body") || "").trim();
     const cc = String(formData.get("cc") || "").trim();
     const bcc = String(formData.get("bcc") || "").trim();
-    const fromAddress =
-      String(formData.get("from") || "").trim() ||
-      process.env.HR_EMAIL_FROM ||
-      "Human Resource <hr@wuc.edu>";
+    const fromAddress = "hr@wuc.edu";
 
     if (!to || !subject || !body || !fromAddress) {
       return NextResponse.json(

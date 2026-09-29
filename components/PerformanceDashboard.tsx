@@ -1,6 +1,7 @@
 "use client";
 
 import { employees as defaultEmployees } from "@/lib/employees";
+import { getPerformanceScoringVersion } from "@/lib/performanceScoring";
 
 interface PerformanceDashboardProps {
   employees?: typeof defaultEmployees;
@@ -15,11 +16,13 @@ export default function PerformanceDashboard({
       const allOverdueCount = e.weeklyRecords[0]?.allOverdueTasks ?? e.overallOverdueTasks ?? 0;
       return allOverdueCount > 0;
     }).length,
-    perfectAttendance: employees.filter(
-      (e) =>
-        e.weeklyRecords[0] &&
-        e.weeklyRecords[0].actualWorkHours >= e.weeklyRecords[0].plannedWorkHours
-    ).length,
+    strongWeeklyMeasure: employees.filter((employee) => {
+      const record = employee.weeklyRecords[0];
+      if (!record) return false;
+      return getPerformanceScoringVersion(record.startDate) === "LEGACY_WORK_HOURS"
+        ? record.actualWorkHours >= record.plannedWorkHours
+        : (record.averageQualityOfWorkScore ?? 0) >= 4.5;
+    }).length,
     totalOverdueTasks: employees.reduce(
       (sum, e) => sum + (e.weeklyRecords[0]?.allOverdueTasks ?? e.overallOverdueTasks ?? 0),
       0
@@ -61,10 +64,10 @@ export default function PerformanceDashboard({
 
         <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-green-300">
           <p className="text-gray-600 text-sm font-semibold uppercase">
-            On Time This Week
+            Strong Weekly Measure
           </p>
           <p className="text-3xl font-bold text-green-400 mt-2">
-            {stats.perfectAttendance}
+            {stats.strongWeeklyMeasure}
           </p>
         </div>
 

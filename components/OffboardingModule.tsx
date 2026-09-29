@@ -198,6 +198,75 @@ function buildInternalNotificationBody(params: {
   ].join("\n");
 }
 
+function buildAccessSuspensionNotificationBody(params: {
+  employeeName: string;
+  jobTitle: string;
+  lastWorkingDate: string;
+}) {
+  const { employeeName, jobTitle, lastWorkingDate } = params;
+  const safeName = employeeName || "[Employee Name]";
+  const safeTitle = jobTitle || "[Job Title]";
+  const safeLwd = lastWorkingDate || "[Last Working Date]";
+
+  return [
+    "Dear IT / System Administrator,",
+    "",
+    `Please suspend access for ${safeName}, ${safeTitle}, effective no later than ${safeLwd}.`,
+    "",
+    "Please complete the following access suspension actions:",
+    "- Disable Gmail",
+    "- Disable Google Drives",
+    "- Disable Google Admin (if applicable)",
+    "- Disable Moodle",
+    "- Disable Google Classroom",
+    "- Disable ClickUp",
+    "- Disable VPN / remote access",
+    "- Disable internal / third-party systems",
+    "- Disable email login access",
+    "",
+    "Please confirm once all applicable access has been disabled and note any exceptions or follow-up actions.",
+    "",
+    "Thank you,",
+    "Human Resources",
+    "Whitewater University of California",
+  ].join("\n");
+}
+
+function buildAcknowledgementRequestBody(employeeName: string) {
+  const employeeFirstName = employeeName.trim().split(/\s+/)[0] || "[Employee First Name]";
+
+  return [
+    `Dear ${employeeFirstName},`,
+    "",
+    "As part of the employee offboarding process, please review and sign the attached Offboarding & Handover Acknowledgement.",
+    "",
+    "Please sign and return the completed document to HR within three (3) days of receiving this email so that we can complete your personnel and offboarding records.",
+    "",
+    "The document confirms the following:",
+    "",
+    "1. Employee Resignation Letter",
+    "2. Resignation Acceptance",
+    "3. Offboarding & Handover Acknowledgement",
+    "4. Final Salary & Payment Statement",
+    "",
+    "Please review, sign, and date Documents 1–3, and return the signed copies to HR by replying to this email within three (3) days of receiving this email.",
+    "",
+    "For Document 4 – Final Salary & Payment Statement, please review and sign the document after you receive your final payroll payment and confirm the final payment amount. You may then return the signed copy to HR for our records.",
+    "",
+    "Your final payroll will be processed separately according to the regular payroll schedule.",
+    "",
+    "If you have any questions regarding the document, please contact Human Resources.",
+    "",
+    "Thank you for your cooperation.",
+    "",
+    "Best regards,",
+    "",
+    "Human Resources",
+    "",
+    "Whitewater University of California",
+  ].join("\n");
+}
+
 const defaultStep1 = {
   receivedManagerRequest: false,
   emailedItDisable: false,
@@ -345,6 +414,21 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
   const [step2EmailBcc, setStep2EmailBcc] = useState("");
   const [sendingStep2Email, setSendingStep2Email] = useState(false);
   const [step2EmailNotice, setStep2EmailNotice] = useState<string | null>(null);
+  const [step3EmailOpen, setStep3EmailOpen] = useState(false);
+  const [step3EmailTo, setStep3EmailTo] = useState("");
+  const [step3EmailCc, setStep3EmailCc] = useState("hr@wuc.edu");
+  const [step3EmailSubject, setStep3EmailSubject] = useState("");
+  const [step3EmailBody, setStep3EmailBody] = useState("");
+  const [step3EmailNotice, setStep3EmailNotice] = useState<string | null>(null);
+  const [sendingStep3Email, setSendingStep3Email] = useState(false);
+  const [step6EmailOpen, setStep6EmailOpen] = useState(false);
+  const [step6EmailTo, setStep6EmailTo] = useState("");
+  const [step6EmailCc, setStep6EmailCc] = useState("hr@wuc.edu");
+  const [step6EmailSubject, setStep6EmailSubject] = useState("");
+  const [step6EmailBody, setStep6EmailBody] = useState("");
+  const [step6EmailAttachments, setStep6EmailAttachments] = useState<File[]>([]);
+  const [sendingStep6Email, setSendingStep6Email] = useState(false);
+  const [step6EmailNotice, setStep6EmailNotice] = useState<string | null>(null);
 
   const [step1, setStep1] = useState(defaultStep1);
 
@@ -443,31 +527,6 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
     return (coo as OffboardingEmployee | undefined)?.personalEmail || coo?.email || "";
   }, [sortedEmployees]);
 
-  const registrarEmail = useMemo(() => {
-    const r = sortedEmployees.find((emp) => /registrar/i.test(emp.position || ""));
-    return (r as OffboardingEmployee | undefined)?.personalEmail || r?.email || "";
-  }, [sortedEmployees]);
-
-  const complianceEmail = useMemo(() => {
-    const c = sortedEmployees.find((emp) => /compliance/i.test(emp.position || ""));
-    return (c as OffboardingEmployee | undefined)?.personalEmail || c?.email || "";
-  }, [sortedEmployees]);
-
-  const itEngineerEmail = useMemo(() => {
-    const it = sortedEmployees.find((emp) => /it engineer|information technology/i.test(emp.position || emp.department || ""));
-    return (it as OffboardingEmployee | undefined)?.personalEmail || it?.email || "";
-  }, [sortedEmployees]);
-
-  const studentServicesEmail = useMemo(() => {
-    const ss = sortedEmployees.find((emp) => /student services|director of student/i.test(emp.position || ""));
-    return (ss as OffboardingEmployee | undefined)?.personalEmail || ss?.email || "";
-  }, [sortedEmployees]);
-
-  const accountantEmail = useMemo(() => {
-    const acc = sortedEmployees.find((emp) => /accountant|accounting/i.test(emp.position || ""));
-    return (acc as OffboardingEmployee | undefined)?.personalEmail || acc?.email || "";
-  }, [sortedEmployees]);
-
   const defaultBccEmails = useMemo(
     () => [ceoEmail, cooVpEmail].filter(Boolean).join(", "),
     [ceoEmail, cooVpEmail]
@@ -476,18 +535,29 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
   const step2RecipientEmails = useMemo(
     () =>
       [
-        ...sortedEmployees.map((emp) => emp.email),
-        registrarEmail,
-        complianceEmail,
-        itEngineerEmail,
-        studentServicesEmail,
-        accountantEmail,
+        ...activeEmployees.map((emp) => emp.email),
+        activeEmployees.find((emp) => /registrar/i.test(emp.position || ""))?.email,
+        activeEmployees.find((emp) => /compliance/i.test(emp.position || ""))?.email,
+        activeEmployees.find((emp) => /it engineer|information technology/i.test(emp.position || emp.department || ""))?.email,
+        activeEmployees.find((emp) => /student services|director of student/i.test(emp.position || ""))?.email,
+        activeEmployees.find((emp) => /accountant|accounting/i.test(emp.position || ""))?.email,
       ]
         .filter(Boolean)
         .filter((v, i, arr) => arr.indexOf(v) === i)
         .join(", "),
-    [sortedEmployees, registrarEmail, complianceEmail, itEngineerEmail, studentServicesEmail, accountantEmail]
+    [activeEmployees]
   );
+
+  const step3RecipientEmails = useMemo(
+    () => activeEmployees.filter(matchesITRole).map((emp) => emp.email).filter(Boolean).join(", "),
+    [activeEmployees]
+  );
+
+  const directManagerEmail = useMemo(() => {
+    const managerName = selectedEmployee?.manager?.trim().toLowerCase();
+    if (!managerName) return "";
+    return sortedEmployees.find((emp) => emp.name.trim().toLowerCase() === managerName)?.email || "";
+  }, [selectedEmployee?.manager, sortedEmployees]);
 
   const resetForm = () => {
     setSeparationType("Resignation");
@@ -884,6 +954,122 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
     } finally {
       setSendingStep2Email(false);
     }
+  };
+
+  const handleLoadStep3Template = () => {
+    setStep3EmailTo(step3RecipientEmails);
+    setStep3EmailSubject(
+      `Access Suspension Required: ${selectedEmployee?.name || "Employee"} — ${lastWorkingDate || "TBD"}`
+    );
+    setStep3EmailBody(
+      buildAccessSuspensionNotificationBody({
+        employeeName: selectedEmployee?.name || "",
+        jobTitle: selectedEmployee?.position || "",
+        lastWorkingDate,
+      })
+    );
+    setStep3EmailNotice(null);
+    setStep3EmailOpen(true);
+  };
+
+  const handleSendStep3Email = async () => {
+    if (!step3EmailTo.trim()) {
+      setStep3EmailNotice("IT recipient email is required.");
+      return;
+    }
+    if (!step3EmailSubject.trim() || !step3EmailBody.trim()) {
+      setStep3EmailNotice("Subject and body are required.");
+      return;
+    }
+
+    try {
+      setSendingStep3Email(true);
+      setStep3EmailNotice(null);
+
+      const formData = new FormData();
+      formData.append("to", step3EmailTo.trim());
+      if (step3EmailCc.trim()) formData.append("cc", step3EmailCc.trim());
+      formData.append("subject", step3EmailSubject.trim());
+      formData.append("body", step3EmailBody.trim());
+
+      const response = await fetch("/api/email/send", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to send IT access suspension email");
+      }
+
+      setStep3EmailNotice("IT access suspension email sent successfully.");
+    } catch (error) {
+      setStep3EmailNotice(error instanceof Error ? error.message : "Failed to send IT access suspension email.");
+    } finally {
+      setSendingStep3Email(false);
+    }
+  };
+
+  const handleLoadStep6Template = () => {
+    const employeeEmail = (selectedEmployee as OffboardingEmployee | null)?.personalEmail || selectedEmployee?.email || "";
+    setStep6EmailTo(employeeEmail);
+    setStep6EmailCc(["hr@wuc.edu", directManagerEmail].filter(Boolean).join(", "));
+    setStep6EmailSubject(
+      `Action Required: Offboarding Acknowledgement – ${selectedEmployee?.name || "Employee"}`
+    );
+    setStep6EmailBody(buildAcknowledgementRequestBody(selectedEmployee?.name || ""));
+    setStep6EmailNotice(null);
+    setStep6EmailOpen(true);
+  };
+
+  const handleSendStep6Email = async () => {
+    if (!step6EmailTo.trim()) {
+      setStep6EmailNotice("Offboard employee email is required.");
+      return;
+    }
+    if (!step6EmailSubject.trim() || !step6EmailBody.trim()) {
+      setStep6EmailNotice("Subject and body are required.");
+      return;
+    }
+    if (step6EmailAttachments.length === 0) {
+      setStep6EmailNotice("Attach the Offboarding & Handover Acknowledgement document before sending.");
+      return;
+    }
+
+    try {
+      setSendingStep6Email(true);
+      setStep6EmailNotice(null);
+
+      const formData = new FormData();
+      formData.append("to", step6EmailTo.trim());
+      if (step6EmailCc.trim()) formData.append("cc", step6EmailCc.trim());
+      formData.append("subject", step6EmailSubject.trim());
+      formData.append("body", step6EmailBody.trim());
+      step6EmailAttachments.forEach((file) => formData.append("attachments", file));
+
+      const response = await fetch("/api/email/send", { method: "POST", body: formData });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to send offboarding acknowledgement email");
+      }
+
+      setStep6EmailNotice("Offboarding acknowledgement email sent successfully.");
+      setStep6((previous) => ({ ...previous, signedOrRefusalDocumented: false }));
+    } catch (error) {
+      setStep6EmailNotice(error instanceof Error ? error.message : "Failed to send offboarding acknowledgement email.");
+    } finally {
+      setSendingStep6Email(false);
+    }
+  };
+
+  const handleStep6AttachmentChange = (files: FileList | null) => {
+    const selectedFiles = Array.from(files || []).slice(0, 4);
+    setStep6EmailAttachments(selectedFiles);
+    setStep6EmailNotice(
+      selectedFiles.length < (files?.length || 0)
+        ? "Only 4 attachments are allowed. The first four files were selected."
+        : null
+    );
   };
 
   const handleAttachmentChange = (files: FileList | null) => {
@@ -1688,6 +1874,90 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
             <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableOtherSystems} onChange={(e) => setStep3((p) => ({ ...p, disableOtherSystems: e.target.checked }))} />Disable internal / third-party systems</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step3.disableEmailLogin} onChange={(e) => setStep3((p) => ({ ...p, disableEmailLogin: e.target.checked }))} />Disable email login access</label>
           </div>
+
+          <div className="mt-5 rounded-lg border border-rose-300 bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3">
+              <p className="text-sm font-semibold text-rose-800">Send Internal Notification Email to IT</p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleLoadStep3Template}
+                  className="px-3 py-1.5 rounded-md text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200 hover:bg-rose-200"
+                >
+                  Load Template
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep3EmailOpen((prev) => !prev)}
+                  className="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
+                >
+                  {step3EmailOpen ? "▲ Collapse" : "▼ Expand"}
+                </button>
+              </div>
+            </div>
+
+            {step3EmailOpen && (
+              <div className="border-t border-rose-200 p-3 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">To (IT / System Administrator)</label>
+                  <textarea
+                    value={step3EmailTo}
+                    onChange={(e) => setStep3EmailTo(e.target.value)}
+                    rows={2}
+                    placeholder="it@wuc.edu, administrator@wuc.edu"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm font-mono"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Auto-filled with active Information Technology employees. Edit as needed.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">CC</label>
+                  <input
+                    type="text"
+                    value={step3EmailCc}
+                    onChange={(e) => setStep3EmailCc(e.target.value)}
+                    placeholder="hr@wuc.edu"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Subject</label>
+                  <input
+                    type="text"
+                    value={step3EmailSubject}
+                    onChange={(e) => setStep3EmailSubject(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Body</label>
+                  <textarea
+                    value={step3EmailBody}
+                    onChange={(e) => setStep3EmailBody(e.target.value)}
+                    rows={16}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm font-mono"
+                  />
+                </div>
+
+                {step3EmailNotice && (
+                  <p className={`text-xs font-medium ${step3EmailNotice.includes("successfully") ? "text-emerald-700" : "text-rose-700"}`}>
+                    {step3EmailNotice}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSendStep3Email}
+                  disabled={sendingStep3Email}
+                  className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+                >
+                  {sendingStep3Email ? "Sending..." : "Send Internal Notification Email to IT"}
+                </button>
+              </div>
+            )}
+          </div>
         </section>
 
         <section className="bg-white rounded-xl border border-slate-200 p-5">
@@ -1727,6 +1997,113 @@ export default function OffboardingModule({ employees, onRecordsChanged }: Offbo
             <label className="flex items-center gap-2"><input type="checkbox" checked={step6.propertyReturnAcknowledged} onChange={(e) => setStep6((p) => ({ ...p, propertyReturnAcknowledged: e.target.checked }))} />Company property return clause acknowledged</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step6.studentDataProtectionAcknowledged} onChange={(e) => setStep6((p) => ({ ...p, studentDataProtectionAcknowledged: e.target.checked }))} />Student/institutional data protection acknowledged</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={step6.signedOrRefusalDocumented} onChange={(e) => setStep6((p) => ({ ...p, signedOrRefusalDocumented: e.target.checked }))} />Employee signed, or refusal to sign documented</label>
+          </div>
+
+          <div className="mt-5 rounded-lg border border-slate-300 bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3">
+              <p className="text-sm font-semibold text-gray-800">Send Internal Notification Email</p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleLoadStep6Template}
+                  className="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
+                >
+                  Load Template
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep6EmailOpen((previous) => !previous)}
+                  className="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200"
+                >
+                  {step6EmailOpen ? "▲ Collapse" : "▼ Expand"}
+                </button>
+              </div>
+            </div>
+
+            {step6EmailOpen && (
+              <div className="border-t border-slate-200 p-3 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">To (Offboard Employee)</label>
+                  <input
+                    type="email"
+                    value={step6EmailTo}
+                    onChange={(e) => setStep6EmailTo(e.target.value)}
+                    placeholder="employee personal email"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">CC (HR &amp; Direct Manager)</label>
+                  <input
+                    type="text"
+                    value={step6EmailCc}
+                    onChange={(e) => setStep6EmailCc(e.target.value)}
+                    placeholder="hr@wuc.edu, manager@wuc.edu"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Auto-filled with HR and the direct manager&apos;s work email when available.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Subject</label>
+                  <input
+                    type="text"
+                    value={step6EmailSubject}
+                    onChange={(e) => setStep6EmailSubject(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Body</label>
+                  <textarea
+                    value={step6EmailBody}
+                    onChange={(e) => setStep6EmailBody(e.target.value)}
+                    rows={18}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Attachments (Max 4 files)</label>
+                  <label
+                    htmlFor="step6-email-attachments"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-within:ring-2 focus-within:ring-slate-400 focus-within:ring-offset-2"
+                  >
+                    <span aria-hidden="true">📎</span>
+                    Choose Files
+                  </label>
+                  <input
+                    id="step6-email-attachments"
+                    type="file"
+                    multiple
+                    onChange={(e) => handleStep6AttachmentChange(e.target.files)}
+                    className="sr-only"
+                  />
+                  <p className="mt-2 text-xs text-gray-600">
+                    {step6EmailAttachments.length > 0
+                      ? `${step6EmailAttachments.length} file${step6EmailAttachments.length === 1 ? "" : "s"} selected: ${step6EmailAttachments.map((file) => file.name).join(", ")}`
+                      : "Attach the Offboarding & Handover Acknowledgement document."}
+                  </p>
+                </div>
+
+                {step6EmailNotice && (
+                  <p className={`text-xs font-medium ${step6EmailNotice.includes("successfully") ? "text-emerald-700" : "text-rose-700"}`}>
+                    {step6EmailNotice}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSendStep6Email}
+                  disabled={sendingStep6Email}
+                  className="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {sendingStep6Email ? "Sending..." : "Send Internal Notification Email"}
+                </button>
+              </div>
+            )}
           </div>
         </section>
 

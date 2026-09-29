@@ -1,11 +1,34 @@
 import { WeeklyRecord } from "./employees";
 
 export interface PerformanceScore {
+  scoringVersion: PerformanceScoringVersion;
   workHoursFulfillment: number;
+  qualityOfWork: number;
   taskPriorityHandling: number;
   taskCompletionRate: number;
   pastDueTaskManagement: number;
   totalScore: number;
+}
+
+export type PerformanceScoringVersion = "LEGACY_WORK_HOURS" | "QUALITY_OF_WORK";
+
+export interface QualityOfWorkScoringBand {
+  ratingRange: string;
+  points: number;
+}
+
+const QUALITY_OF_WORK_CUTOFF = "2026-08-16";
+
+export function getPerformanceScoringVersion(
+  recordDate: string | Date
+): PerformanceScoringVersion {
+  const date =
+    recordDate instanceof Date
+      ? recordDate.toISOString().slice(0, 10)
+      : recordDate.slice(0, 10);
+  return date < QUALITY_OF_WORK_CUTOFF
+    ? "LEGACY_WORK_HOURS"
+    : "QUALITY_OF_WORK";
 }
 
 export interface TaskPriorityHandlingBreakdown {
@@ -15,21 +38,36 @@ export interface TaskPriorityHandlingBreakdown {
   totalDeduction: number;
 }
 
-/**
- * Calculate Work Hours Fulfillment score (25% weight)
- * Formula: min((actualHours / plannedHours) * 25, 25)
- * - Full 25 points if actual >= planned
- * - Proportional score if actual < planned
- * - If planned hours are 0 (e.g., full approved leave), award full 25 points
- */
 export function calculateWorkHoursFulfillment(
   actualWorkHours: number,
   plannedWorkHours: number
 ): number {
   if (plannedWorkHours <= 0) return 25;
-  
-  const score = (actualWorkHours / plannedWorkHours) * 25;
-  return Math.min(score, 25);
+  return Math.min((actualWorkHours / plannedWorkHours) * 25, 25);
+}
+
+export function calculateQualityOfWork(averageRating: number | null | undefined): number {
+  if (averageRating == null || !Number.isFinite(averageRating) || averageRating < 1 || averageRating > 5) {
+    return 0;
+  }
+  if (averageRating < 1.5) return 0;
+  if (averageRating < 2.5) return 10;
+  if (averageRating < 3.5) return 15;
+  if (averageRating < 4.5) return 20;
+  return 25;
+}
+
+export function getQualityOfWorkScoringBand(
+  averageRating: number | null | undefined
+): QualityOfWorkScoringBand | null {
+  if (averageRating == null || !Number.isFinite(averageRating) || averageRating < 1 || averageRating > 5) {
+    return null;
+  }
+  if (averageRating < 1.5) return { ratingRange: "1.00-1.49", points: 0 };
+  if (averageRating < 2.5) return { ratingRange: "1.50-2.49", points: 10 };
+  if (averageRating < 3.5) return { ratingRange: "2.50-3.49", points: 15 };
+  if (averageRating < 4.5) return { ratingRange: "3.50-4.49", points: 20 };
+  return { ratingRange: "4.50-5.00", points: 25 };
 }
 
 /**
@@ -207,7 +245,7 @@ export function calculatePastDueTaskManagement(record: WeeklyRecord): number {
 /**
  * Calculate total weekly performance score (100 points)
  * Weights:
- * - Work Hours Fulfillment: 25%
+ * - Work Hours Fulfillment or Quality of Work: 25%, based on record date
  * - Task Priority Handling: 20%
  * - Task Completion Rate: 25%
  * - Past Due Task Management: 30%
@@ -215,22 +253,31 @@ export function calculatePastDueTaskManagement(record: WeeklyRecord): number {
 export function calculateWeeklyPerformanceScore(
   record: WeeklyRecord
 ): PerformanceScore {
-  const workHoursFulfillment = calculateWorkHoursFulfillment(
-    record.actualWorkHours,
-    record.plannedWorkHours
-  );
+  const scoringVersion = getPerformanceScoringVersion(record.startDate);
+  const workHoursFulfillment =
+    scoringVersion === "LEGACY_WORK_HOURS"
+      ? calculateWorkHoursFulfillment(record.actualWorkHours, record.plannedWorkHours)
+      : 0;
+  const qualityOfWork =
+    scoringVersion === "QUALITY_OF_WORK"
+      ? calculateQualityOfWork(record.averageQualityOfWorkScore)
+      : 0;
   const taskPriorityHandling = calculateTaskPriorityHandling(record);
   const taskCompletionRate = calculateTaskCompletionRate(record);
   const pastDueTaskManagement = calculatePastDueTaskManagement(record);
 
   const totalScore =
-    workHoursFulfillment +
+    (scoringVersion === "LEGACY_WORK_HOURS"
+      ? workHoursFulfillment
+      : qualityOfWork) +
     taskPriorityHandling +
     taskCompletionRate +
     pastDueTaskManagement;
 
   return {
+    scoringVersion,
     workHoursFulfillment,
+    qualityOfWork,
     taskPriorityHandling,
     taskCompletionRate,
     pastDueTaskManagement,

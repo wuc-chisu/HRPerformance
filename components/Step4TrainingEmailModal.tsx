@@ -6,13 +6,30 @@ interface Step4TrainingEmailModalProps {
   employeeName: string;
   employeeEmail: string;
   personalEmail: string;
+  employmentStatus?: "Employee" | "Faculty";
   onClose: () => void;
 }
 
 const EMAIL_SUBJECT = "WUC New Hire Training Requirements – Action Required";
 
-function buildEmailBody(fullName: string): string {
+function buildEmailBody(fullName: string, employmentStatus: "Employee" | "Faculty" = "Employee"): string {
   const trimmed = fullName.trim();
+  const libraryResources = employmentStatus === "Faculty"
+    ? `Library and Learning Resources:
+Video:
+https://drive.google.com/file/d/1tJloFvufdi7A-Pbt8-Aj_K1wFcf8f0ZW/view?usp=sharing
+
+Booklet:
+https://drive.google.com/file/d/1yLlYd3MkjbXdfZ-XwZHWjO3KVKrfDov_/view?usp=drive_link
+
+Distance Education Training & Handbook:
+https://drive.google.com/file/d/1yqL3B8g-hP6HIh4DxCfP_h_Upy1nkGWG/view?usp=sharing`
+    : "";
+  const facultyOrientationExam = employmentStatus === "Faculty"
+    ? `Exam 2 – New Faculty, Distance Education & Library Orientation Exam:
+https://docs.google.com/forms/d/1zvpVx90FS8pY_deCCe-hgCmbsYe8eBCVJh_trA6sCvc/preview`
+    : "";
+
   return `Hi ${trimmed || "there"},
 
 As part of your WUC onboarding process, please complete the following required training and exams.
@@ -31,12 +48,7 @@ Please:
 
 2. Annual Employee & Faculty Training and Exam
 
-Library and Learning Resources:
-Video:
-https://drive.google.com/file/d/1tJloFvufdi7A-Pbt8-Aj_K1wFcf8f0ZW/view?usp=sharing
-
-Booklet:
-https://drive.google.com/file/d/1yLlYd3MkjbXdfZ-XwZHWjO3KVKrfDov_/view?usp=drive_link
+${libraryResources}
 
 California Acupuncture Board Ethics Training (Faculty Only):
 https://drive.google.com/file/d/1wZraNeElho0FS9fOMBPZ5Ha0luE2Drfi/view?usp=drive_link
@@ -64,15 +76,11 @@ Please:
 4. New Hire / Faculty Orientation Exams
 
 Exam 1 – New Faculty Orientation Exam:
-https://docs.google.com/forms/d/e/1FAIpQLSfdqDdQl02MQO1Ollmab02z21vuIefmsgPtu2y7DXWxJsSZ2A/viewform
+https://docs.google.com/forms/d/e/1FAIpQLSeMNF2TCIQDQO0wvxfR2BbQ_zW2qiC-E9tcQwT8os7RTMDbUQ/viewform
 
 Minimum passing score: 70%
 
-Additional Orientation Exam:
-https://docs.google.com/forms/d/e/1FAIpQLSeMNF2TCIQDQO0wvxfR2BbQ_zW2qiC-E9tcQwT8os7RTMDbUQ/viewform
-
-Exam 2 – New Faculty, Distance Education & Library Orientation Exam:
-https://docs.google.com/forms/d/1zvpVx90FS8pY_deCCe-hgCmbsYe8eBCVJh_trA6sCvc/preview
+${facultyOrientationExam}
 
 Exam 3 – Faculty Pre-Orientation Workshop:
 https://forms.gle/Heacup1SvaTM54Mq5
@@ -80,6 +88,7 @@ https://forms.gle/Heacup1SvaTM54Mq5
 Please send the following to hr@wuc.edu after completion:
 - FERPA Training Certificate
 - Three Professional Development training screenshots
+- After completing all required trainings and exams, please complete this form and send it to HR: https://drive.google.com/file/d/1fRx9wA6_i8DUcsfoNpofTqEK6nSnUMSt/view?usp=sharing
 
 If you have any questions or have difficulty accessing any of the training materials, please contact HR at hr@wuc.edu.
 
@@ -94,6 +103,7 @@ export default function Step4TrainingEmailModal({
   employeeName,
   employeeEmail,
   personalEmail,
+  employmentStatus,
   onClose,
 }: Step4TrainingEmailModalProps) {
   const [to, setTo] = useState(() =>
@@ -101,7 +111,7 @@ export default function Step4TrainingEmailModal({
   );
   const [cc, setCc] = useState("hr@wuc.edu");
   const [subject, setSubject] = useState(EMAIL_SUBJECT);
-  const [body, setBody] = useState(() => buildEmailBody(employeeName));
+  const [body, setBody] = useState(() => buildEmailBody(employeeName, employmentStatus));
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ error: boolean; message: string } | null>(null);
 

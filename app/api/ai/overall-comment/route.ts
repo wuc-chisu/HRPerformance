@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { WeeklyRecord } from "@/lib/employees";
 import {
   calculateWeeklyPerformanceScore,
+  getQualityOfWorkScoringBand,
   getTaskPriorityHandlingBreakdown,
   getPerformanceRating,
 } from "@/lib/performanceScoring";
@@ -18,7 +19,9 @@ function buildWeeklyFallbackComment(params: {
   rating: string;
   record: WeeklyRecord;
   score: {
+    scoringVersion: "LEGACY_WORK_HOURS" | "QUALITY_OF_WORK";
     workHoursFulfillment: number;
+    qualityOfWork: number;
     taskPriorityHandling: number;
     taskCompletionRate: number;
     pastDueTaskManagement: number;
@@ -40,6 +43,20 @@ function buildWeeklyFallbackComment(params: {
   } = params;
 
   const needsUrgentImprovement = totalScore < 70;
+
+  if (score.scoringVersion === "QUALITY_OF_WORK") {
+    const qualityRating = record.averageQualityOfWorkScore;
+    const ratingText = qualityRating == null ? "not available" : qualityRating.toFixed(2);
+    const qualityBand = getQualityOfWorkScoringBand(qualityRating);
+    const bandText = qualityBand
+      ? `The ${qualityBand.ratingRange} rating band earns ${qualityBand.points}/25 points. `
+      : "No valid Quality of Work rating band is available. ";
+    return (
+      `Your total score is ${totalScore.toFixed(2)} (${rating}). Your average Quality of Work rating was ${ratingText} out of 5, earning ${score.qualityOfWork.toFixed(2)}/25 points. ${bandText}` +
+      `Task priority handling is ${score.taskPriorityHandling.toFixed(2)}/20, task completion is ${score.taskCompletionRate.toFixed(2)}/25, and past due task management is ${score.pastDueTaskManagement.toFixed(2)}/30. ` +
+      `Continue strengthening work quality through careful review and consistent standards, while keeping priorities clear, completing assigned tasks on time, and reviewing overdue items daily in ClickUp.`
+    );
+  }
 
   const strengthParts: string[] = [];
   if (score.taskPriorityHandling >= 16) {
@@ -205,15 +222,21 @@ export async function POST(request: Request) {
       : "none";
 
     const needsUrgentImprovement = score.totalScore < 70;
-    const noWorkHoursEntered = record.actualWorkHours === 0;
+    const isLegacyScoring = score.scoringVersion === "LEGACY_WORK_HOURS";
+    const noWorkHoursEntered = isLegacyScoring && record.actualWorkHours === 0;
     const workHoursThreshold = 17.5;
     const taskPriorityThreshold = 14;
     const taskCompletionThreshold = 17.5;
     const pastDueThreshold = 21;
     const lowAreas: string[] = [];
 
-    if (score.workHoursFulfillment < workHoursThreshold) {
+    if (isLegacyScoring && score.workHoursFulfillment < workHoursThreshold) {
       lowAreas.push("Work Hours Fulfillment");
+    }
+    const qualityRatingMeetsExpectations =
+      (record.averageQualityOfWorkScore ?? 0) >= 2.5;
+    if (!isLegacyScoring && !qualityRatingMeetsExpectations) {
+      lowAreas.push("Quality of Work");
     }
     if (score.taskPriorityHandling < taskPriorityThreshold) {
       lowAreas.push("Task Priority Handling");
@@ -233,6 +256,30 @@ export async function POST(request: Request) {
         ? `Task Priority Handling direct deduction = -${priorityBreakdown.totalDeduction} points from ${priorityBreakdown.urgentOverdue} urgent overdue task(s), ${priorityBreakdown.highOverdue} high overdue task(s), and ${priorityBreakdown.noPriorityAssigned} assigned task(s) with no priority.`
         : "Task Priority Handling direct deduction = 0 because there were no urgent overdue tasks, no high overdue tasks, and no assigned tasks with no priority.";
     const hasTaskPriorityDeduction = priorityBreakdown.totalDeduction > 0;
+    const noPriorityCommentInstructions =
+      priorityBreakdown.noPriorityAssigned > 0
+        ? `- CRITICAL: ${priorityBreakdown.noPriorityAssigned} assigned task(s) had No Priority. Explicitly state this exact count and that these tasks reduced the Task Priority Handling score. Explain that No Priority means no work priority was assigned; do not describe the tasks as unimportant.
+- Remind the employee constructively that each task is expected to have an appropriate priority and to consistently assign or update priorities in future weeks.`
+        : "- There were zero assigned tasks with No Priority. Do not mention No Priority tasks or deductions for missing priorities.";
+    const qualityBand = getQualityOfWorkScoringBand(record.averageQualityOfWorkScore);
+    const qualityScoringInstructions = isLegacyScoring
+      ? ""
+      : `- Interpret Quality of Work as a 1-to-5 star rating using these definitions:
+  1 star (1.00-1.49), Unsatisfactory: clearly below expectations; significant errors, incompleteness, or substantial correction/rework may be present.
+  2 stars (1.50-2.49), Needs Improvement: partially meets expectations but has noticeable quality issues; more guidance, review, or correction may be needed.
+  3 stars (2.50-3.49), Meets Expectations: normal expected performance; work is accurate, complete, and meets the expected quality standard. This is not poor or below-expectation quality.
+  4 stars (3.50-4.49), Exceeds Expectations: above the normal standard; accurate, complete, well-executed work generally requires little or no correction.
+  5 stars (4.50-5.00), Exceptional: significantly above expectations, demonstrating excellent accuracy, completeness, and attention to detail.
+- Quality of Work uses fixed rating bands, not proportional scoring: 1.00-1.49 = 0/25; 1.50-2.49 = 10/25; 2.50-3.49 = 15/25; 3.50-4.49 = 20/25; 4.50-5.00 = 25/25.
+- State the employee's average rating, name the applicable scoring band, and explain its corresponding points. Do not imply scores increase proportionally within a band.
+- Treat ratings of 3.00 as meeting expectations, not as a low/negative category. Describe ratings around 3 neutrally or positively; ratings above 3 can be described as increasingly strong, while ratings below 3 may receive professional, constructive guidance.
+- Do not exaggerate performance based on small decimal differences. Consider Quality of Work together with the other weekly categories when describing overall performance.`;
+    const qualityCategoryStatus = isLegacyScoring
+      ? ""
+      : `Quality of Work=${qualityRatingMeetsExpectations ? "OK" : "LOW"}`;
+    const minimumCommentLength =
+      score.totalScore >= 90 ? 180 : score.totalScore >= 80 ? 300 : score.totalScore >= 70 ? 450 : 650;
+    const maximumCommentLength = 1200;
 
     const promptBase = `You are a professional HR performance evaluation assistant.
 
@@ -240,33 +287,25 @@ Goal:
 Write a focused and practical weekly performance comment based ONLY on the metrics provided.
 
 Requirements:
-- Length must be between 800 and 1200 characters (including spaces).
+- Aim for ${minimumCommentLength} to ${maximumCommentLength} characters (including spaces); follow the score-tier guidance below and do not pad with repetition.
 - Address the employee directly using "You" / "Your".
-- Do NOT include the employee ID.
-- Do NOT invent facts.
-- Maintain a professional and concise tone.
-- Avoid excessive breakdown of every metric.
-- Do NOT list all numbers repeatedly — reference only the most impactful ones.
+- Do NOT include the employee ID or invent facts.
+- Maintain a professional, supportive, direct, and constructive tone.
+- Focus on the most impactful evidence; do not repeat every report number.
 - End with a complete sentence.
-${isExcellentPerformance ? `- Structure requirement: Use exactly 2 paragraphs separated by a single blank line.
-  1) Paragraph 1: celebrate the excellent performance, highlight all strong scoring areas with specific scores.
-  2) Paragraph 2: encourage the employee to sustain this level of performance, mention keeping ClickUp tasks up to date and maintaining consistent work habits. Do NOT mention any improvement areas or suggest anything needs fixing.` : `- Use exactly 3 paragraphs separated by a single blank line. Do not add line breaks within a paragraph.
-- Do NOT include praise, strengths, or positive commentary when the total score is below 70.
-- Paragraph 1 must state the score and directly describe the below-expectation result.
-- Clearly identify the 1–2 most critical performance issues.
-- Provide practical improvement guidance (4–6 clear, specific actions).
-- For each LOW category, include one concrete action with timing/ownership detail (for example: daily planning, end-of-day review, weekly target).
-- IMPORTANT: If there are ANY overdue tasks (All overdue tasks > 0), it MUST be mentioned as an area requiring immediate attention and improvement.
-- CRITICAL: If any category is marked LOW, you MUST explicitly mention EACH low category by exact name and explain one concrete improvement action for each.
-- CRITICAL: If Task Priority Handling direct deduction is greater than 0, you MUST explicitly mention the deduction amount and cause in paragraph 2 or 3 using the provided deduction summary.
-- When Task Priority Handling is discussed, explain the actual direct deduction reason using the provided deduction summary. Make clear that assigned tasks with no priority do cause a deduction even if completed.
-- Structure requirement (must follow):
-  1) Paragraph 1: below-expectation score and direct impact,
-  2) Paragraph 2: critical areas needing immediate correction,
-  3) Paragraph 3: detailed improvement plan with concrete next steps.
-- In paragraph 2 or 3, explicitly instruct the employee to manage tasks properly in ClickUp.`}
+${score.totalScore >= 90 ? `- Score 90–100: Keep the comment concise and positive in 1–2 short paragraphs. Highlight strong performance and what went well, then encourage the employee to maintain the same standard. Do not add unnecessary detail or invent improvement areas.` : score.totalScore >= 80 ? `- Score 80–89: Use 1–2 short paragraphs of balanced positive feedback. Mention strong areas, any small deductions that matter, and one or two practical reminders for improvement.` : score.totalScore >= 70 ? `- Score 70–79: Use 2–3 short paragraphs. Explain what went well, identify the categories that reduced the score, clarify the main issues using available evidence, and give practical suggestions for improving next week's score.` : `- Score below 70: Use 2–4 short paragraphs and provide significantly more detail. Clearly state that overall performance was below the expected level. Identify the specific categories that reduced the score and explain why points were lost using supplied scores, category status, and deduction details. Prioritize the most impactful issues and cite relevant available numbers, such as Quality of Work rating/band, No Priority count and deduction, urgent/high overdue counts, task completion score, assigned tasks, and weekly overdue/incomplete tasks. Do not repeat every report number.
+- Give 2–4 specific, practical recommendations tied to the identified issues, then end with a constructive next-step recommendation for the following week. Explain deductions before recommendations. Acknowledge supported strengths where relevant; a 3-star Quality of Work rating means Meets Expectations and is not poor performance.
+- If overdue tasks exist, explain the relevant overdue impact. If priority deductions exist, state their amount and exact causes. Do not minimize significant problems or use harsh/emotional language.
+- For scores below 70, explicitly address every category marked LOW by its exact name and give concrete actions for the most important issues. Explain category deductions only with causes supported by the supplied data.
+- If Task Priority Handling is discussed, accurately explain the direct deduction reason from the supplied summary. An assigned task with No Priority had no work priority set and caused a deduction; do not call it unimportant.
+- If using Quality of Work, apply the supplied 1-to-5-star definitions and scoring bands. In particular, 3 stars means Meets Expectations, not poor performance. If using legacy scoring, do not apply Quality of Work guidance.
+- Do not invent a past-due ratio, completion count, or other metric not supplied. When relevant, use the actual assigned and weekly overdue task counts.
+- For scores below 70, recommend managing task updates in ClickUp when relevant to the identified task issues.`}
+${noPriorityCommentInstructions}
 ${noWorkHoursEntered ? "- CRITICAL: If actual work hours is 0, you MUST include this exact note in the first paragraph: 'IMPORTANT: You must enter and track your work hours in the time tracking system. Failure to record work hours will result in performance evaluation issues and may affect your employment status.'" : ""}
-${workAuthorizationStatus === "H-1B" ? "- IMPORTANT: For work hours, do NOT mention specific hours (like '8h / 40h'). Instead, just say whether the employee 'fulfilled' or 'failed to fulfill' assigned work hours. For example: 'You fulfilled assigned work hours' or 'You failed to fulfill assigned work hours'." : ""}
+${isLegacyScoring && workAuthorizationStatus === "H-1B" ? "- IMPORTANT: For work hours, do NOT mention specific hours (like '8h / 40h'). Instead, just say whether the employee 'fulfilled' or 'failed to fulfill' assigned work hours. For example: 'You fulfilled assigned work hours' or 'You failed to fulfill assigned work hours'." : ""}
+${isLegacyScoring ? "" : "- Do NOT mention work hours, planned hours, actual hours, or Work Hours Fulfillment. Reference the Average Quality of Work rating and its score when relevant."}
+${qualityScoringInstructions}
 ${needsUrgentImprovement ?
   "- Because the total score is below 70, include this warning sentence in paragraph 2 (do not add a 4th paragraph): This week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately." :
   ""}
@@ -275,9 +314,10 @@ Focus on clarity, priority, and improvement — not full statistical explanation
 
 Weekly performance metrics:
 - Total score: ${score.totalScore} (${rating})
-- Work hours: ${record.actualWorkHours}h actual / ${record.plannedWorkHours}h planned (Work Hours Fulfillment: ${score.workHoursFulfillment}/25)
+${isLegacyScoring ? `- Work hours: ${record.actualWorkHours}h actual / ${record.plannedWorkHours}h planned (Work Hours Fulfillment: ${score.workHoursFulfillment}/25)` : `- Quality of Work: Average Quality Rating ${record.averageQualityOfWorkScore?.toFixed(2) ?? "not available"}/5 (Quality Score: ${score.qualityOfWork}/25; applicable band: ${qualityBand ? `${qualityBand.ratingRange} = ${qualityBand.points}/25` : "unavailable"})`}
 - Task priority handling score: ${score.taskPriorityHandling}/20
 - Task priority handling deduction summary: ${taskPriorityDeductionSummary}
+- Assigned tasks with No Priority: ${priorityBreakdown.noPriorityAssigned}
 - Task completion score: ${score.taskCompletionRate}/25
 - Past due management score: ${score.pastDueTaskManagement}/30
 - Assigned tasks: ${record.assignedTasks}
@@ -291,7 +331,7 @@ Task detail breakdowns:
 
 Flag:
 - Total score below 70: ${needsUrgentImprovement ? "YES" : "NO"}
-- Category status: Work Hours Fulfillment=${score.workHoursFulfillment < workHoursThreshold ? "LOW" : "OK"}, Task Priority Handling=${score.taskPriorityHandling < taskPriorityThreshold ? "LOW" : "OK"}, Task Completion Rate=${score.taskCompletionRate < taskCompletionThreshold ? "LOW" : "OK"}, Past Due Task Management=${score.pastDueTaskManagement < pastDueThreshold ? "LOW" : "OK"}
+- Category status: ${isLegacyScoring ? `Work Hours Fulfillment=${score.workHoursFulfillment < workHoursThreshold ? "LOW" : "OK"}` : qualityCategoryStatus}, Task Priority Handling=${score.taskPriorityHandling < taskPriorityThreshold ? "LOW" : "OK"}, Task Completion Rate=${score.taskCompletionRate < taskCompletionThreshold ? "LOW" : "OK"}, Past Due Task Management=${score.pastDueTaskManagement < pastDueThreshold ? "LOW" : "OK"}
 - LOW categories that MUST be addressed: ${lowAreas.length ? lowAreas.join(", ") : "none"}
 - Employee visa status: ${workAuthorizationStatus || "Unknown"}
 
@@ -304,7 +344,7 @@ Return the full evaluation comment only.`;
       return (
         promptBase +
         "\n\nIf the output is truncated, regenerate it with complete sentences and a full ending." +
-        " Keep it between 800 and 1200 characters. If it is too short, add more specific improvement steps and expected outcomes for each low category."
+        ` Keep it between ${minimumCommentLength} and ${maximumCommentLength} characters. If it is too short, add only relevant detail appropriate to this score tier.`
       );
     };
 
@@ -417,7 +457,8 @@ Return the full evaluation comment only.`;
       }
 
       const content = result.content || "";
-      const isLengthOk = content.length >= 800 && content.length <= 1200;
+      const isLengthOk =
+        content.length >= minimumCommentLength && content.length <= maximumCommentLength;
       const endsWithSentence = /[.!?]$/.test(content);
 
       if (isLengthOk && endsWithSentence) {
@@ -435,7 +476,7 @@ Return the full evaluation comment only.`;
       );
     }
 
-    if (finalContent.length < 800) {
+    if (finalContent.length < minimumCommentLength) {
       finalContent = buildWeeklyFallbackComment({
         totalScore: score.totalScore,
         rating,
@@ -443,7 +484,9 @@ Return the full evaluation comment only.`;
         taskPriorityDeductionSummary,
         hasTaskPriorityDeduction,
         score: {
+          scoringVersion: score.scoringVersion,
           workHoursFulfillment: score.workHoursFulfillment,
+          qualityOfWork: score.qualityOfWork,
           taskPriorityHandling: score.taskPriorityHandling,
           taskCompletionRate: score.taskCompletionRate,
           pastDueTaskManagement: score.pastDueTaskManagement,

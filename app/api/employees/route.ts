@@ -269,6 +269,7 @@ function formatOnboarding(emp: any) {
     step2CompletedAt: formatDateTimeForResponse(emp.onboardingStep2CompletedAt),
     step2FormsEmailSentAt: formatDateTimeForResponse(emp.onboardingStep2FormsEmailSentAt),
     step2DocumentsEmailSentAt: formatDateTimeForResponse(emp.onboardingStep2DocumentsEmailSentAt),
+    step2PayrollEmailSentAt: formatDateTimeForResponse(emp.onboardingStep2PayrollEmailSentAt),
     step3CompletedAt: formatDateTimeForResponse(emp.onboardingStep3CompletedAt),
     step4CompletedAt: formatDateTimeForResponse(emp.onboardingStep4CompletedAt),
     step5CompletedAt: formatDateTimeForResponse(emp.onboardingStep5CompletedAt),
@@ -307,6 +308,7 @@ export async function GET() {
       staffWorkLocation: emp.staffWorkLocation || "USA",
       employeeType: emp.employeeType || "Full time",
       contractWorkHours: emp.contractWorkHours ?? null,
+      employmentStatus: emp.employmentStatus || "Employee",
       systemRole: emp.systemRole || "Employee",
       officeSchedule: emp.officeSchedule ?? null,
       probationPeriodStartDate: emp.probationPeriodStartDate
@@ -329,6 +331,7 @@ export async function GET() {
         endDate: formatDateForResponse(record.endDate),
         plannedWorkHours: record.plannedWorkHours,
         actualWorkHours: record.actualWorkHours,
+        averageQualityOfWorkScore: record.averageQualityOfWorkScore,
         assignedTasks: record.assignedTasks,
         assignedTasksDetails: (record as any).assignedTasksDetails || [],
         weeklyOverdueTasks: record.weeklyOverdueTasks,
@@ -445,7 +448,9 @@ export async function POST(request: Request) {
         staffWorkLocation: staffWorkLocation || "USA",
         employeeType: employeeType || "Full time",
         contractWorkHours: employeeType === "Contract" ? (parseInt(contractWorkHours) || null) : null,
-        employmentStatus: employmentStatus === "Faculty" ? "Faculty" : "Employee",
+        employmentStatus: employmentStatus === "Faculty" || employmentStatus === "Employee"
+          ? employmentStatus
+          : "Employee",
         systemRole: systemRole || "Employee",
         officeSchedule: officeSchedule ?? null,
         overallOverdueTasks: overallOverdueTasks || 0,

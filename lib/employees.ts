@@ -15,6 +15,7 @@ export interface WeeklyRecord {
   endDate: string; // ISO date format YYYY-MM-DD
   plannedWorkHours: number;
   actualWorkHours: number;
+  averageQualityOfWorkScore?: number | null;
   assignedTasks: number;
   assignedTasksDetails?: AssignedTaskDetail[]; // Breakdown by priority
   weeklyOverdueTasks: number;
@@ -124,6 +125,7 @@ export interface OnboardingState {
   step2CompletedAt?: string | null;
   step2FormsEmailSentAt?: string | null;
   step2DocumentsEmailSentAt?: string | null;
+  step2PayrollEmailSentAt?: string | null;
   step3CompletedAt?: string | null;
   step4CompletedAt?: string | null;
   step5CompletedAt?: string | null;

@@ -59,6 +59,7 @@ model Employee {
   onboardingStep2CompletedAt    DateTime?
   onboardingStep2FormsEmailSentAt DateTime?
   onboardingStep2DocumentsEmailSentAt DateTime?
+  onboardingStep2PayrollEmailSentAt DateTime?
   onboardingStep3CompletedAt    DateTime?
   onboardingStep4CompletedAt    DateTime?
   onboardingStep5CompletedAt    DateTime?
@@ -310,6 +311,7 @@ model WeeklyRecord {
   endDate                DateTime
   plannedWorkHours       Float
   actualWorkHours        Float
+  averageQualityOfWorkScore Float?
   assignedTasks          Int
   assignedTasksDetails   Json     @default("[]") // JSON array storing assigned task priority breakdown
   weeklyOverdueTasks     Int
