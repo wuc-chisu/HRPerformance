@@ -23,8 +23,9 @@ JOIN (
     id,
     ROW_NUMBER() OVER (PARTITION BY "assignmentId" ORDER BY "createdAt" ASC, id ASC) AS attempt_number
   FROM "EmployeeTrainingQuizAttempt"
-) AS source ON source.id = attempt.id
+) AS source ON TRUE
 WHERE assignment.id = attempt."assignmentId"
+  AND source.id = attempt.id
   AND (attempt."trainingCycleId" IS NULL OR attempt."attemptNumber" IS NULL OR attempt."passingScoreUsed" IS NULL);
 
 ALTER TABLE "EmployeeTrainingQuizAttempt"
