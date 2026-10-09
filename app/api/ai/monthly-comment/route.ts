@@ -22,6 +22,7 @@ interface MonthlyCommentRequest {
     taskPriorityBreakdown?: {
       urgentOverdue: number;
       highOverdue: number;
+      normalOverdue: number;
       noPriorityAssigned: number;
       totalDeduction: number;
     };
@@ -227,7 +228,7 @@ export async function POST(request: Request) {
           return `${ws.startDate}: direct deduction details unavailable`;
         }
 
-        return `${ws.startDate}: -${breakdown.totalDeduction} direct deduction (${breakdown.urgentOverdue} urgent overdue, ${breakdown.highOverdue} high overdue, ${breakdown.noPriorityAssigned} assigned with no priority)`;
+        return `${ws.startDate}: -${breakdown.totalDeduction} direct deduction (${breakdown.urgentOverdue} urgent overdue, ${breakdown.highOverdue} high overdue, ${breakdown.normalOverdue} normal overdue, ${breakdown.noPriorityAssigned} assigned with no priority)`;
       })
       .join("; ");
     const hasTaskPriorityDeduction = weeklyScores.some(

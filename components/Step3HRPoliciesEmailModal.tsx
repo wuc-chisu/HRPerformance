@@ -12,7 +12,7 @@ interface Step3HRPoliciesEmailModalProps {
 const EMAIL_SUBJECT = "WUC HR Policies – Review and Acknowledgment Required";
 
 function buildEmailBody(fullName: string): string {
-  const trimmed = fullName.trim();
+  const trimmed = String(fullName ?? "").trim();
   return `Hi ${trimmed || "there"},
 
 As part of your WUC onboarding process, please complete the following two HR policy requirements within seven (7) days of your hire date.
@@ -60,6 +60,10 @@ Whitewater University of California
 📍 3150 Almaden Expy, Suite 111, San Jose, CA 95118`;
 }
 
+function normalizeEmailValue(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 export default function Step3HRPoliciesEmailModal({
   employeeName,
   employeeEmail,
@@ -67,7 +71,7 @@ export default function Step3HRPoliciesEmailModal({
   onClose,
 }: Step3HRPoliciesEmailModalProps) {
   const [to, setTo] = useState(() =>
-    [...new Set([employeeEmail, personalEmail].map((email) => email.trim()).filter(Boolean))].join(", ")
+    [...new Set([employeeEmail, personalEmail].map(normalizeEmailValue).filter(Boolean))].join(", ")
   );
   const [cc, setCc] = useState("hr@wuc.edu");
   const [subject, setSubject] = useState(EMAIL_SUBJECT);

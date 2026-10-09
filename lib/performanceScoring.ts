@@ -34,7 +34,9 @@ export function getPerformanceScoringVersion(
 export interface TaskPriorityHandlingBreakdown {
   urgentOverdue: number;
   highOverdue: number;
+  normalOverdue: number;
   noPriorityAssigned: number;
+  noWorkCompleted: boolean;
   totalDeduction: number;
 }
 
@@ -76,12 +78,16 @@ export function getQualityOfWorkScoringBand(
  * Deduction per overdue task:
  * - Urgent: -4 points each
  * - High:   -3 points each
+ * - Normal: -2 points each
  * Deduction per assigned task with no priority:
  * - No Priority: -1 point each
  *
  * Formula:
- *   totalDeduction = (overdueUrgent × 4) + (overdueHigh × 3) + (assignedNoPriority × 1)
+ *   totalDeduction = (overdueUrgent × 4) + (overdueHigh × 3) + (overdueNormal × 2) + (assignedNoPriority × 1)
  *   finalScore     = max(0, 20 − totalDeduction)
+ *
+ * If tasks were assigned and every one is weekly overdue (no work completed),
+ * the score is 0.
  *
  * Returns: Numeric score (0–20)
  */
@@ -95,15 +101,25 @@ export function getTaskPriorityHandlingBreakdown(
     weeklyOverdueDetails.find((d) => d.priority === "urgent")?.count || 0;
   const overdueHigh =
     weeklyOverdueDetails.find((d) => d.priority === "high")?.count || 0;
+  const overdueNormal =
+    weeklyOverdueDetails.find((d) => d.priority === "normal")?.count || 0;
   const noPriorityAssigned =
     assignedDetails.find((d) => d.priority === "no priority")?.count || 0;
 
-  const totalDeduction = overdueUrgent * 4 + overdueHigh * 3 + noPriorityAssigned;
+  const assignedCount = assignedDetails.reduce((sum, d) => sum + d.count, 0);
+  const overdueCount = weeklyOverdueDetails.reduce((sum, d) => sum + d.count, 0);
+  const noWorkCompleted = assignedCount > 0 && overdueCount >= assignedCount;
+
+  const totalDeduction = noWorkCompleted
+    ? 20
+    : overdueUrgent * 4 + overdueHigh * 3 + overdueNormal * 2 + noPriorityAssigned;
 
   return {
     urgentOverdue: overdueUrgent,
     highOverdue: overdueHigh,
+    normalOverdue: overdueNormal,
     noPriorityAssigned,
+    noWorkCompleted,
     totalDeduction,
   };
 }
@@ -185,6 +201,9 @@ export function calculateTaskCompletionRate(record: WeeklyRecord): number {
  * 2. Calculate Total Assigned Weighted Value from assignedTasksDetails
  * 3. Weighted Overdue Ratio = Overdue Weighted / (Overdue Weighted + Assigned Weighted)
  * 4. Score based on ratio bands (max 30 points)
+ *
+ * Override: if assigned, weekly overdue and all overdue task counts are equal
+ * (and above 0), nothing was done and the score is 0.
  */
 export function calculatePastDueTaskManagement(record: WeeklyRecord): number {
   const allOverdueDetails = record.allOverdueTasksDetails || [];
@@ -217,6 +236,18 @@ export function calculatePastDueTaskManagement(record: WeeklyRecord): number {
     const weight = assignedWeights[detail.priority] || 0;
     return sum + detail.count * weight;
   }, 0);
+
+  // Nothing was done: assigned = weekly overdue = all overdue
+  const sumCounts = (details: { count: number }[]) =>
+    details.reduce((sum, d) => sum + d.count, 0);
+  const assignedCount = sumCounts(assignedDetails);
+  if (
+    assignedCount > 0 &&
+    sumCounts(record.overdueTasksDetails || []) === assignedCount &&
+    sumCounts(allOverdueDetails) === assignedCount
+  ) {
+    return 0;
+  }
 
   // If no tasks assigned and no overdue, full score
   if (totalOverdueWeighted === 0 && totalAssignedWeighted === 0) {

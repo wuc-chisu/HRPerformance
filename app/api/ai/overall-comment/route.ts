@@ -1,3 +1,5 @@
+import { ZERO_SCORE_CLICKUP_REMINDER } from "@/lib/zeroScoreReminder";
+
 import { NextResponse } from "next/server";
 import { WeeklyRecord } from "@/lib/employees";
 import {
@@ -7,6 +9,8 @@ import {
   getPerformanceRating,
 } from "@/lib/performanceScoring";
 
+const BELOW_70_WARNING =
+  "This week's performance score is below 70%. If the monthly average falls below 70%, it will trigger a formal warning review. Three confirmed warnings may result in reduction of hours or termination. Please take corrective action in ClickUp immediately.";
 interface OverallCommentRequest {
   record: WeeklyRecord;
   employeeName?: string;
@@ -199,6 +203,12 @@ export async function POST(request: Request) {
 
     const score = calculateWeeklyPerformanceScore(record);
     const rating = getPerformanceRating(score.totalScore);
+    if (score.totalScore === 0) {
+      return NextResponse.json({
+        comment: `${ZERO_SCORE_CLICKUP_REMINDER}\n\n${BELOW_70_WARNING}`,
+      });
+    }
+
     const priorityBreakdown = getTaskPriorityHandlingBreakdown(record);
 
     const assignedDetails = record.assignedTasksDetails || [];
@@ -253,7 +263,7 @@ export async function POST(request: Request) {
     const isExcellentPerformance = lowAreas.length === 0 && allOverdueCount === 0 && weeklyOverdueCount === 0;
     const taskPriorityDeductionSummary =
       priorityBreakdown.totalDeduction > 0
-        ? `Task Priority Handling direct deduction = -${priorityBreakdown.totalDeduction} points from ${priorityBreakdown.urgentOverdue} urgent overdue task(s), ${priorityBreakdown.highOverdue} high overdue task(s), and ${priorityBreakdown.noPriorityAssigned} assigned task(s) with no priority.`
+        ? `Task Priority Handling direct deduction = -${priorityBreakdown.totalDeduction} points from ${priorityBreakdown.urgentOverdue} urgent overdue task(s), ${priorityBreakdown.highOverdue} high overdue task(s), ${priorityBreakdown.normalOverdue} normal overdue task(s) (-2 each), and ${priorityBreakdown.noPriorityAssigned} assigned task(s) with no priority.`
         : "Task Priority Handling direct deduction = 0 because there were no urgent overdue tasks, no high overdue tasks, and no assigned tasks with no priority.";
     const hasTaskPriorityDeduction = priorityBreakdown.totalDeduction > 0;
     const noPriorityCommentInstructions =

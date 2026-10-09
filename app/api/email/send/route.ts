@@ -1,6 +1,19 @@
 import nodemailer from "nodemailer";
 import { NextResponse } from "next/server";
 
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+// Renders **bold** markers as <strong> and keeps line breaks.
+const toHtml = (value: string) =>
+  `<div style="white-space:pre-wrap">${escapeHtml(value).replace(
+    /\*\*([^*]+)\*\*/g,
+    "<strong>$1</strong>"
+  )}</div>`;
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -69,7 +82,8 @@ export async function POST(request: Request) {
       cc: cc || undefined,
       bcc: bcc || undefined,
       subject,
-      text: body,
+      text: body.replace(/\*\*([^*]+)\*\*/g, "$1"),
+      html: toHtml(body),
       attachments,
     });
 
