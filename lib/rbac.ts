@@ -135,6 +135,7 @@ export function getAllowedViewsForRole(
     // Can access: Training & Compliance, Employee, Performance, Corrective Actions, Leave & Holidays
     // Cannot access: Dashboard, Employee Lifecycle
     return new Set<AppView>([
+      "my-employee-card",
       "employees",
       "manage",
       "manage-performance",
@@ -146,6 +147,7 @@ export function getAllowedViewsForRole(
 
   // HR Admin and Executive: all views
   return new Set<AppView>([
+    "my-employee-card",
     "dashboard",
     "employees",
     "offboard-employees",

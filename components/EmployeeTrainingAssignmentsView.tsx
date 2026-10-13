@@ -129,7 +129,7 @@ export default function EmployeeTrainingAssignmentsView() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Start</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Due</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Completed</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Due Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Course</th>
               </tr>
             </thead>
@@ -141,7 +141,7 @@ export default function EmployeeTrainingAssignmentsView() {
                       <div>No training assignments were found for this employee yet.</div>
                       {canSwitchView && (
                         <div className="text-xs text-slate-400">
-                          If you want to review the full course catalog, switch the top-right `View As` control to `Admin`.
+                          You can switch the top-right `View As` control to Admin to manage courses.
                         </div>
                       )}
                     </div>

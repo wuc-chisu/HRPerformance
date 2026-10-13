@@ -35,8 +35,8 @@ import {
   getAllowedViewsForRole,
   isHrAdmin,
   isExecutive,
+  isEmployee,
   isManager,
-  canEditEmployeeRecord,
   isSelfOrDirectReport,
 } from "@/lib/rbac";
 
@@ -62,6 +62,44 @@ type AppView =
   | "incident-tracking"
   | "time-off";
 
+type TopNavigationColor = "blue" | "purple" | "red" | "amber" | "emerald" | "teal";
+
+const TOP_NAVIGATION_COLORS: Record<TopNavigationColor, { active: string; inactive: string }> = {
+  blue: {
+    active: "border-blue-700 bg-blue-600",
+    inactive: "border-blue-200 bg-blue-100 hover:border-blue-300 hover:bg-blue-200",
+  },
+  purple: {
+    active: "border-purple-700 bg-purple-600",
+    inactive: "border-purple-200 bg-purple-100 hover:border-purple-300 hover:bg-purple-200",
+  },
+  red: {
+    active: "border-red-700 bg-red-600",
+    inactive: "border-red-200 bg-red-100 hover:border-red-300 hover:bg-red-200",
+  },
+  amber: {
+    active: "border-amber-700 bg-amber-600",
+    inactive: "border-amber-200 bg-amber-100 hover:border-amber-300 hover:bg-amber-200",
+  },
+  emerald: {
+    active: "border-emerald-700 bg-emerald-600",
+    inactive: "border-emerald-200 bg-emerald-100 hover:border-emerald-300 hover:bg-emerald-200",
+  },
+  teal: {
+    active: "border-teal-700 bg-teal-600",
+    inactive: "border-teal-200 bg-teal-100 hover:border-teal-300 hover:bg-teal-200",
+  },
+};
+
+function getTopNavigationTabClass(isActive: boolean, color: TopNavigationColor) {
+  return [
+    "relative rounded-lg border-2 px-6 py-2 font-bold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2",
+    isActive
+      ? `-translate-y-0.5 text-white shadow-md after:absolute after:bottom-0 after:left-1/4 after:h-0.5 after:w-1/2 after:rounded-full after:bg-white/80 after:content-[''] ${TOP_NAVIGATION_COLORS[color].active}`
+      : `text-gray-700 hover:shadow-sm ${TOP_NAVIGATION_COLORS[color].inactive}`,
+  ].join(" ");
+}
+
 export default function Home() {
   const {
     loading: currentUserLoading,
@@ -70,13 +108,14 @@ export default function Home() {
     employeeContext,
     viewMode,
     isEmployeeView,
+    effectiveRole,
   } = useCurrentUserContext();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [offboardingRecords, setOffboardingRecords] = useState<OffboardingRecord[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(
     null
   );
-  const [activeView, setActiveView] = useState<AppView>("dashboard");
+  const [activeView, setActiveView] = useState<AppView>("my-employee-card");
   const [selectedEmployeeForPerformance, setSelectedEmployeeForPerformance] =
     useState<string | null>(null);
   const [lastCreatedEmployeeId, setLastCreatedEmployeeId] = useState<string | null>(null);
@@ -263,17 +302,33 @@ export default function Home() {
     [activeEmployees, employeeContext?.employeeId, employees]
   );
 
+  const employeeRecordsVisibleToViewer = useMemo(() => {
+    if (isHrAdmin(effectiveRole) || isExecutive(effectiveRole)) {
+      return activeEmployees;
+    }
+
+    if (isManager(effectiveRole) && employeeContext) {
+      return activeEmployees.filter((employee) => isSelfOrDirectReport(employeeContext, employee));
+    }
+
+    return currentEmployeeRecord ? [currentEmployeeRecord] : [];
+  }, [activeEmployees, currentEmployeeRecord, effectiveRole, employeeContext]);
+
   const isEmployeeOnly = employeeContext?.systemRole === "Employee";
   const isEmployeePerspective = isEmployeeOnly || isEmployeeView;
+  const performanceEmployeeId = isEmployee(effectiveRole)
+    ? currentEmployeeRecord?.id || ""
+    : selectedEmployeeForPerformance || "";
   const allowedViews = useMemo(
     () =>
       getAllowedViewsForRole(
-        employeeContext?.systemRole,
+        effectiveRole,
         isEmployeePerspective
       ),
-    [employeeContext?.systemRole, isEmployeePerspective]
+    [effectiveRole, isEmployeePerspective]
   );
   const defaultView: AppView = useMemo(() => {
+    if (allowedViews.has("my-employee-card")) return "my-employee-card";
     if (allowedViews.has("dashboard")) return "dashboard";
     if (allowedViews.has("employees")) return "employees";
     return "professional-development";
@@ -1154,64 +1209,6 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        {isEmployeeView && (
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Current Logged-In User
-            </div>
-            {currentUserLoading ? (
-              <p className="mt-3 text-sm text-slate-600">Checking Google sign-in and employee match...</p>
-            ) : employeeContext ? (
-              <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
-                <p>
-                  <span className="font-semibold text-slate-900">Logged in as:</span>{" "}
-                  {employeeContext.employeeName}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">Email:</span>{" "}
-                  <a className="text-blue-700 underline" href={`mailto:${employeeContext.workEmail}`}>
-                    {employeeContext.workEmail}
-                  </a>
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">Employee ID:</span>{" "}
-                  {employeeContext.employeeId}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">System Role:</span>{" "}
-                  {employeeContext.systemRole}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">Current View Mode:</span>{" "}
-                  {isEmployeeView ? "Employee" : "Admin"}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">Direct Manager:</span>{" "}
-                  {employeeContext.isDirectManager ? "Yes" : "No"}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">Direct Reports:</span>{" "}
-                  {employeeContext.directReports.length}
-                </p>
-                {employeeContext.directReports.length > 0 && (
-                  <div className="md:col-span-2">
-                    <span className="font-semibold text-slate-900">Report IDs:</span>{" "}
-                    {employeeContext.directReports.map((report) => report.employeeId).join(", ")}
-                  </div>
-                )}
-              </div>
-            ) : currentUserError ? (
-              <p className="mt-3 text-sm text-rose-700">{currentUserError}</p>
-            ) : (
-              <p className="mt-3 text-sm text-slate-600">
-                No employee context is available yet.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Navigation Tabs */}
@@ -1221,39 +1218,57 @@ export default function Home() {
               {allowedViews.has("my-employee-card") && (
                 <button
                   onClick={() => setVisibleView("my-employee-card")}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                    activeView === "my-employee-card"
-                      ? "bg-blue-300 text-white shadow-md"
-                      : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
-                  }`}
+                  aria-current={activeView === "my-employee-card" ? "page" : undefined}
+                  className={getTopNavigationTabClass(activeView === "my-employee-card", "blue")}
                 >
                   👤 My Employee Card
                 </button>
               )}
               <button
                 onClick={() => setVisibleView("professional-development")}
-                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeView === "professional-development"
-                    ? "bg-amber-400 text-white shadow-md"
-                    : "bg-amber-100 text-gray-700 border border-amber-200 hover:bg-amber-50"
-                }`}
+                aria-current={activeView === "professional-development" ? "page" : undefined}
+                className={getTopNavigationTabClass(activeView === "professional-development", "amber")}
               >
                 🎓 Training & Compliance
               </button>
+              {allowedViews.has("manage-performance") && (
+                <button
+                  onClick={() => setVisibleView("manage-performance")}
+                  aria-current={activeView === "manage-performance" ? "page" : undefined}
+                  className={getTopNavigationTabClass(activeView === "manage-performance", "purple")}
+                >
+                  📈 Performance
+                </button>
+              )}
+              {allowedViews.has("time-off") && (
+                <button
+                  onClick={() => setVisibleView("time-off")}
+                  aria-current={activeView === "time-off" ? "page" : undefined}
+                  className={getTopNavigationTabClass(activeView === "time-off", "emerald")}
+                >
+                  🗓️ Leave & Holidays
+                </button>
+              )}
             </>
           ) : (
             <>
+              {allowedViews.has("my-employee-card") && (
+                <button
+                  onClick={() => setVisibleView("my-employee-card")}
+                  aria-current={activeView === "my-employee-card" ? "page" : undefined}
+                  className={getTopNavigationTabClass(activeView === "my-employee-card", "blue")}
+                >
+                  👤 My Employee Card
+                </button>
+              )}
               {allowedViews.has("dashboard") && (
                 <button
                   onClick={() => {
                     setVisibleView("dashboard");
                     setSelectedEmployeeId(null);
                   }}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                    activeView === "dashboard"
-                      ? "bg-blue-300 text-white shadow-md"
-                      : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
-                  }`}
+                  aria-current={activeView === "dashboard" ? "page" : undefined}
+                  className={getTopNavigationTabClass(activeView === "dashboard", "blue")}
                 >
                   📊 Dashboard
                 </button>
@@ -1261,11 +1276,8 @@ export default function Home() {
               {allowedViews.has("employees") && (
                 <button
                   onClick={() => setVisibleView("employees")}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                    activeView === "employees" || activeView === "manage" || activeView === "offboard-employees"
-                      ? "bg-blue-300 text-white shadow-md"
-                      : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
-                  }`}
+                  aria-current={["employees", "manage", "offboard-employees"].includes(activeView) ? "page" : undefined}
+                  className={getTopNavigationTabClass(["employees", "manage", "offboard-employees"].includes(activeView), "blue")}
                 >
                   👥 Employee
                 </button>
@@ -1276,11 +1288,8 @@ export default function Home() {
                     setVisibleView("manage-performance");
                     setSelectedEmployeeId(null);
                   }}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                    activeView === "manage-performance"
-                      ? "bg-purple-300 text-white shadow-md"
-                      : "bg-purple-100 text-gray-700 border border-purple-200 hover:bg-purple-50"
-                  }`}
+                  aria-current={activeView === "manage-performance" ? "page" : undefined}
+                  className={getTopNavigationTabClass(activeView === "manage-performance", "purple")}
                 >
                   📈 Performance
                 </button>
@@ -1291,11 +1300,8 @@ export default function Home() {
                     setVisibleView("incident-tracking");
                     setSelectedEmployeeId(null);
                   }}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                    activeView === "incident-tracking"
-                      ? "bg-red-300 text-white shadow-md"
-                      : "bg-red-100 text-gray-700 border border-red-200 hover:bg-red-50"
-                  }`}
+                  aria-current={activeView === "incident-tracking" ? "page" : undefined}
+                  className={getTopNavigationTabClass(activeView === "incident-tracking", "red")}
                 >
                   ⚠️ Corrective Actions
                 </button>
@@ -1306,11 +1312,8 @@ export default function Home() {
                     setVisibleView("professional-development");
                     setSelectedEmployeeId(null);
                   }}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                    activeView === "professional-development"
-                      ? "bg-amber-400 text-white shadow-md"
-                      : "bg-amber-100 text-gray-700 border border-amber-200 hover:bg-amber-50"
-                  }`}
+                  aria-current={activeView === "professional-development" ? "page" : undefined}
+                  className={getTopNavigationTabClass(activeView === "professional-development", "amber")}
                 >
                   🎓 Training & Compliance
                 </button>
@@ -1321,11 +1324,8 @@ export default function Home() {
                     setVisibleView("time-off");
                     setSelectedEmployeeId(null);
                   }}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                    activeView === "time-off"
-                      ? "bg-emerald-400 text-white shadow-md"
-                      : "bg-emerald-100 text-gray-700 border border-emerald-200 hover:bg-emerald-50"
-                  }`}
+                  aria-current={activeView === "time-off" ? "page" : undefined}
+                  className={getTopNavigationTabClass(activeView === "time-off", "emerald")}
                 >
                   🗓️ Leave & Holidays
                 </button>
@@ -1336,11 +1336,8 @@ export default function Home() {
                     setVisibleView("employee-lifecycle");
                     setSelectedEmployeeId(null);
                   }}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                    activeView === "employee-lifecycle" || activeView === "preboarding" || activeView === "onboarding" || activeView === "offboarding"
-                      ? "bg-teal-400 text-white shadow-md"
-                      : "bg-teal-100 text-gray-700 border border-teal-200 hover:bg-teal-50"
-                  }`}
+                  aria-current={["employee-lifecycle", "preboarding", "onboarding", "offboarding"].includes(activeView) ? "page" : undefined}
+                  className={getTopNavigationTabClass(["employee-lifecycle", "preboarding", "onboarding", "offboarding"].includes(activeView), "teal")}
                 >
                   👥 Employee Lifecycle
                 </button>
@@ -1483,7 +1480,7 @@ export default function Home() {
               </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...activeEmployees]
+              {[...employeeRecordsVisibleToViewer]
                 .sort((a, b) =>
                   a.id.localeCompare(b.id, undefined, {
                     numeric: true,
@@ -1494,11 +1491,12 @@ export default function Home() {
                 <EmployeeCard
                   key={employee.id}
                   employee={employee}
+                  actionLabel={isHrAdmin(effectiveRole) ? "Edit Employee Detail" : "View Employee Detail"}
                   onSelect={(employeeId: string) => {
                     setSelectedEmployeeId(employeeId);
                     const selected = activeEmployees.find((item) => item.id === employeeId);
                     if (selected) {
-                      if (employeeContext && canEditEmployeeRecord(employeeContext, selected)) {
+                      if (isHrAdmin(effectiveRole)) {
                         handleEditEmployee(selected);
                       } else {
                         handleViewEmployee(selected);
@@ -1679,7 +1677,7 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {activeEmployees.map((employee) => (
+                    {employeeRecordsVisibleToViewer.map((employee) => (
                       <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {employee.id}
@@ -1703,7 +1701,7 @@ export default function Home() {
                           {formatCompactDate(employee.joinDate)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2 flex">
-                          {employeeContext && canEditEmployeeRecord(employeeContext, employee) ? (
+                          {isHrAdmin(effectiveRole) ? (
                             <button
                               onClick={() => handleEditEmployee(employee)}
                               className="bg-blue-300 text-white px-3 py-1 rounded hover:bg-blue-400 transition-colors"
@@ -1745,12 +1743,17 @@ export default function Home() {
         )}
 
         {/* Manage Performance View */}
-        {!isEmployeePerspective && activeView === "manage-performance" && (
+        {allowedViews.has("manage-performance") && activeView === "manage-performance" && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-md p-6 print:shadow-none">
               <h2 className="text-2xl font-bold text-gray-900 mb-6 print:hidden">
-                Manage Employee Performance
+                {isHrAdmin(effectiveRole) ? "Manage Employee Performance" : "Employee Performance"}
               </h2>
+              {!isHrAdmin(effectiveRole) && (
+                <p className="mb-6 text-sm text-slate-600 print:hidden">
+                  Performance records are view-only. Only HR Admin can add or edit records.
+                </p>
+              )}
 
               {/* Year and Month Selectors */}
               <div className="mb-6 print:hidden">
@@ -1845,12 +1848,13 @@ export default function Home() {
               </div>
 
               {/* Employee Selector */}
+              {!isEmployee(effectiveRole) && (
               <div className="mb-6 print:hidden">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Select Employee
                 </label>
                 <select
-                  value={selectedEmployeeForPerformance || ""}
+                  value={performanceEmployeeId}
                   onChange={(e) => {
                     setSelectedEmployeeForPerformance(e.target.value);
                     setSelectedEmployeeId(e.target.value || null);
@@ -1858,7 +1862,7 @@ export default function Home() {
                   className="w-full px-4 py-2 border border-blue-300 rounded-lg bg-blue-50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
                   <option value="">Choose an employee...</option>
-                  {[...activeEmployees]
+                  {[...employeeRecordsVisibleToViewer]
                     .sort((a, b) =>
                       a.id.localeCompare(b.id, undefined, {
                         numeric: true,
@@ -1872,18 +1876,19 @@ export default function Home() {
                   ))}
                 </select>
               </div>
+              )}
 
               {/* If employee selected, show their performance management */}
-              {selectedEmployeeForPerformance &&
-                activeEmployees.find((e) => e.id === selectedEmployeeForPerformance) && (
+              {performanceEmployeeId &&
+                employeeRecordsVisibleToViewer.find((e) => e.id === performanceEmployeeId) && (
                   <div className="space-y-6">
                     <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 print:hidden">
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">
                             {`${
-                              activeEmployees.find(
-                                (e) => e.id === selectedEmployeeForPerformance
+                              employeeRecordsVisibleToViewer.find(
+                                (e) => e.id === performanceEmployeeId
                               )?.name
                             }'s ${
                               performanceView === "weekly"
@@ -1923,21 +1928,19 @@ export default function Home() {
                     </div>
 
                     {(() => {
-                      const selectedEmp = activeEmployees.find(
-                        (e) => e.id === selectedEmployeeForPerformance
+                      const selectedEmp = employeeRecordsVisibleToViewer.find(
+                        (e) => e.id === performanceEmployeeId
                       );
                       const canManagePerf = Boolean(
                         selectedEmp &&
-                        employeeContext &&
-                        (isHrAdmin(employeeContext.systemRole) ||
-                         (isManager(employeeContext.systemRole) && isSelfOrDirectReport(employeeContext, selectedEmp)))
+                        isHrAdmin(effectiveRole)
                       );
 
                       return performanceView === "weekly" && selectedEmp ? (
                         <WeeklyRecordsTable
                           employee={selectedEmp}
                           timeOffRequests={activeTimeOffRequests.filter(
-                            (request) => request.employeeId === selectedEmployeeForPerformance
+                            (request) => request.employeeId === performanceEmployeeId
                           )}
                           holidays={holidays}
                           selectedYear={selectedYear}
@@ -1956,11 +1959,11 @@ export default function Home() {
                       ) : null;
                     })()}
 
-                    {performanceView === "monthly" && activeEmployees.find((e) => e.id === selectedEmployeeForPerformance) && (
+                    {performanceView === "monthly" && employeeRecordsVisibleToViewer.find((e) => e.id === performanceEmployeeId) && (
                       <MonthlyPerformanceReport
                         employee={
-                          activeEmployees.find(
-                            (e) => e.id === selectedEmployeeForPerformance
+                          employeeRecordsVisibleToViewer.find(
+                            (e) => e.id === performanceEmployeeId
                           )!
                         }
                         year={selectedYear}
@@ -1999,7 +2002,7 @@ export default function Home() {
         )}
 
         {activeView === "professional-development" && (
-          isEmployeePerspective ? (
+          effectiveRole !== "HR Admin" ? (
             <EmployeeTrainingAssignmentsView />
           ) : (
             <div className="space-y-4">
@@ -2009,7 +2012,7 @@ export default function Home() {
                     Training & Compliance
                   </div>
                   <div className="mt-1 text-sm text-slate-700">
-                    Viewing as <span className="font-semibold text-slate-900">{viewMode === "employee" ? "Employee" : "Admin"}</span>.
+                    Viewing as <span className="font-semibold text-slate-900">Admin</span>. Course management is available here; assigned training is for employees, managers, and executives.
                   </div>
                 </div>
               )}
@@ -2019,7 +2022,7 @@ export default function Home() {
         )}
 
         {!isEmployeePerspective && activeView === "incident-tracking" && (
-          <IncidentTrackingTable employees={activeEmployees} />
+          <IncidentTrackingTable employees={employeeRecordsVisibleToViewer} />
         )}
 
         {activeView === "my-employee-card" && currentEmployeeRecord && (
@@ -2028,7 +2031,7 @@ export default function Home() {
 
         {activeView === "time-off" && (
           <TimeOffManager
-            employees={isEmployeePerspective && currentEmployeeRecord ? [currentEmployeeRecord] : activeEmployees}
+            employees={employeeRecordsVisibleToViewer}
             requests={isEmployeePerspective && currentEmployeeRecord ? activeTimeOffRequests.filter((request) => request.employeeId === currentEmployeeRecord.id) : activeTimeOffRequests}
             holidays={holidays}
             selectedYear={selectedYear}
@@ -2065,6 +2068,7 @@ export default function Home() {
           employees={activeEmployees}
           canEditSystemRole={isHrAdmin(employeeContext?.systemRole)}
           readOnly={isReadOnlyEmployee}
+          hideSalaryFields={isManager(effectiveRole) || isExecutive(effectiveRole)}
         />
       )}
 

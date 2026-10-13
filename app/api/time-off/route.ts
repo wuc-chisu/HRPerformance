@@ -6,7 +6,7 @@ import {
 } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
 import { getAuthenticatedEmployee } from "@/lib/current-employee";
-import { isDirectReportOf, isEmployee, isExecutive, isHrAdmin, isManager } from "@/lib/rbac";
+import { isEmployee, isHrAdmin, isManager } from "@/lib/rbac";
 
 type EmployeeSummary = {
   employeeId: string;
@@ -82,6 +82,7 @@ type TimeOffRequestModel = {
 const timeOffRequestModel = (prisma as unknown as { timeOffRequest: TimeOffRequestModel }).timeOffRequest;
 
 type ResolvedCurrentEmployee = {
+  id: string;
   employeeId: string;
   name: string;
   systemRole: string;
@@ -92,6 +93,7 @@ async function resolveCurrentEmployee(): Promise<ResolvedCurrentEmployee | null>
   if (!employee) return null;
 
   return {
+    id: employee.id,
     employeeId: employee.employeeId,
     name: employee.name,
     systemRole: employee.systemRole || "Employee",
@@ -188,6 +190,7 @@ export async function GET() {
           OR: [
             { manager: { equals: currentEmployee.name, mode: "insensitive" } },
             { manager: { equals: currentEmployee.employeeId, mode: "insensitive" } },
+            { manager: { equals: currentEmployee.id, mode: "insensitive" } },
           ],
         },
         select: { employeeId: true },
@@ -258,24 +261,13 @@ export async function POST(request: Request) {
 
     let targetEmployeeId = String(employeeId || "").trim();
 
-    if (isEmployee(currentEmployee.systemRole)) {
-      targetEmployeeId = currentEmployee.employeeId;
-    } else if (isManager(currentEmployee.systemRole)) {
+    if (!isHrAdmin(currentEmployee.systemRole)) {
       if (targetEmployeeId && targetEmployeeId !== currentEmployee.employeeId) {
-        const targetEmp = await prisma.employee.findUnique({
-          where: { employeeId: targetEmployeeId },
-          select: { manager: true },
-        });
-        if (!targetEmp || !isDirectReportOf(currentEmployee, targetEmp)) {
-          return NextResponse.json(
-            { error: "Managers can only submit leave requests for themselves or their direct reports." },
-            { status: 403 }
-          );
-        }
-      } else {
-        targetEmployeeId = currentEmployee.employeeId;
+        return NextResponse.json(
+          { error: "Only HR Admin can submit time-off requests for other employees." },
+          { status: 403 }
+        );
       }
-    } else if (!targetEmployeeId) {
       targetEmployeeId = currentEmployee.employeeId;
     }
 
@@ -299,13 +291,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Start date must be on or before end date" },
         { status: 400 }
-      );
-    }
-
-    if (currentEmployee.systemRole === "Employee" && targetEmployeeId !== currentEmployee.employeeId) {
-      return NextResponse.json(
-        { error: "You can only create leave requests for your own employee record." },
-        { status: 403 }
       );
     }
 

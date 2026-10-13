@@ -12,7 +12,7 @@ import {
   REQUIRED_TRAINING_ITEMS,
 } from "@/lib/employees";
 import { getAuthenticatedEmployee } from "@/lib/current-employee";
-import { canCreateEmployee, filterEmployeesForViewer } from "@/lib/rbac";
+import { canCreateEmployee, filterEmployeesForViewer, isExecutive, isManager } from "@/lib/rbac";
 
 function normalizeProfessionalDevelopmentRecords(records: unknown) {
   if (!Array.isArray(records)) return [];
@@ -325,8 +325,12 @@ export async function GET() {
       probationPeriodEndDate: emp.probationPeriodEndDate
         ? formatDateForResponse(emp.probationPeriodEndDate)
         : "",
-      monthlySalaryDuringProbation: emp.monthlySalaryDuringProbation ?? null,
-      monthlySalaryAfterProbation: emp.monthlySalaryAfterProbation ?? null,
+      ...(!isManager(currentEmployee.systemRole) && !isExecutive(currentEmployee.systemRole)
+        ? {
+            monthlySalaryDuringProbation: emp.monthlySalaryDuringProbation ?? null,
+            monthlySalaryAfterProbation: emp.monthlySalaryAfterProbation ?? null,
+          }
+        : {}),
       overallOverdueTasks: emp.overallOverdueTasks,
       professionalDevelopmentRecords: normalizeProfessionalDevelopmentRecords(
         emp.professionalDevelopmentRecords

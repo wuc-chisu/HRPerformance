@@ -5,10 +5,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedEmployee } from "@/lib/current-employee";
 import {
   canViewEmployeeRecord,
-  isEmployee,
-  isExecutive,
-  isManager,
-  isSelfOrDirectReport,
+  isHrAdmin,
 } from "@/lib/rbac";
 
 // GET single weekly record by id
@@ -131,20 +128,11 @@ export async function PUT(
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    if (isExecutive(currentEmployee.systemRole) || isEmployee(currentEmployee.systemRole)) {
+    if (!isHrAdmin(currentEmployee.systemRole)) {
       return NextResponse.json(
-        { error: "You do not have permission to manage performance records." },
+        { error: "Only HR Admin can update performance records." },
         { status: 403 }
       );
-    }
-
-    if (isManager(currentEmployee.systemRole)) {
-      if (!isSelfOrDirectReport(currentEmployee, existingRecord.employee)) {
-        return NextResponse.json(
-          { error: "Managers can only update performance records for themselves or their direct reports." },
-          { status: 403 }
-        );
-      }
     }
 
     console.log("✅ Record found, proceeding with update");
@@ -291,9 +279,9 @@ export async function DELETE(
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    if (isExecutive(currentEmployee.systemRole) || isEmployee(currentEmployee.systemRole)) {
+    if (!isHrAdmin(currentEmployee.systemRole)) {
       return NextResponse.json(
-        { error: "You do not have permission to manage performance records." },
+        { error: "Only HR Admin can delete performance records." },
         { status: 403 }
       );
     }
@@ -317,15 +305,6 @@ export async function DELETE(
 
     if (!existing) {
       return NextResponse.json({ success: true, message: "Record already deleted" });
-    }
-
-    if (isManager(currentEmployee.systemRole)) {
-      if (!isSelfOrDirectReport(currentEmployee, existing.employee)) {
-        return NextResponse.json(
-          { error: "Managers can only delete performance records for themselves or their direct reports." },
-          { status: 403 }
-        );
-      }
     }
 
     await prisma.weeklyRecord.delete({

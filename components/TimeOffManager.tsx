@@ -81,13 +81,16 @@ export default function TimeOffManager({
   onCreateHoliday,
   onDeleteHoliday,
 }: TimeOffManagerProps) {
-  const { employeeContext } = useCurrentUserContext();
+  const { employeeContext, effectiveRole } = useCurrentUserContext();
   const isAdminMode = mode === "admin";
-  const userRole = employeeContext?.systemRole;
+  const userRole = effectiveRole ?? employeeContext?.systemRole;
+  const canRequestForOthers = isAdminMode && isHrAdmin(userRole);
+  const canSeeAllRequests = isAdminMode && (isHrAdmin(userRole) || isExecutive(userRole));
+  const canFilterRequests = canSeeAllRequests || (isAdminMode && isManager(userRole));
   const canAddHoliday = isHrAdmin(userRole);
   const canApproveReject = isHrAdmin(userRole) || isManager(userRole);
   const canDeleteRequest = isHrAdmin(userRole);
-  const currentEmployee = employees[0] || null;
+  const currentEmployee = employees.find((employee) => employee.id === employeeContext?.employeeId) || null;
 
   const [requestForm, setRequestForm] = useState({
     employeeId: currentEmployee?.id || "",
@@ -109,7 +112,7 @@ export default function TimeOffManager({
   const [saving, setSaving] = useState(false);
   const [requestNotice, setRequestNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [holidayNotice, setHolidayNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [filterMode, setFilterMode] = useState<"all" | "month">("month");
+  const [filterMode, setFilterMode] = useState<"all" | "month">("all");
   const [filterEmployeeId, setFilterEmployeeId] = useState("");
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterYear, setFilterYear] = useState(selectedYear);
@@ -118,10 +121,10 @@ export default function TimeOffManager({
   const [holidayCalendarTab, setHolidayCalendarTab] = useState<"USA" | "Taiwan">("USA");
 
   useEffect(() => {
-    if (!isAdminMode && currentEmployee) {
+    if (!canRequestForOthers && currentEmployee) {
       setRequestForm((prev) => ({ ...prev, employeeId: currentEmployee.id }));
     }
-  }, [currentEmployee, isAdminMode]);
+  }, [canRequestForOthers, currentEmployee]);
 
   useEffect(() => {
     setHolidayForm((prev) => ({ ...prev, date: `${selectedYear}-01-01` }));
@@ -133,14 +136,22 @@ export default function TimeOffManager({
     [employees]
   );
 
-  const scopedRequests = useMemo(
-    () => (isAdminMode ? requests : requests.filter((request) => request.employeeId === currentEmployee?.id)),
-    [currentEmployee?.id, isAdminMode, requests]
-  );
+  const scopedRequests = useMemo(() => {
+    if (canSeeAllRequests) {
+      return requests;
+    }
+
+    if (isAdminMode && isManager(userRole)) {
+      const visibleEmployeeIds = new Set(employees.map((employee) => employee.id));
+      return requests.filter((request) => visibleEmployeeIds.has(request.employeeId));
+    }
+
+    return requests.filter((request) => request.employeeId === currentEmployee?.id);
+  }, [canSeeAllRequests, currentEmployee?.id, employees, isAdminMode, requests, userRole]);
 
   const filteredRequests = useMemo(() => {
     return scopedRequests.filter((request) => {
-      if (isAdminMode && filterEmployeeId && request.employeeId !== filterEmployeeId) {
+      if (canFilterRequests && filterEmployeeId && request.employeeId !== filterEmployeeId) {
         return false;
       }
 
@@ -156,7 +167,7 @@ export default function TimeOffManager({
 
       return true;
     });
-  }, [filterEmployeeId, filterMode, filterMonth, filterYear, isAdminMode, scopedRequests]);
+  }, [canFilterRequests, filterEmployeeId, filterMode, filterMonth, filterYear, scopedRequests]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / 5));
   const paginatedRequests = useMemo(() => {
@@ -237,12 +248,14 @@ export default function TimeOffManager({
         <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Time Off Request</h2>
           <p className="text-sm text-gray-600 mb-6">
-            Employee View stays scoped to the signed-in employee&apos;s own requests. Admin View can manage all requests.
+            {canRequestForOthers
+              ? "HR Admin can submit requests for any employee. Other roles can request time off only for themselves."
+              : "Submit a time-off request for yourself."}
           </p>
           <form onSubmit={submitRequest} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Employee</label>
-              {isAdminMode ? (
+              {canRequestForOthers ? (
                 <select
                   value={requestForm.employeeId}
                   onChange={(e) => setRequestForm((prev) => ({ ...prev, employeeId: e.target.value }))}
@@ -340,7 +353,7 @@ export default function TimeOffManager({
           </form>
         </div>
 
-        {isAdminMode && (
+        {canFilterRequests && (
           <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Holiday Calendar</h2>
             <p className="text-sm text-gray-600 mb-6">
@@ -475,7 +488,13 @@ export default function TimeOffManager({
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Time Off Tracking</h2>
-            <p className="text-sm text-gray-500 mt-1">Employee View shows only your own requests.</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {canSeeAllRequests
+                ? "View time-off requests for all employees."
+                : isManager(userRole)
+                  ? "View your own requests and those of your direct reports."
+                  : "View your own time-off requests."}
+            </p>
           </div>
           <span className="shrink-0 text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
             {filteredRequests.length} record{filteredRequests.length !== 1 ? "s" : ""}
@@ -483,7 +502,7 @@ export default function TimeOffManager({
         </div>
 
         <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl mb-6">
-          {isAdminMode && (
+          {canFilterRequests && (
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Employee</label>
               <select
@@ -491,7 +510,7 @@ export default function TimeOffManager({
                 onChange={(e) => setFilterEmployeeId(e.target.value)}
                 className="text-sm px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-gray-800"
               >
-                <option value="">All Employees</option>
+                <option value="">{isManager(userRole) ? "All My Team" : "All Employees"}</option>
                 {sortedEmployees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
                     {employee.name}

@@ -51,7 +51,7 @@ type IncidentTrackingTableProps = {
 };
 
 export default function IncidentTrackingTable({ employees }: IncidentTrackingTableProps) {
-  const { employeeContext } = useCurrentUserContext();
+  const { employeeContext, effectiveRole } = useCurrentUserContext();
   const userRole = employeeContext?.systemRole;
   const canCreateIncident = isHrAdmin(userRole) || isManager(userRole);
   const canEditIncident = isHrAdmin(userRole) || isManager(userRole);
@@ -191,10 +191,13 @@ export default function IncidentTrackingTable({ employees }: IncidentTrackingTab
 
   const positionOptions = useMemo(
     () =>
-      [...new Set(employees.map((employee) => employee.position).filter(Boolean))].sort(
+      [...new Set([
+        ...employees.map((employee) => employee.position).filter(Boolean),
+        ...(isManager(effectiveRole) ? ["Manager"] : []),
+      ])].sort(
         (a, b) => a.localeCompare(b)
       ),
-    [employees]
+    [effectiveRole, employees]
   );
 
   const handleCreateRecord = async () => {
@@ -748,6 +751,47 @@ Human Resources`
     }
   };
 
+  const visibleEmployeeIds = useMemo(
+    () => new Set(employees.map((employee) => employee.id)),
+    [employees]
+  );
+
+  const editingRecord =
+    editingRecordId != null
+      ? records.find((record) => record.id === editingRecordId && visibleEmployeeIds.has(record.employeeId)) || null
+      : null;
+
+  const viewingRecord =
+    viewingRecordId != null
+      ? records.find((record) => record.id === viewingRecordId && visibleEmployeeIds.has(record.employeeId)) || null
+      : null;
+
+  const filteredRecords = useMemo(() => {
+    const scopedRecords = records.filter(
+      (record) =>
+        visibleEmployeeIds.has(record.employeeId) &&
+        (!selectedEmployeeFilter || record.employeeId === selectedEmployeeFilter)
+    );
+
+    return [...scopedRecords].sort((first, second) => {
+      const byDate = second.occurrenceDate.localeCompare(first.occurrenceDate);
+      if (byDate !== 0) return byDate;
+
+      const byName = first.name.localeCompare(second.name, undefined, {
+        sensitivity: "base",
+      });
+      if (byName !== 0) return byName;
+
+      const byEmployeeId = first.employeeId.localeCompare(second.employeeId, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+      if (byEmployeeId !== 0) return byEmployeeId;
+
+      return second.id.localeCompare(first.id);
+    });
+  }, [records, selectedEmployeeFilter, visibleEmployeeIds]);
+
   const summaryRows = useMemo(() => {
     const byEmployee = new Map<
       string,
@@ -760,7 +804,7 @@ Human Resources`
       }
     >();
 
-    for (const record of records) {
+    for (const record of filteredRecords) {
       const existing =
         byEmployee.get(record.employeeId) ||
         {
@@ -803,41 +847,7 @@ Human Resources`
           sensitivity: "base",
         })
       );
-  }, [records]);
-
-  const editingRecord =
-    editingRecordId != null
-      ? records.find((record) => record.id === editingRecordId) || null
-      : null;
-
-  const viewingRecord =
-    viewingRecordId != null
-      ? records.find((record) => record.id === viewingRecordId) || null
-      : null;
-
-  const filteredRecords = useMemo(() => {
-    const scopedRecords = selectedEmployeeFilter
-      ? records.filter((record) => record.employeeId === selectedEmployeeFilter)
-      : records;
-
-    return [...scopedRecords].sort((first, second) => {
-      const byDate = second.occurrenceDate.localeCompare(first.occurrenceDate);
-      if (byDate !== 0) return byDate;
-
-      const byName = first.name.localeCompare(second.name, undefined, {
-        sensitivity: "base",
-      });
-      if (byName !== 0) return byName;
-
-      const byEmployeeId = first.employeeId.localeCompare(second.employeeId, undefined, {
-        numeric: true,
-        sensitivity: "base",
-      });
-      if (byEmployeeId !== 0) return byEmployeeId;
-
-      return second.id.localeCompare(first.id);
-    });
-  }, [records, selectedEmployeeFilter]);
+  }, [filteredRecords]);
 
   useEffect(() => {
     if (savingId) return;
@@ -1286,7 +1296,9 @@ Human Resources`
                 onChange={(event) => setSelectedEmployeeFilter(event.target.value)}
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg bg-blue-50"
               >
-                <option value="">All Employees</option>
+                <option value="">
+                  {isManager(effectiveRole) ? "All My Team" : "All Employees"}
+                </option>
                 {sortedEmployees.map((employee) => (
                   <option key={`filter-${employee.id}`} value={employee.id}>
                     {employee.name} ({employee.id})

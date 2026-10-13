@@ -23,6 +23,7 @@ interface AddEditEmployeeProps {
   employees?: Employee[];
   canEditSystemRole?: boolean;
   readOnly?: boolean;
+  hideSalaryFields?: boolean;
 }
 
 export default function AddEditEmployee({
@@ -41,6 +42,7 @@ export default function AddEditEmployee({
   ],
   canEditSystemRole = false,
   readOnly = false,
+  hideSalaryFields = false,
 }: AddEditEmployeeProps) {
   const parseNullableSalary = (value: unknown): number | null => {
     if (value === "" || value === null || value === undefined) return null;
@@ -503,7 +505,7 @@ export default function AddEditEmployee({
             </div>
           </div>
 
-          {/* Monthly Salary Fields */}
+          {!hideSalaryFields && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -532,6 +534,7 @@ export default function AddEditEmployee({
               />
             </div>
           </div>
+          )}
 
           {/* Staff Work Location */}
           <div>

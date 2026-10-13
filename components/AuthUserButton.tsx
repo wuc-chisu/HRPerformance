@@ -2,13 +2,13 @@
 
 import { signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { useCurrentUserContext } from "@/components/CurrentUserContextProvider";
+import { useCurrentUserContext, VIEW_AS_ROLES, type ViewAsRole } from "@/components/CurrentUserContextProvider";
 
 /** Top-right profile and session management bar */
 export default function AuthUserButton() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const { employeeContext, canSwitchView, viewMode, setViewMode, signedIn } = useCurrentUserContext();
+  const { employeeContext, canSwitchView, viewAsRole, setViewAsRole, signedIn } = useCurrentUserContext();
 
   // If user is not logged in or is currently on the sign-in page, do not display the sign out CTA or profile.
   if (
@@ -73,35 +73,20 @@ export default function AuthUserButton() {
       </details>
 
       {canSwitchView && (
-        <div className="rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-md backdrop-blur">
-          <div className="mb-1 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-            View As
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setViewMode("admin")}
-              className={`rounded-xl px-3 py-1 text-xs font-semibold transition-colors ${
-                viewMode === "admin"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("employee")}
-              className={`rounded-xl px-3 py-1 text-xs font-semibold transition-colors ${
-                viewMode === "employee"
-                  ? "bg-sky-600 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              Employee
-            </button>
-          </div>
-        </div>
+        <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 shadow-md backdrop-blur">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">View As</span>
+          <select
+            value={viewAsRole}
+            onChange={(event) => setViewAsRole(event.target.value as ViewAsRole)}
+            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          >
+            {VIEW_AS_ROLES.map((role) => (
+              <option key={role} value={role}>
+                {role === "HR Admin" ? "Admin" : role}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
     </div>
   );

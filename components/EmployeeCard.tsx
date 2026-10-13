@@ -9,11 +9,13 @@ const SHOW_LATEST_WEEK_PERFORMANCE = false;
 interface EmployeeCardProps {
   employee: Employee;
   onSelect: (employeeId: string) => void;
+  actionLabel?: string;
 }
 
 export default function EmployeeCard({
   employee,
   onSelect,
+  actionLabel = "View Employee Detail",
 }: EmployeeCardProps) {
   const latestWeek = employee.weeklyRecords[0];
   const hoursStatus = latestWeek
@@ -150,7 +152,7 @@ export default function EmployeeCard({
           }}
           className="w-full px-3 py-2 bg-purple-300 text-white text-sm font-semibold rounded-lg hover:bg-purple-400 transition-colors"
         >
-          Edit / View Employee Detail
+          {actionLabel}
         </button>
       </div>
     </div>

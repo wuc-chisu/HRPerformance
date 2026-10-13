@@ -13,9 +13,8 @@ import {
 import { getAuthenticatedEmployee } from "@/lib/current-employee";
 import {
   canDeleteEmployee,
-  canEditEmployeeRecord,
   canManageSystemRoles,
-  canViewEmployeeRecord,
+  isHrAdmin,
 } from "@/lib/rbac";
 
 function normalizeProfessionalDevelopmentRecords(records: unknown) {
@@ -323,9 +322,9 @@ export async function PUT(
       );
     }
 
-    if (!canEditEmployeeRecord(currentEmployee, existingEmployee)) {
+    if (!isHrAdmin(currentEmployee.systemRole)) {
       return NextResponse.json(
-        { error: "You do not have permission to edit this employee." },
+        { error: "Only HR Admin can edit employee records." },
         { status: 403 }
       );
     }

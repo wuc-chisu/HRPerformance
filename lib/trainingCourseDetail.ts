@@ -105,6 +105,9 @@ export async function getEmployeeTrainingCourseDetail(
     where: {
       id: assignmentId,
       employeeId: employee.id,
+      trainingProgram: {
+        status: "ACTIVE",
+      },
     },
     include: {
       trainingCycle: {

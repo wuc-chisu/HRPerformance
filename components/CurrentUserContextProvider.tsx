@@ -21,9 +21,12 @@ export type CurrentUserEmployeeContext = {
 };
 
 export type UserViewMode = "admin" | "employee";
+export type ViewAsRole = "HR Admin" | "Executive" | "Manager" | "Employee";
 
-const VIEW_MODE_STORAGE_KEY = "hrperformance:view-mode";
-const SWITCHABLE_ROLES = new Set(["HR Admin", "Executive"]);
+export const VIEW_AS_ROLES: ViewAsRole[] = ["HR Admin", "Executive", "Manager", "Employee"];
+
+const VIEW_AS_STORAGE_KEY = "hrperformance:view-as-role";
+const SWITCHABLE_ROLES = new Set(["HR Admin"]);
 
 type CurrentUserContextValue = {
   loading: boolean;
@@ -34,6 +37,9 @@ type CurrentUserContextValue = {
   canSwitchView: boolean;
   viewMode: UserViewMode;
   isEmployeeView: boolean;
+  viewAsRole: ViewAsRole;
+  effectiveRole: string | undefined;
+  setViewAsRole: (role: ViewAsRole) => void;
   setViewMode: (mode: UserViewMode) => void;
   refresh: () => Promise<void>;
 };
@@ -47,26 +53,34 @@ export function CurrentUserContextProvider({ children }: { children: ReactNode }
   const [accessDenied, setAccessDenied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [employeeContext, setEmployeeContext] = useState<CurrentUserEmployeeContext | null>(null);
-  const [viewMode, setViewModeState] = useState<UserViewMode>("admin");
+  const [viewAsRole, setViewAsRoleState] = useState<ViewAsRole>("HR Admin");
+  const viewMode: UserViewMode = viewAsRole === "Employee" ? "employee" : "admin";
 
   const canSwitchView = Boolean(employeeContext && SWITCHABLE_ROLES.has(employeeContext.systemRole));
 
-  const setViewMode = useCallback(
-    (mode: UserViewMode) => {
+  const setViewAsRole = useCallback(
+    (role: ViewAsRole) => {
       if (!canSwitchView) {
-        setViewModeState("admin");
+        setViewAsRoleState("HR Admin");
         return;
       }
 
-      setViewModeState(mode);
+      setViewAsRoleState(role);
       try {
-        window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+        window.localStorage.setItem(VIEW_AS_STORAGE_KEY, role);
       } catch {
         // Ignore storage failures and keep the in-memory mode only.
       }
     },
     [canSwitchView]
   );
+
+  const setViewMode = useCallback(
+    (mode: UserViewMode) => setViewAsRole(mode === "employee" ? "Employee" : "HR Admin"),
+    [setViewAsRole]
+  );
+
+  const effectiveRole = canSwitchView ? viewAsRole : employeeContext?.systemRole;
 
   const fetchCurrentUserContext = useCallback(async () => {
     if (status === "loading") {
@@ -79,7 +93,7 @@ export function CurrentUserContextProvider({ children }: { children: ReactNode }
       setAccessDenied(false);
       setError(null);
       setEmployeeContext(null);
-      setViewModeState("admin");
+      setViewAsRoleState("HR Admin");
       return;
     }
 
@@ -94,7 +108,7 @@ export function CurrentUserContextProvider({ children }: { children: ReactNode }
         setEmployeeContext(null);
         setAccessDenied(response.status === 403);
         setError(typeof payload.error === "string" ? payload.error : "Failed to load current user context");
-        setViewModeState("admin");
+        setViewAsRoleState("HR Admin");
         return;
       }
 
@@ -102,12 +116,14 @@ export function CurrentUserContextProvider({ children }: { children: ReactNode }
       setAccessDenied(false);
       setError(null);
 
-      const storedViewMode = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-      const nextViewMode: UserViewMode =
-        storedViewMode === "employee" && SWITCHABLE_ROLES.has((payload as CurrentUserEmployeeContext).systemRole)
-          ? "employee"
-          : "admin";
-      setViewModeState(nextViewMode);
+      const storedRole = window.localStorage.getItem(VIEW_AS_STORAGE_KEY) as ViewAsRole | null;
+      setViewAsRoleState(
+        storedRole &&
+          VIEW_AS_ROLES.includes(storedRole) &&
+          SWITCHABLE_ROLES.has((payload as CurrentUserEmployeeContext).systemRole)
+          ? storedRole
+          : "HR Admin"
+      );
     } catch (requestError) {
       setEmployeeContext(null);
       setAccessDenied(false);
@@ -116,7 +132,7 @@ export function CurrentUserContextProvider({ children }: { children: ReactNode }
           ? requestError.message
           : "Failed to load current user context"
       );
-      setViewModeState("admin");
+      setViewAsRoleState("HR Admin");
     } finally {
       setLoading(false);
     }
@@ -136,10 +152,13 @@ export function CurrentUserContextProvider({ children }: { children: ReactNode }
       canSwitchView,
       viewMode,
       isEmployeeView: viewMode === "employee",
+      viewAsRole,
+      effectiveRole,
+      setViewAsRole,
       setViewMode,
       refresh: fetchCurrentUserContext,
     }),
-    [accessDenied, canSwitchView, employeeContext, error, fetchCurrentUserContext, loading, signedIn, setViewMode, viewMode]
+    [accessDenied, canSwitchView, effectiveRole, employeeContext, error, fetchCurrentUserContext, loading, signedIn, setViewAsRole, setViewMode, viewAsRole, viewMode]
   );
 
   return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>;
