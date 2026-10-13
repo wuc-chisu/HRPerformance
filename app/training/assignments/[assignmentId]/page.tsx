@@ -5,9 +5,6 @@ import EmployeeCourseExperience from "@/components/training-content/EmployeeCour
 import { getEmployeeTrainingCourseDetail } from "@/lib/trainingCourseDetail";
 import {
   TRAINING_CATEGORY_LABELS,
-  TRAINING_COMPLETION_METHOD_LABELS,
-  TRAINING_METHOD_LABELS,
-  TRAINING_PROGRAM_STATUS_LABELS,
   TRAINING_REQUIREMENT_LABELS,
 } from "@/lib/trainingCompliance";
 
@@ -41,108 +38,100 @@ export default async function EmployeeTrainingAssignmentDetailPage({
     notFound();
   }
 
+  const { trainingProgram, assignment, progress, finalExam, certificate } = detail;
+  const quizStatus = !finalExam.visible
+    ? "Not required"
+    : finalExam.alreadyPassed
+      ? "Passed"
+      : finalExam.unlocked
+        ? "Available"
+        : "Locked";
+  const quizBadge: Record<string, string> = {
+    Passed: "border-emerald-200 bg-emerald-100 text-emerald-700",
+    Available: "border-indigo-200 bg-indigo-100 text-indigo-700",
+    Locked: "border-slate-300 bg-slate-200 text-slate-600",
+    "Not required": "border-slate-200 bg-slate-100 text-slate-500",
+  };
+  const showCertificate = certificate.available || trainingProgram.certificateRequired;
+
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Link href="/" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
-              Back to Dashboard
-            </Link>
-            <h1 className="mt-2 text-3xl font-bold text-slate-900">{detail.trainingProgram.name}</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              {TRAINING_CATEGORY_LABELS[detail.trainingProgram.category as keyof typeof TRAINING_CATEGORY_LABELS]} / {" "}
-              {TRAINING_REQUIREMENT_LABELS[detail.trainingProgram.requirementType as keyof typeof TRAINING_REQUIREMENT_LABELS]}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current Employee Status</div>
-            <div
-              className={`mt-2 inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${ASSIGNMENT_STATUS_CLASSNAMES[detail.assignment.calculatedStatus]}`}
-            >
-              {detail.assignment.calculatedStatus.replace("_", " ")}
-            </div>
-          </div>
+    <main className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
+      <header className="bg-linear-to-r from-blue-300 to-purple-300 text-white shadow-lg">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-white"
+          >
+            <span aria-hidden="true">←</span> Back to Dashboard
+          </Link>
+          <h1 className="mt-5 text-3xl font-bold sm:text-4xl">{trainingProgram.name}</h1>
+          <p className="mt-1 text-sm text-white/90">
+            {TRAINING_CATEGORY_LABELS[trainingProgram.category as keyof typeof TRAINING_CATEGORY_LABELS]} ·{" "}
+            {TRAINING_REQUIREMENT_LABELS[trainingProgram.requirementType as keyof typeof TRAINING_REQUIREMENT_LABELS]}
+          </p>
         </div>
+      </header>
 
-        <section className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Course Header</div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">Start Date</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900">{formatDate(detail.assignment.cycle.startDate)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">Due Date</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900">{formatDate(detail.assignment.dueDate)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">Training Status</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900">
-                      {TRAINING_PROGRAM_STATUS_LABELS[detail.trainingProgram.status as keyof typeof TRAINING_PROGRAM_STATUS_LABELS]}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">Assignment Status</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900">{detail.assignment.status.replaceAll("_", " ")}</div>
-                  </div>
-                  {detail.assignment.completionDate ? (
-                    <div>
-                      <div className="text-xs uppercase tracking-wide text-slate-500">Completion Date</div>
-                      <div className="mt-1 text-sm font-semibold text-slate-900">{formatDate(detail.assignment.completionDate)}</div>
-                    </div>
-                  ) : null}
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500">Current Cycle</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900">Cycle {detail.assignment.cycle.sequence}</div>
-                  </div>
-                </div>
+      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Due Date</div>
+            <div className="mt-2 text-lg font-bold text-slate-900">{formatDate(assignment.dueDate)}</div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Progress</div>
+            <div className="mt-2 text-lg font-bold text-slate-900">{Math.round(progress.percentage)}%</div>
+            <div className="text-xs text-slate-500">
+              {progress.completedRequiredModules} of {progress.totalRequiredModules} modules
             </div>
           </div>
-
-          <aside className="space-y-6">
-            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Course Overview</div>
-              <div className="mt-4 space-y-3 text-sm text-slate-700">
-                <div>
-                  <span className="font-semibold text-slate-900">Training Method:</span>{" "}
-                  {TRAINING_METHOD_LABELS[detail.trainingProgram.trainingMethod as keyof typeof TRAINING_METHOD_LABELS]}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-900">Completion Method:</span>{" "}
-                  {TRAINING_COMPLETION_METHOD_LABELS[detail.trainingProgram.completionMethod as keyof typeof TRAINING_COMPLETION_METHOD_LABELS]}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-900">Exam Required:</span>{" "}
-                  {detail.trainingProgram.examRequired ? "Yes" : "No"}
-                </div>
-                {detail.trainingProgram.examRequired && detail.trainingProgram.passingScore != null ? (
-                  <div>
-                    <span className="font-semibold text-slate-900">Passing Score:</span>{" "}
-                    {detail.trainingProgram.passingScore}%
-                  </div>
-                ) : null}
-                <div>
-                  <span className="font-semibold text-slate-900">Certificate Required:</span>{" "}
-                  {detail.trainingProgram.certificateRequired ? "Yes" : "No"}
-                </div>
-                {detail.trainingProgram.certificateRequired ? (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-700">
-                    A certificate can be made available after successful course completion.
-                  </div>
-                ) : null}
-                {detail.trainingProgram.description ? (
-                  <div>
-                    <div className="font-semibold text-slate-900">Course Description</div>
-                    <p className="mt-1 leading-6 text-slate-600">{detail.trainingProgram.description}</p>
-                  </div>
-                ) : null}
-              </div>
-            </section>
-          </aside>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</div>
+            <span
+              className={`mt-2 inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${ASSIGNMENT_STATUS_CLASSNAMES[assignment.calculatedStatus]}`}
+            >
+              {assignment.calculatedStatus.replace("_", " ")}
+            </span>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Passing Score</div>
+            <div className="mt-2 text-lg font-bold text-slate-900">
+              {trainingProgram.examRequired && trainingProgram.passingScore != null ? `${trainingProgram.passingScore}%` : "N/A"}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Quiz</div>
+            <span className={`mt-2 inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${quizBadge[quizStatus]}`}>
+              {quizStatus}
+            </span>
+          </div>
         </section>
+
+        {showCertificate ? (
+          <section className="flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-xl shadow-sm">🏅</div>
+            <div className="flex-1">
+              <div className="font-bold text-slate-900">Certificate</div>
+              <div className="text-sm text-emerald-800">
+                {certificate.available
+                  ? "Your certificate is ready."
+                  : "Awarded after you complete the course successfully."}
+              </div>
+            </div>
+            {certificate.available && certificate.certificateId ? (
+              <Link
+                href={`/training/certificates/${certificate.certificateId}`}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                View Certificate
+              </Link>
+            ) : null}
+          </section>
+        ) : null}
+
+        {trainingProgram.description ? (
+          <p className="line-clamp-3 text-sm leading-6 text-slate-600">{trainingProgram.description}</p>
+        ) : null}
 
         <EmployeeCourseExperience
           assignmentId={detail.assignment.id}

@@ -21,8 +21,9 @@ export default function GoogleSignInButton() {
       type="button"
       onClick={handleSignIn}
       disabled={isLoading}
-      className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-700 disabled:opacity-50"
+      className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50"
     >
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-red-400 text-xs font-bold text-white">G</span>
       {isLoading ? "Connecting to Google..." : "Continue with Google"}
     </button>
   );
