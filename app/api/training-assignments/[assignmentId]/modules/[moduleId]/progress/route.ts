@@ -137,35 +137,33 @@ export async function POST(request: Request, context: RouteContext) {
     });
 
     if (action === "OPEN") {
-      if (!existing) {
-        await prisma.employeeTrainingModuleProgress.create({
-          data: {
-            employeeId: employee.id,
+      await prisma.employeeTrainingModuleProgress.upsert({
+        where: {
+          assignmentId_trainingProgramModuleId: {
             assignmentId,
             trainingProgramModuleId: moduleId,
-            status: "IN_PROGRESS",
-            startedAt: now,
-            lastAccessedAt: now,
           },
-        });
-      } else if (existing.status === "NOT_STARTED") {
-        await prisma.employeeTrainingModuleProgress.update({
-          where: { id: existing.id },
-          data: {
-            status: "IN_PROGRESS",
-            startedAt: existing.startedAt || now,
-            completedAt: null,
-            lastAccessedAt: now,
-          },
-        });
-      } else {
-        await prisma.employeeTrainingModuleProgress.update({
-          where: { id: existing.id },
-          data: {
-            lastAccessedAt: now,
-          },
-        });
-      }
+        },
+        create: {
+          employeeId: employee.id,
+          assignmentId,
+          trainingProgramModuleId: moduleId,
+          status: "IN_PROGRESS",
+          startedAt: now,
+          lastAccessedAt: now,
+        },
+        update:
+          existing?.status === "NOT_STARTED"
+            ? {
+                status: "IN_PROGRESS",
+                startedAt: existing.startedAt || now,
+                completedAt: null,
+                lastAccessedAt: now,
+              }
+            : {
+                lastAccessedAt: now,
+              },
+      });
     }
 
     if (action === "COMPLETE") {
@@ -177,9 +175,23 @@ export async function POST(request: Request, context: RouteContext) {
       }
 
       if (existing.status !== "COMPLETED") {
-        await prisma.employeeTrainingModuleProgress.update({
-          where: { id: existing.id },
-          data: {
+        await prisma.employeeTrainingModuleProgress.upsert({
+          where: {
+            assignmentId_trainingProgramModuleId: {
+              assignmentId,
+              trainingProgramModuleId: moduleId,
+            },
+          },
+          create: {
+            employeeId: employee.id,
+            assignmentId,
+            trainingProgramModuleId: moduleId,
+            status: "COMPLETED",
+            startedAt: existing.startedAt || now,
+            completedAt: now,
+            lastAccessedAt: now,
+          },
+          update: {
             status: "COMPLETED",
             startedAt: existing.startedAt || now,
             completedAt: now,

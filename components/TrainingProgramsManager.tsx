@@ -832,8 +832,14 @@ export default function TrainingProgramsManager({ viewMode }: { viewMode: "admin
       )}
 
       {viewingProgram && (
-        <div className="fixed inset-0 z-40 bg-black/20 p-4">
-          <div className="mx-auto max-w-2xl rounded-2xl bg-white shadow-xl border border-slate-200">
+        <div
+          className="fixed inset-0 z-40 bg-black/20 p-4"
+          onClick={() => setViewingProgram(null)}
+        >
+          <div
+            className="mx-auto max-w-2xl rounded-2xl bg-white shadow-xl border border-slate-200"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="border-b border-slate-200 p-5 flex items-center justify-between">
               <h3 className="text-xl font-bold text-slate-900">Training Program Details</h3>
               <button type="button" onClick={() => setViewingProgram(null)} className="text-slate-500 hover:text-slate-700">Close</button>

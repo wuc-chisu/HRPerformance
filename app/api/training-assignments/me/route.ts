@@ -25,6 +25,9 @@ export async function GET() {
     const assignments = await prisma.employeeTrainingAssignment.findMany({
       where: {
         employeeId: employee.id,
+        trainingProgram: {
+          status: "ACTIVE",
+        },
       },
       include: {
         trainingProgram: {
