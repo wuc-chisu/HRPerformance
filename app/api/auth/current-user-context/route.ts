@@ -1,71 +1,16 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-import prisma from "@/lib/prisma";
+import { getActiveEmployees } from "@/lib/auth-employee";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
 
 export async function GET() {
   try {
-    const clerkUser = await currentUser();
-
-    if (!clerkUser) {
+    const matchedEmployee = await getAuthenticatedEmployee();
+    if (!matchedEmployee) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    const workEmail =
-      clerkUser.primaryEmailAddress?.emailAddress ||
-      clerkUser.emailAddresses[0]?.emailAddress ||
-      "";
-
-    const normalizedEmail = workEmail.trim().toLowerCase();
-
-    if (!normalizedEmail) {
-      return NextResponse.json(
-        { error: "No Google email address is available for this account." },
-        { status: 403 }
-      );
-    }
-
-    const [employees, offboardingRecords] = await Promise.all([
-      prisma.employee.findMany({
-        select: {
-          employeeId: true,
-          name: true,
-          email: true,
-          systemRole: true,
-          manager: true,
-        },
-      }),
-      prisma.offboardingRecord.findMany({
-        select: {
-          employeeId: true,
-          step8: true,
-        },
-      }),
-    ]);
-
-    const offboardedEmployeeIds = new Set(
-      offboardingRecords
-        .filter((record) => Boolean((record.step8 as { confirmedOffboard?: boolean } | null)?.confirmedOffboard))
-        .map((record) => record.employeeId)
-    );
-
-    const activeEmployees = employees.filter(
-      (employee) => !offboardedEmployeeIds.has(employee.employeeId)
-    );
-
-    const matchedEmployee = activeEmployees.find(
-      (employee) => employee.email.trim().toLowerCase() === normalizedEmail
-    );
-
-    if (!matchedEmployee) {
-      return NextResponse.json(
-        {
-          error:
-            "Your authenticated Google email does not match an active employee record. Please contact HR Admin for access.",
-        },
-        { status: 403 }
-      );
-    }
+    const activeEmployees = await getActiveEmployees();
 
     const directReports = activeEmployees
       .filter(
@@ -79,6 +24,7 @@ export async function GET() {
       }));
 
     return NextResponse.json({
+      id: matchedEmployee.id,
       employeeId: matchedEmployee.employeeId,
       employeeName: matchedEmployee.name,
       workEmail: matchedEmployee.email,

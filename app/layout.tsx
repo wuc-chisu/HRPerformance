@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
+import { SessionProvider } from "next-auth/react";
 import { Geist, Geist_Mono } from "next/font/google";
 import AuthUserButton from "@/components/AuthUserButton";
 import { CurrentUserContextProvider } from "@/components/CurrentUserContextProvider";
@@ -26,17 +26,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider signInUrl="/sign-in" afterSignOutUrl="/sign-in">
-      <html lang="en">
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <SessionProvider>
           <CurrentUserContextProvider>
             <AuthUserButton />
             {children}
           </CurrentUserContextProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </SessionProvider>
+      </body>
+    </html>
   );
 }

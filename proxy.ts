@@ -1,14 +1,4 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-
-// The sign-in screen must remain reachable. Every page and API endpoint in the
-// HR system requires an authenticated Clerk session.
-const isPublicRoute = createRouteMatcher(["/sign-in(.*)"]);
-
-export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect();
-  }
-});
+export { auth as proxy } from "@/auth";
 
 export const config = {
   matcher: [

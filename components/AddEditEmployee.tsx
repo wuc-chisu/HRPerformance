@@ -21,6 +21,8 @@ interface AddEditEmployeeProps {
   onCancel: () => void;
   departments?: string[];
   employees?: Employee[];
+  canEditSystemRole?: boolean;
+  readOnly?: boolean;
 }
 
 export default function AddEditEmployee({
@@ -37,6 +39,8 @@ export default function AddEditEmployee({
     "Finance",
     "Operations",
   ],
+  canEditSystemRole = false,
+  readOnly = false,
 }: AddEditEmployeeProps) {
   const parseNullableSalary = (value: unknown): number | null => {
     if (value === "" || value === null || value === undefined) return null;
@@ -159,7 +163,7 @@ export default function AddEditEmployee({
     employmentStatus: formData.employmentStatus,
     contractWorkHours:
       formData.employeeType === "Contract" ? formData.contractWorkHours : undefined,
-    systemRole: formData.systemRole,
+    systemRole: canEditSystemRole ? formData.systemRole : (employee?.systemRole || formData.systemRole || "Employee"),
     officeSchedule: formData.officeSchedule,
     probationPeriodStartDate: formData.probationPeriodStartDate,
     probationPeriodEndDate: formData.probationPeriodEndDate,
@@ -232,10 +236,15 @@ export default function AddEditEmployee({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="bg-gradient-to-r from-blue-300 to-blue-400 px-6 py-4 sticky top-0">
+        <div className="bg-gradient-to-r from-blue-300 to-blue-400 px-6 py-4 sticky top-0 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
-            {employee ? "Edit Employee" : "Add New Employee"}
+            {readOnly ? "View Employee Details" : employee ? "Edit Employee" : "Add New Employee"}
           </h2>
+          {readOnly && (
+            <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">
+              Read Only
+            </span>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -248,7 +257,7 @@ export default function AddEditEmployee({
               {apiError}
             </div>
           )}
-          {/* Employee ID */}
+          <fieldset disabled={readOnly} className="space-y-6">
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
               Employee ID *
@@ -415,17 +424,31 @@ export default function AddEditEmployee({
             <label className="block text-sm font-semibold text-gray-900 mb-2">
               System Role
             </label>
-            <select
-              name="systemRole"
-              value={formData.systemRole}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
-            >
-              <option value="Employee">Employee</option>
-              <option value="Manager">Manager</option>
-              <option value="HR Admin">HR Admin</option>
-              <option value="Executive">Executive</option>
-            </select>
+            {canEditSystemRole ? (
+              <select
+                name="systemRole"
+                value={formData.systemRole}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition hover:border-gray-400"
+              >
+                <option value="Employee">Employee</option>
+                <option value="Manager">Manager</option>
+                <option value="HR Admin">HR Admin</option>
+                <option value="Executive">Executive</option>
+              </select>
+            ) : (
+              <div>
+                <input
+                  type="text"
+                  value={formData.systemRole}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-200 bg-gray-50 text-gray-600 rounded-lg cursor-not-allowed font-medium"
+                />
+                <p className="text-xs text-amber-700 mt-1">
+                  Only HR Admin can assign or change System Role.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Hire Date */}
@@ -651,31 +674,44 @@ export default function AddEditEmployee({
             )}
             <p className="text-gray-500 text-xs mt-1">Select in-office days and local office time window (does not change contract work hours).</p>
           </div>
+          </fieldset>
 
           {/* Form Actions */}
-          <div className="flex gap-4 pt-4 border-t">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 bg-blue-300 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-400 transition-colors"
-            >
-              {isSubmitting
-                ? employee
-                  ? "Updating..."
-                  : "Adding..."
-                : employee
-                ? "Update Employee"
-                : "Add Employee"}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={isSubmitting}
-              className="flex-1 bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
+          {readOnly ? (
+            <div className="flex justify-end pt-4 border-t">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-4 pt-4 border-t">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 bg-blue-300 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-400 transition-colors"
+              >
+                {isSubmitting
+                  ? employee
+                    ? "Updating..."
+                    : "Adding..."
+                  : employee
+                  ? "Update Employee"
+                  : "Add Employee"}
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isSubmitting}
+                className="flex-1 bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </form>
       </div>
 

@@ -31,6 +31,14 @@ import MyEmployeeCard from "@/components/MyEmployeeCard";
 import TrainingProgramsManager from "@/components/TrainingProgramsManager";
 import TimeOffManager from "../components/TimeOffManager";
 import { useCurrentUserContext } from "@/components/CurrentUserContextProvider";
+import {
+  getAllowedViewsForRole,
+  isHrAdmin,
+  isExecutive,
+  isManager,
+  canEditEmployeeRecord,
+  isSelfOrDirectReport,
+} from "@/lib/rbac";
 
 type OffboardingRecord = {
   employeeId?: string;
@@ -73,6 +81,7 @@ export default function Home() {
     useState<string | null>(null);
   const [lastCreatedEmployeeId, setLastCreatedEmployeeId] = useState<string | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [isReadOnlyEmployee, setIsReadOnlyEmployee] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showWeeklyRecordForm, setShowWeeklyRecordForm] = useState(false);
   const [editingWeeklyRecord, setEditingWeeklyRecord] = useState<{
@@ -118,22 +127,28 @@ export default function Home() {
     }
 
     fetchEmployees();
-    fetchOffboardingRecords();
+    if (employeeContext && (isHrAdmin(employeeContext.systemRole) || isExecutive(employeeContext.systemRole))) {
+      fetchOffboardingRecords();
+    } else {
+      setOffboardingRecords([]);
+    }
     fetchDepartments();
     fetchTimeOffRequests();
     fetchHolidays(selectedYear);
-  }, [currentUserLoading, selectedYear]);
+  }, [currentUserLoading, employeeContext, selectedYear]);
 
   const fetchEmployees = async () => {
     try {
       const response = await fetch("/api/employees");
+      if (response.status === 401 || response.status === 403) {
+        return [] as Employee[];
+      }
       if (!response.ok) throw new Error("Failed to fetch employees");
       const data = await response.json();
       setEmployees(data);
       return data as Employee[];
     } catch (error) {
       console.error("Error fetching employees:", error);
-      alert("Failed to load employees");
       return [] as Employee[];
     }
   };
@@ -141,6 +156,9 @@ export default function Home() {
   const fetchDepartments = async () => {
     try {
       const response = await fetch("/api/departments");
+      if (response.status === 401 || response.status === 403) {
+        return;
+      }
       if (!response.ok) throw new Error("Failed to fetch departments");
       const data = await response.json();
       setDepartments(data.map((dept: { name: string }) => dept.name));
@@ -153,7 +171,15 @@ export default function Home() {
   const fetchOffboardingRecords = async () => {
     try {
       const response = await fetch("/api/offboarding");
-      if (!response.ok) throw new Error("Failed to fetch offboarding records");
+      if (response.status === 401 || response.status === 403) {
+        setOffboardingRecords([]);
+        return;
+      }
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        const message = typeof payload.error === "string" ? payload.error : "Failed to fetch offboarding records";
+        throw new Error(message);
+      }
       const data = await response.json();
       setOffboardingRecords(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -185,6 +211,9 @@ export default function Home() {
   const fetchHolidays = async (year: number) => {
     try {
       const response = await fetch(`/api/holidays?year=${year}`);
+      if (response.status === 401 || response.status === 403) {
+        return;
+      }
       if (!response.ok) throw new Error("Failed to fetch holidays");
       const data = await response.json();
       setHolidays(data);
@@ -236,53 +265,33 @@ export default function Home() {
 
   const isEmployeeOnly = employeeContext?.systemRole === "Employee";
   const isEmployeePerspective = isEmployeeOnly || isEmployeeView;
-  const employeeAllowedViews = useMemo(
-    () => new Set<AppView>(["my-employee-card", "professional-development", "time-off"]),
-    []
-  );
-  const adminAllowedViews = useMemo(
+  const allowedViews = useMemo(
     () =>
-      new Set<AppView>([
-        "dashboard",
-        "employees",
-        "offboard-employees",
-        "manage",
-        "manage-performance",
-        "employee-lifecycle",
-        "onboarding",
-        "offboarding",
-        "preboarding",
-        "professional-development",
-        "incident-tracking",
-        "time-off",
-      ]),
-    []
+      getAllowedViewsForRole(
+        employeeContext?.systemRole,
+        isEmployeePerspective
+      ),
+    [employeeContext?.systemRole, isEmployeePerspective]
   );
-  const allowedViews = isEmployeePerspective ? employeeAllowedViews : adminAllowedViews;
+  const defaultView: AppView = useMemo(() => {
+    if (allowedViews.has("dashboard")) return "dashboard";
+    if (allowedViews.has("employees")) return "employees";
+    return "professional-development";
+  }, [allowedViews]);
+
   const setVisibleView = (nextView: AppView) => {
     if (allowedViews.has(nextView)) {
       setActiveView(nextView);
       return;
     }
-
-    if (isEmployeePerspective) {
-      setActiveView("my-employee-card");
-    } else {
-      setActiveView("dashboard");
-    }
+    setActiveView(defaultView);
   };
 
   useEffect(() => {
     if (!allowedViews.has(activeView)) {
-      setActiveView(isEmployeePerspective ? "my-employee-card" : "dashboard");
+      setActiveView(defaultView);
     }
-  }, [activeView, allowedViews, isEmployeePerspective]);
-
-  useEffect(() => {
-    if (isEmployeePerspective) {
-      setActiveView((current) => (allowedViews.has(current) ? current : "my-employee-card"));
-    }
-  }, [allowedViews, isEmployeePerspective]);
+  }, [activeView, allowedViews, defaultView]);
 
   const selectedEmployee = activeEmployees.find((e) => e.id === selectedEmployeeId);
 
@@ -329,11 +338,19 @@ export default function Home() {
 
   const handleAddEmployee = () => {
     setEditingEmployee(null);
+    setIsReadOnlyEmployee(false);
     setShowForm(true);
   };
 
   const handleEditEmployee = (employee: Employee) => {
     setEditingEmployee(employee);
+    setIsReadOnlyEmployee(false);
+    setShowForm(true);
+  };
+
+  const handleViewEmployee = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setIsReadOnlyEmployee(true);
     setShowForm(true);
   };
 
@@ -1201,19 +1218,18 @@ export default function Home() {
         <div className="flex gap-4 mb-8 flex-wrap">
           {isEmployeePerspective ? (
             <>
-              <button
-                onClick={() => {
-                  setVisibleView("my-employee-card");
-                  setSelectedEmployeeId(employeeContext?.employeeId || null);
-                }}
-                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeView === "my-employee-card"
-                    ? "bg-blue-300 text-white shadow-md"
-                    : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
-                }`}
-              >
-                My Employee Card
-              </button>
+              {allowedViews.has("my-employee-card") && (
+                <button
+                  onClick={() => setVisibleView("my-employee-card")}
+                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                    activeView === "my-employee-card"
+                      ? "bg-blue-300 text-white shadow-md"
+                      : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
+                  }`}
+                >
+                  👤 My Employee Card
+                </button>
+              )}
               <button
                 onClick={() => setVisibleView("professional-development")}
                 className={`px-6 py-2 rounded-lg font-semibold transition-all ${
@@ -1222,109 +1238,113 @@ export default function Home() {
                     : "bg-amber-100 text-gray-700 border border-amber-200 hover:bg-amber-50"
                 }`}
               >
-                Training & Compliance
-              </button>
-              <button
-                onClick={() => setVisibleView("time-off")}
-                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeView === "time-off"
-                    ? "bg-emerald-400 text-white shadow-md"
-                    : "bg-emerald-100 text-gray-700 border border-emerald-200 hover:bg-emerald-50"
-                }`}
-              >
-                Leave & Holidays
+                🎓 Training & Compliance
               </button>
             </>
           ) : (
             <>
-              <button
-                onClick={() => {
-                  setVisibleView("dashboard");
-                  setSelectedEmployeeId(null);
-                }}
-                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeView === "dashboard"
-                    ? "bg-blue-300 text-white shadow-md"
-                    : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
-                }`}
-              >
-                📊 Dashboard
-              </button>
-              <button
-                onClick={() => setVisibleView("employees")}
-                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeView === "employees" || activeView === "manage" || activeView === "offboard-employees"
-                    ? "bg-blue-300 text-white shadow-md"
-                    : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
-                }`}
-              >
-                👥 Employee
-              </button>
-              <button
-                onClick={() => {
-                  setVisibleView("manage-performance");
-                  setSelectedEmployeeId(null);
-                }}
-                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeView === "manage-performance"
-                    ? "bg-purple-300 text-white shadow-md"
-                    : "bg-purple-100 text-gray-700 border border-purple-200 hover:bg-purple-50"
-                }`}
-              >
-                📈 Performance
-              </button>
-              <button
-                onClick={() => {
-                  setVisibleView("incident-tracking");
-                  setSelectedEmployeeId(null);
-                }}
-                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeView === "incident-tracking"
-                    ? "bg-red-300 text-white shadow-md"
-                    : "bg-red-100 text-gray-700 border border-red-200 hover:bg-red-50"
-                }`}
-              >
-                ⚠️ Corrective Actions
-              </button>
-              <button
-                onClick={() => {
-                  setVisibleView("professional-development");
-                  setSelectedEmployeeId(null);
-                }}
-                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeView === "professional-development"
-                    ? "bg-amber-400 text-white shadow-md"
-                    : "bg-amber-100 text-gray-700 border border-amber-200 hover:bg-amber-50"
-                }`}
-              >
-                🎓 Training & Compliance
-              </button>
-              <button
-                onClick={() => {
-                  setVisibleView("time-off");
-                  setSelectedEmployeeId(null);
-                }}
-                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeView === "time-off"
-                    ? "bg-emerald-400 text-white shadow-md"
-                    : "bg-emerald-100 text-gray-700 border border-emerald-200 hover:bg-emerald-50"
-                }`}
-              >
-                🗓️ Leave & Holidays
-              </button>
-              <button
-                onClick={() => {
-                  setVisibleView("employee-lifecycle");
-                  setSelectedEmployeeId(null);
-                }}
-                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeView === "employee-lifecycle" || activeView === "preboarding" || activeView === "onboarding" || activeView === "offboarding"
-                    ? "bg-teal-400 text-white shadow-md"
-                    : "bg-teal-100 text-gray-700 border border-teal-200 hover:bg-teal-50"
-                }`}
-              >
-                👥 Employee Lifecycle
-              </button>
+              {allowedViews.has("dashboard") && (
+                <button
+                  onClick={() => {
+                    setVisibleView("dashboard");
+                    setSelectedEmployeeId(null);
+                  }}
+                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                    activeView === "dashboard"
+                      ? "bg-blue-300 text-white shadow-md"
+                      : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
+                  }`}
+                >
+                  📊 Dashboard
+                </button>
+              )}
+              {allowedViews.has("employees") && (
+                <button
+                  onClick={() => setVisibleView("employees")}
+                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                    activeView === "employees" || activeView === "manage" || activeView === "offboard-employees"
+                      ? "bg-blue-300 text-white shadow-md"
+                      : "bg-blue-100 text-gray-700 border border-blue-200 hover:bg-blue-50"
+                  }`}
+                >
+                  👥 Employee
+                </button>
+              )}
+              {allowedViews.has("manage-performance") && (
+                <button
+                  onClick={() => {
+                    setVisibleView("manage-performance");
+                    setSelectedEmployeeId(null);
+                  }}
+                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                    activeView === "manage-performance"
+                      ? "bg-purple-300 text-white shadow-md"
+                      : "bg-purple-100 text-gray-700 border border-purple-200 hover:bg-purple-50"
+                  }`}
+                >
+                  📈 Performance
+                </button>
+              )}
+              {allowedViews.has("incident-tracking") && (
+                <button
+                  onClick={() => {
+                    setVisibleView("incident-tracking");
+                    setSelectedEmployeeId(null);
+                  }}
+                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                    activeView === "incident-tracking"
+                      ? "bg-red-300 text-white shadow-md"
+                      : "bg-red-100 text-gray-700 border border-red-200 hover:bg-red-50"
+                  }`}
+                >
+                  ⚠️ Corrective Actions
+                </button>
+              )}
+              {allowedViews.has("professional-development") && (
+                <button
+                  onClick={() => {
+                    setVisibleView("professional-development");
+                    setSelectedEmployeeId(null);
+                  }}
+                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                    activeView === "professional-development"
+                      ? "bg-amber-400 text-white shadow-md"
+                      : "bg-amber-100 text-gray-700 border border-amber-200 hover:bg-amber-50"
+                  }`}
+                >
+                  🎓 Training & Compliance
+                </button>
+              )}
+              {allowedViews.has("time-off") && (
+                <button
+                  onClick={() => {
+                    setVisibleView("time-off");
+                    setSelectedEmployeeId(null);
+                  }}
+                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                    activeView === "time-off"
+                      ? "bg-emerald-400 text-white shadow-md"
+                      : "bg-emerald-100 text-gray-700 border border-emerald-200 hover:bg-emerald-50"
+                  }`}
+                >
+                  🗓️ Leave & Holidays
+                </button>
+              )}
+              {allowedViews.has("employee-lifecycle") && (
+                <button
+                  onClick={() => {
+                    setVisibleView("employee-lifecycle");
+                    setSelectedEmployeeId(null);
+                  }}
+                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                    activeView === "employee-lifecycle" || activeView === "preboarding" || activeView === "onboarding" || activeView === "offboarding"
+                      ? "bg-teal-400 text-white shadow-md"
+                      : "bg-teal-100 text-gray-700 border border-teal-200 hover:bg-teal-50"
+                  }`}
+                >
+                  👥 Employee Lifecycle
+                </button>
+              )}
             </>
           )}
         </div>
@@ -1378,7 +1398,7 @@ export default function Home() {
           </div>
         )}
 
-        {!isEmployeePerspective && (activeView === "employee-lifecycle" || activeView === "preboarding" || activeView === "onboarding" || activeView === "offboarding") && (
+        {!isEmployeePerspective && allowedViews.has("employee-lifecycle") && (activeView === "employee-lifecycle" || activeView === "preboarding" || activeView === "onboarding" || activeView === "offboarding") && (
           <div className="mb-8 rounded-xl border border-teal-200 bg-white/90 shadow-sm p-3 sm:p-4">
             <div className="text-xs font-semibold tracking-wide text-teal-700 uppercase mb-3">
               Employee Lifecycle
@@ -1428,7 +1448,7 @@ export default function Home() {
           </div>
         )}
 
-        {!isEmployeePerspective && activeView === "employee-lifecycle" && (
+        {!isEmployeePerspective && allowedViews.has("employee-lifecycle") && activeView === "employee-lifecycle" && (
           <div className="rounded-xl border border-teal-200 bg-white shadow-sm p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Employee Lifecycle</h2>
             <p className="text-gray-600">
@@ -1478,7 +1498,11 @@ export default function Home() {
                     setSelectedEmployeeId(employeeId);
                     const selected = activeEmployees.find((item) => item.id === employeeId);
                     if (selected) {
-                      handleEditEmployee(selected);
+                      if (employeeContext && canEditEmployeeRecord(employeeContext, selected)) {
+                        handleEditEmployee(selected);
+                      } else {
+                        handleViewEmployee(selected);
+                      }
                     }
                   }}
                 />
@@ -1603,18 +1627,22 @@ export default function Home() {
                 )}
               </div>
               <div className="flex gap-3">
-                <button
-                  onClick={handleAddEmployee}
-                  className="bg-green-300 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-400 transition-colors"
-                >
-                  + Add New Employee
-                </button>
-                <button
-                  onClick={() => setShowDepartmentManager(true)}
-                  className="bg-purple-300 text-white font-semibold py-2 px-6 rounded-lg hover:bg-purple-400 transition-colors"
-                >
-                  ⚙️ Manage Departments
-                </button>
+                {isHrAdmin(employeeContext?.systemRole) && (
+                  <>
+                    <button
+                      onClick={handleAddEmployee}
+                      className="bg-green-300 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-400 transition-colors"
+                    >
+                      + Add New Employee
+                    </button>
+                    <button
+                      onClick={() => setShowDepartmentManager(true)}
+                      className="bg-purple-300 text-white font-semibold py-2 px-6 rounded-lg hover:bg-purple-400 transition-colors"
+                    >
+                      ⚙️ Manage Departments
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1675,18 +1703,29 @@ export default function Home() {
                           {formatCompactDate(employee.joinDate)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2 flex">
-                          <button
-                            onClick={() => handleEditEmployee(employee)}
-                            className="bg-blue-300 text-white px-3 py-1 rounded hover:bg-blue-400 transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteEmployee(employee.id)}
-                            className="bg-red-300 text-white px-3 py-1 rounded hover:bg-red-400 transition-colors"
-                          >
-                            Delete
-                          </button>
+                          {employeeContext && canEditEmployeeRecord(employeeContext, employee) ? (
+                            <button
+                              onClick={() => handleEditEmployee(employee)}
+                              className="bg-blue-300 text-white px-3 py-1 rounded hover:bg-blue-400 transition-colors"
+                            >
+                              Edit
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleViewEmployee(employee)}
+                              className="bg-slate-200 text-slate-700 px-3 py-1 rounded hover:bg-slate-300 transition-colors"
+                            >
+                              View
+                            </button>
+                          )}
+                          {isHrAdmin(employeeContext?.systemRole) && (
+                            <button
+                              onClick={() => handleDeleteEmployee(employee.id)}
+                              className="bg-red-300 text-white px-3 py-1 rounded hover:bg-red-400 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -1883,31 +1922,39 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {performanceView === "weekly" && activeEmployees.find((e) => e.id === selectedEmployeeForPerformance) && (
-                      <WeeklyRecordsTable
-                        employee={
-                          activeEmployees.find(
-                            (e) => e.id === selectedEmployeeForPerformance
-                          )!
-                        }
-                        timeOffRequests={activeTimeOffRequests.filter(
-                          (request) => request.employeeId === selectedEmployeeForPerformance
-                        )}
-                        holidays={holidays}
-                        selectedYear={selectedYear}
-                        selectedMonth={selectedMonth}
-                        selectedWeekRange={selectedWeekFilter}
-                        onAddRecord={() => {
-                          setSelectedEmployeeId(selectedEmployeeForPerformance);
-                          handleAddWeeklyRecord();
-                        }}
-                        onEditRecord={handleEditWeeklyRecord}
-                        onDeleteRecord={handleDeleteWeeklyRecord}
-                        onUpdateOverdueTasks={handleUpdateOverdueTasks}
-                        onUpdateAssignedTasks={handleUpdateAssignedTasks}
-                        onUpdateAllOverdueTasks={handleUpdateAllOverdueTasks}
-                      />
-                    )}
+                    {(() => {
+                      const selectedEmp = activeEmployees.find(
+                        (e) => e.id === selectedEmployeeForPerformance
+                      );
+                      const canManagePerf = Boolean(
+                        selectedEmp &&
+                        employeeContext &&
+                        (isHrAdmin(employeeContext.systemRole) ||
+                         (isManager(employeeContext.systemRole) && isSelfOrDirectReport(employeeContext, selectedEmp)))
+                      );
+
+                      return performanceView === "weekly" && selectedEmp ? (
+                        <WeeklyRecordsTable
+                          employee={selectedEmp}
+                          timeOffRequests={activeTimeOffRequests.filter(
+                            (request) => request.employeeId === selectedEmployeeForPerformance
+                          )}
+                          holidays={holidays}
+                          selectedYear={selectedYear}
+                          selectedMonth={selectedMonth}
+                          selectedWeekRange={selectedWeekFilter}
+                          onAddRecord={canManagePerf ? () => {
+                            setSelectedEmployeeId(selectedEmployeeForPerformance);
+                            handleAddWeeklyRecord();
+                          } : undefined}
+                          onEditRecord={canManagePerf ? handleEditWeeklyRecord : undefined}
+                          onDeleteRecord={canManagePerf ? handleDeleteWeeklyRecord : undefined}
+                          onUpdateOverdueTasks={canManagePerf ? handleUpdateOverdueTasks : undefined}
+                          onUpdateAssignedTasks={canManagePerf ? handleUpdateAssignedTasks : undefined}
+                          onUpdateAllOverdueTasks={canManagePerf ? handleUpdateAllOverdueTasks : undefined}
+                        />
+                      ) : null;
+                    })()}
 
                     {performanceView === "monthly" && activeEmployees.find((e) => e.id === selectedEmployeeForPerformance) && (
                       <MonthlyPerformanceReport
@@ -2012,9 +2059,12 @@ export default function Home() {
           onCancel={() => {
             setShowForm(false);
             setEditingEmployee(null);
+            setIsReadOnlyEmployee(false);
           }}
           departments={departments}
           employees={activeEmployees}
+          canEditSystemRole={isHrAdmin(employeeContext?.systemRole)}
+          readOnly={isReadOnlyEmployee}
         />
       )}
 

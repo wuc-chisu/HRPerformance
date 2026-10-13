@@ -1,6 +1,6 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
 import prisma from "@/lib/prisma";
 import { buildAlertBuckets, calculateAssignmentComputedStatus } from "@/lib/trainingCompliance";
 
@@ -12,40 +12,7 @@ function getCycleStatusPriority(status: string) {
 }
 
 async function resolveCurrentEmployee() {
-  const clerk = await currentUser();
-  const email = clerk?.primaryEmailAddress?.emailAddress || clerk?.emailAddresses[0]?.emailAddress || "";
-  const normalizedEmail = email.trim().toLowerCase();
-
-  if (!normalizedEmail) return null;
-
-  const [employees, offboardingRecords] = await Promise.all([
-    prisma.employee.findMany({
-      select: {
-        id: true,
-        employeeId: true,
-        email: true,
-      },
-    }),
-    prisma.offboardingRecord.findMany({
-      select: {
-        employeeId: true,
-        step8: true,
-      },
-    }),
-  ]);
-
-  const offboardedEmployeeIds = new Set(
-    offboardingRecords
-      .filter((record) => Boolean((record.step8 as { confirmedOffboard?: boolean } | null)?.confirmedOffboard))
-      .map((record) => record.employeeId)
-  );
-
-  const activeEmployees = employees.filter((entry) => !offboardedEmployeeIds.has(entry.employeeId));
-
-  return (
-    activeEmployees.find((entry) => entry.email.trim().toLowerCase() === normalizedEmail) ||
-    null
-  );
+  return getAuthenticatedEmployee();
 }
 
 export async function GET() {

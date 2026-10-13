@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import { formatDateForResponse, parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import { isHrAdmin } from "@/lib/rbac";
 
 type HolidayLocation = "USA" | "Taiwan";
 
@@ -71,6 +73,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (!isHrAdmin(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "Only HR Admin can add holidays." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { name, date, isPaid, notes, workLocation } = body;
     const normalizedName = typeof name === "string" ? name.trim() : "";

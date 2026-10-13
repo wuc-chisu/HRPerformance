@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import { isHrAdmin } from "@/lib/rbac";
 
 // PUT - Update a department
 export async function PUT(
@@ -7,6 +9,18 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (!isHrAdmin(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "Only HR Admin can update departments." },
+        { status: 403 }
+      );
+    }
+
     const { name } = await request.json();
     const { id } = await context.params;
 
@@ -52,6 +66,18 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (!isHrAdmin(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "Only HR Admin can delete departments." },
+        { status: 403 }
+      );
+    }
+
     const { id } = await context.params;
 
     // Check if any employees have this department

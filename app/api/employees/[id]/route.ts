@@ -10,6 +10,13 @@ import {
   REQUIRED_ONBOARDING_FORMS,
   REQUIRED_TRAINING_ITEMS,
 } from "@/lib/employees";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import {
+  canDeleteEmployee,
+  canEditEmployeeRecord,
+  canManageSystemRoles,
+  canViewEmployeeRecord,
+} from "@/lib/rbac";
 
 function normalizeProfessionalDevelopmentRecords(records: unknown) {
   if (!Array.isArray(records)) return [];
@@ -283,6 +290,11 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
     const params = await context.params;
     const employeeId = params.id;
     
@@ -290,6 +302,31 @@ export async function PUT(
       return NextResponse.json(
         { error: "Employee ID is required" },
         { status: 400 }
+      );
+    }
+
+    const existingEmployee = await prisma.employee.findUnique({
+      where: { employeeId },
+      select: {
+        id: true,
+        employeeId: true,
+        name: true,
+        manager: true,
+        systemRole: true,
+      },
+    });
+
+    if (!existingEmployee) {
+      return NextResponse.json(
+        { error: "Employee not found" },
+        { status: 404 }
+      );
+    }
+
+    if (!canEditEmployeeRecord(currentEmployee, existingEmployee)) {
+      return NextResponse.json(
+        { error: "You do not have permission to edit this employee." },
+        { status: 403 }
       );
     }
 
@@ -325,6 +362,18 @@ export async function PUT(
         { error: "Missing required fields" },
         { status: 400 }
       );
+    }
+
+    // Only HR Admin can assign or change System Role
+    let finalSystemRole = existingEmployee.systemRole || "Employee";
+    if (systemRole && systemRole !== existingEmployee.systemRole) {
+      if (!canManageSystemRoles(currentEmployee.systemRole)) {
+        return NextResponse.json(
+          { error: "Only HR Admin can assign or change System Role." },
+          { status: 403 }
+        );
+      }
+      finalSystemRole = systemRole;
     }
 
     const existingByTargetId = await prisma.employee.findUnique({
@@ -383,7 +432,7 @@ export async function PUT(
         employmentStatus: employmentStatus === "Faculty" || employmentStatus === "Employee"
           ? employmentStatus
           : "Employee",
-        systemRole: systemRole || "Employee",
+        systemRole: finalSystemRole,
         officeSchedule: officeSchedule ?? null,
         overallOverdueTasks: overallOverdueTasks || 0,
         ...(Array.isArray(professionalDevelopmentRecords)
@@ -498,6 +547,18 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (!canDeleteEmployee(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "Only HR Admin can delete employees." },
+        { status: 403 }
+      );
+    }
+
     const params = await context.params;
     const employeeId = params.id;
 

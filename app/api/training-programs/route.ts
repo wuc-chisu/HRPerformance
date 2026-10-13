@@ -1,7 +1,9 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
+import { getActiveEmployees } from "@/lib/auth-employee";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
 import prisma from "@/lib/prisma";
+import { isHrAdmin } from "@/lib/rbac";
 import {
   buildAlertBuckets,
   calculateAssignmentComputedStatus,
@@ -47,68 +49,35 @@ function toDate(value: unknown, label: string) {
 }
 
 async function resolveAuthContext(request: Request): Promise<AuthContext | null> {
-  const clerk = await currentUser();
-  const email = clerk?.primaryEmailAddress?.emailAddress || clerk?.emailAddresses[0]?.emailAddress || "";
-  const normalizedEmail = email.trim().toLowerCase();
+  const [employee, activeEmployees] = await Promise.all([
+    getAuthenticatedEmployee(),
+    getActiveEmployees(),
+  ]);
+  if (!employee) return null;
 
-  if (!normalizedEmail) return null;
-
-  const employees = await prisma.employee.findMany({
-    select: {
-      id: true,
-      employeeId: true,
-      email: true,
-      name: true,
-      systemRole: true,
-      department: true,
-      position: true,
-      staffWorkLocation: true,
+  return {
+    employee: {
+      ...employee,
+      email: normalizeText(employee.email),
+      systemRole: normalizeText(employee.systemRole),
+      department: normalizeText(employee.department),
+      position: normalizeText(employee.position),
+      staffWorkLocation: normalizeText(employee.staffWorkLocation),
     },
-  });
-
-  let offboardingRecords: Array<{ employeeId: string; step8: unknown }> = [];
-  try {
-    offboardingRecords = await prisma.offboardingRecord.findMany({
-      select: {
-        employeeId: true,
-        step8: true,
-      },
-    });
-  } catch (error) {
-    console.warn("Skipping offboarding filter in training auth context:", error);
-  }
-
-  const offboardedEmployeeIds = new Set(
-    offboardingRecords
-      .filter((record) => Boolean((record.step8 as { confirmedOffboard?: boolean } | null)?.confirmedOffboard))
-      .map((record) => record.employeeId)
-  );
-
-  const activeEmployees = employees
-    .filter((entry) => !offboardedEmployeeIds.has(entry.employeeId))
-    .map((entry) => ({
+    activeEmployees: activeEmployees.map((entry) => ({
       ...entry,
       email: normalizeText(entry.email),
       systemRole: normalizeText(entry.systemRole),
       department: normalizeText(entry.department),
       position: normalizeText(entry.position),
       staffWorkLocation: normalizeText(entry.staffWorkLocation),
-    }));
-
-  const employee = activeEmployees.find((entry) => entry.email.toLowerCase() === normalizedEmail);
-
-  if (!employee) return null;
-
-  return {
-    employee,
-    activeEmployees,
+    })),
     viewMode: request.headers.get("x-view-mode") === "employee" ? "employee" : "admin",
   };
 }
 
 function isAuthorizedAdmin(context: AuthContext) {
-  const role = normalizeText(context.employee.systemRole).toLowerCase();
-  return context.viewMode !== "employee" && role !== "employee";
+  return context.viewMode !== "employee" && isHrAdmin(context.employee.systemRole);
 }
 
 async function assignEmployeesToCycle(input: {

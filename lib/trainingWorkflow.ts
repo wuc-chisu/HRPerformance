@@ -1,6 +1,7 @@
-import { currentUser } from "@clerk/nextjs/server";
 import type { Prisma, PrismaClient } from "@prisma/client";
 
+import { auth } from "@/auth";
+import { findActiveEmployeeByEmail } from "@/lib/auth-employee";
 import prisma from "@/lib/prisma";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
@@ -10,43 +11,9 @@ function normalizeText(value: unknown) {
 }
 
 export async function resolveCurrentTrainingEmployee(db: DbClient = prisma) {
-  const clerk = await currentUser();
-  const email = clerk?.primaryEmailAddress?.emailAddress || clerk?.emailAddresses[0]?.emailAddress || "";
-  const normalizedEmail = normalizeText(email).toLowerCase();
-
-  if (!normalizedEmail) {
-    return null;
-  }
-
-  const [employees, offboardingRecords] = await Promise.all([
-    db.employee.findMany({
-      select: {
-        id: true,
-        employeeId: true,
-        name: true,
-        email: true,
-        systemRole: true,
-      },
-    }),
-    db.offboardingRecord.findMany({
-      select: {
-        employeeId: true,
-        step8: true,
-      },
-    }).catch(() => []),
-  ]);
-
-  const offboardedEmployeeIds = new Set(
-    offboardingRecords
-      .filter((record) => Boolean((record.step8 as { confirmedOffboard?: boolean } | null)?.confirmedOffboard))
-      .map((record) => record.employeeId)
-  );
-
-  return (
-    employees
-      .filter((employee) => !offboardedEmployeeIds.has(employee.employeeId))
-      .find((employee) => normalizeText(employee.email).toLowerCase() === normalizedEmail) || null
-  );
+  const session = await auth();
+  const email = session?.user?.email;
+  return email ? findActiveEmployeeByEmail(email, db) : null;
 }
 
 function buildCertificateBaseId(input: {

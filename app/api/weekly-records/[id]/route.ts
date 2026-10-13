@@ -2,6 +2,14 @@ import prisma from "@/lib/prisma";
 import { formatDateForResponse, parseDateForDatabase } from "@/lib/dateUtils";
 import { getPerformanceScoringVersion } from "@/lib/performanceScoring";
 import { NextResponse } from "next/server";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import {
+  canViewEmployeeRecord,
+  isEmployee,
+  isExecutive,
+  isManager,
+  isSelfOrDirectReport,
+} from "@/lib/rbac";
 
 // GET single weekly record by id
 export async function GET(
@@ -9,15 +17,37 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
     const params = await context.params;
     const recordId = params.id;
 
     const record = await prisma.weeklyRecord.findUnique({
       where: { id: recordId },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            name: true,
+            manager: true,
+          },
+        },
+      },
     });
 
     if (!record) {
       return NextResponse.json({ error: "Record not found" }, { status: 404 });
+    }
+
+    if (!canViewEmployeeRecord(currentEmployee, record.employee)) {
+      return NextResponse.json(
+        { error: "You do not have permission to view this performance record." },
+        { status: 403 }
+      );
     }
 
     return NextResponse.json({
@@ -77,6 +107,16 @@ export async function PUT(
     // Validate record exists
     const existingRecord = await prisma.weeklyRecord.findUnique({
       where: { id: recordId },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            name: true,
+            manager: true,
+          },
+        },
+      },
     });
     
     if (!existingRecord) {
@@ -84,6 +124,27 @@ export async function PUT(
       const response = { error: "Record not found" };
       console.log("📤 Sending 404 response");
       return NextResponse.json(response, { status: 404 });
+    }
+
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (isExecutive(currentEmployee.systemRole) || isEmployee(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "You do not have permission to manage performance records." },
+        { status: 403 }
+      );
+    }
+
+    if (isManager(currentEmployee.systemRole)) {
+      if (!isSelfOrDirectReport(currentEmployee, existingRecord.employee)) {
+        return NextResponse.json(
+          { error: "Managers can only update performance records for themselves or their direct reports." },
+          { status: 403 }
+        );
+      }
     }
 
     console.log("✅ Record found, proceeding with update");
@@ -225,16 +286,46 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (isExecutive(currentEmployee.systemRole) || isEmployee(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "You do not have permission to manage performance records." },
+        { status: 403 }
+      );
+    }
+
     const params = await context.params;
     const recordId = params.id;
 
     const existing = await prisma.weeklyRecord.findUnique({
       where: { id: recordId },
-      select: { id: true },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            name: true,
+            manager: true,
+          },
+        },
+      },
     });
 
     if (!existing) {
       return NextResponse.json({ success: true, message: "Record already deleted" });
+    }
+
+    if (isManager(currentEmployee.systemRole)) {
+      if (!isSelfOrDirectReport(currentEmployee, existing.employee)) {
+        return NextResponse.json(
+          { error: "Managers can only delete performance records for themselves or their direct reports." },
+          { status: 403 }
+        );
+      }
     }
 
     await prisma.weeklyRecord.delete({

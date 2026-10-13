@@ -1,6 +1,6 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
 import prisma from "@/lib/prisma";
 
 type ProgressAction = "OPEN" | "COMPLETE";
@@ -25,45 +25,7 @@ function parseAction(value: unknown): ProgressAction | null {
 }
 
 async function resolveCurrentEmployee() {
-  const clerk = await currentUser();
-  const email = clerk?.primaryEmailAddress?.emailAddress || clerk?.emailAddresses[0]?.emailAddress || "";
-  const normalizedEmail = normalizeText(email).toLowerCase();
-
-  if (!normalizedEmail) {
-    return null;
-  }
-
-  const employees = await prisma.employee.findMany({
-    select: {
-      id: true,
-      employeeId: true,
-      email: true,
-    },
-  });
-
-  let offboardingRecords: Array<{ employeeId: string; step8: unknown }> = [];
-  try {
-    offboardingRecords = await prisma.offboardingRecord.findMany({
-      select: {
-        employeeId: true,
-        step8: true,
-      },
-    });
-  } catch {
-    offboardingRecords = [];
-  }
-
-  const offboardedEmployeeIds = new Set(
-    offboardingRecords
-      .filter((record) => Boolean((record.step8 as { confirmedOffboard?: boolean } | null)?.confirmedOffboard))
-      .map((record) => record.employeeId)
-  );
-
-  return (
-    employees
-      .filter((employee) => !offboardedEmployeeIds.has(employee.employeeId))
-      .find((employee) => normalizeText(employee.email).toLowerCase() === normalizedEmail) || null
-  );
+  return getAuthenticatedEmployee();
 }
 
 function summarizeModuleProgress(params: {

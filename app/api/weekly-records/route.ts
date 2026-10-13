@@ -3,6 +3,8 @@ import { formatDateForResponse, parseDateForDatabase } from "@/lib/dateUtils";
 import { allocateHoursAcrossOverlaps, countOverlappingDays, getDateSpanDays, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
 import { getPerformanceScoringVersion } from "@/lib/performanceScoring";
 import { NextResponse } from "next/server";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import { isEmployee, isExecutive, isManager, isSelfOrDirectReport } from "@/lib/rbac";
 
 type PendingApprovedTimeOffRequest = {
   id: string;
@@ -127,6 +129,27 @@ export async function POST(request: Request) {
         { error: "Employee not found" },
         { status: 404 }
       );
+    }
+
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (isExecutive(currentEmployee.systemRole) || isEmployee(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "You do not have permission to manage performance records." },
+        { status: 403 }
+      );
+    }
+
+    if (isManager(currentEmployee.systemRole)) {
+      if (!isSelfOrDirectReport(currentEmployee, employee)) {
+        return NextResponse.json(
+          { error: "Managers can only manage performance records for themselves or their direct reports." },
+          { status: 403 }
+        );
+      }
     }
 
     const safeAssignedTasksDetails = Array.isArray(assignedTasksDetails)

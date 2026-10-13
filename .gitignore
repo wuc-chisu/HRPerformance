@@ -51,6 +51,7 @@ next-env.d.ts
 # Uncomment the line below if you DON'T want to track data exports:
 # /data-exports/
 
-# clerk configuration (can include secrets)
+# Auth.js configuration (can include secrets)
+/.auth/
 /.clerk/
 /public/uploads/

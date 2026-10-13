@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -11,6 +11,7 @@ export type DirectReportSummary = {
 };
 
 export type CurrentUserEmployeeContext = {
+  id?: string;
   employeeId: string;
   employeeName: string;
   workEmail: string;
@@ -40,7 +41,7 @@ type CurrentUserContextValue = {
 const CurrentUserContext = createContext<CurrentUserContextValue | undefined>(undefined);
 
 export function CurrentUserContextProvider({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { status } = useSession();
   const [loading, setLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -68,11 +69,11 @@ export function CurrentUserContextProvider({ children }: { children: ReactNode }
   );
 
   const fetchCurrentUserContext = useCallback(async () => {
-    if (!isLoaded) {
+    if (status === "loading") {
       return;
     }
 
-    if (!isSignedIn) {
+    if (status !== "authenticated") {
       setLoading(false);
       setSignedIn(false);
       setAccessDenied(false);
@@ -119,7 +120,7 @@ export function CurrentUserContextProvider({ children }: { children: ReactNode }
     } finally {
       setLoading(false);
     }
-  }, [isLoaded, isSignedIn]);
+  }, [status]);
 
   useEffect(() => {
     void fetchCurrentUserContext();

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useCurrentUserContext } from "@/components/CurrentUserContextProvider";
+import { isHrAdmin, isExecutive, isManager } from "@/lib/rbac";
 import type { Employee } from "@/lib/employees";
 import { formatCompactDate, formatShortDate } from "@/lib/dateUtils";
 
@@ -49,6 +51,13 @@ type IncidentTrackingTableProps = {
 };
 
 export default function IncidentTrackingTable({ employees }: IncidentTrackingTableProps) {
+  const { employeeContext } = useCurrentUserContext();
+  const userRole = employeeContext?.systemRole;
+  const canCreateIncident = isHrAdmin(userRole) || isManager(userRole);
+  const canEditIncident = isHrAdmin(userRole) || isManager(userRole);
+  const canDeleteIncident = isHrAdmin(userRole);
+  const isExec = isExecutive(userRole);
+
   const [records, setRecords] = useState<IncidentRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -879,16 +888,18 @@ Human Resources`
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-gray-900">Incident Management</h3>
-          <button
-            onClick={() => setShowCreateForm((previous) => !previous)}
-            className="bg-blue-400 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-500"
-          >
-            {showCreateForm ? "Close Add Incident" : "Add Mistake / Warning Incident"}
-          </button>
+          {canCreateIncident && (
+            <button
+              onClick={() => setShowCreateForm((previous) => !previous)}
+              className="bg-blue-400 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-500"
+            >
+              {showCreateForm ? "Close Add Incident" : "Add Mistake / Warning Incident"}
+            </button>
+          )}
         </div>
       </div>
 
-      {showCreateForm && (
+      {canCreateIncident && showCreateForm && (
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-xl font-bold text-gray-900 mb-4">Add Mistake / Warning Incident</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1511,31 +1522,37 @@ Human Resources`
                         >
                           View
                         </button>
-                        <button
-                          onClick={() => setEditingRecordId(record.id)}
-                          className="bg-purple-400 text-white text-xs px-2 py-1 rounded hover:bg-purple-500"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRecord(record.id)}
-                          disabled={savingId === record.id}
-                          className="bg-red-400 text-white text-xs px-2 py-1 rounded hover:bg-red-500 disabled:opacity-50"
-                        >
-                          Delete
-                        </button>
-                        <button
-                          onClick={() => handleEmailIncidentReport(record)}
-                          disabled={savingId === record.id || draft.emailSent}
-                          className={`text-white text-xs px-2 py-1 rounded ${
-                            draft.emailSent
-                              ? "bg-gray-400 cursor-not-allowed"
-                              : "bg-emerald-500 hover:bg-emerald-600"
-                          } disabled:opacity-50`}
-                        >
-                          {draft.emailSent ? "Email Sent" : "Email"}
-                        </button>
-                        {showFollowUpEmail && isMeetingChecked && (
+                        {canEditIncident && !isExec && (
+                          <button
+                            onClick={() => setEditingRecordId(record.id)}
+                            className="bg-purple-400 text-white text-xs px-2 py-1 rounded hover:bg-purple-500"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {canDeleteIncident && (
+                          <button
+                            onClick={() => handleDeleteRecord(record.id)}
+                            disabled={savingId === record.id}
+                            className="bg-red-400 text-white text-xs px-2 py-1 rounded hover:bg-red-500 disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        )}
+                        {!isExec && (
+                          <button
+                            onClick={() => handleEmailIncidentReport(record)}
+                            disabled={savingId === record.id || draft.emailSent}
+                            className={`text-white text-xs px-2 py-1 rounded ${
+                              draft.emailSent
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-emerald-500 hover:bg-emerald-600"
+                            } disabled:opacity-50`}
+                          >
+                            {draft.emailSent ? "Email Sent" : "Email"}
+                          </button>
+                        )}
+                        {!isExec && showFollowUpEmail && isMeetingChecked && (
                           <button
                             onClick={() =>
                               handleOpenFollowUpEmail(

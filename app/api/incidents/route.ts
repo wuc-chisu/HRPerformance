@@ -6,11 +6,39 @@ import {
 } from "@/lib/incidentTracking";
 import { parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import { isEmployee, isExecutive, isManager, isSelfOrDirectReport } from "@/lib/rbac";
 
 export async function GET(request: Request) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (isEmployee(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "Employees cannot access corrective actions." },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const employeeIdParam = searchParams.get("employeeId");
+
+    let allowedEmployeeDbIds: string[] | null = null;
+    if (isManager(currentEmployee.systemRole)) {
+      const reports = await prisma.employee.findMany({
+        where: {
+          OR: [
+            { manager: { equals: currentEmployee.name, mode: "insensitive" } },
+            { manager: { equals: currentEmployee.employeeId, mode: "insensitive" } },
+          ],
+        },
+        select: { id: true },
+      });
+      allowedEmployeeDbIds = [currentEmployee.id, ...reports.map((r) => r.id)];
+    }
 
     const employee = employeeIdParam
       ? await prisma.employee.findUnique({
@@ -23,8 +51,21 @@ export async function GET(request: Request) {
       return NextResponse.json({ records: [] });
     }
 
+    if (isManager(currentEmployee.systemRole) && employee) {
+      if (!allowedEmployeeDbIds?.includes(employee.id)) {
+        return NextResponse.json({ records: [] });
+      }
+    }
+
+    let whereClause: Record<string, unknown> | undefined = undefined;
+    if (employee) {
+      whereClause = { employeeId: employee.id };
+    } else if (allowedEmployeeDbIds) {
+      whereClause = { employeeId: { in: allowedEmployeeDbIds } };
+    }
+
     const records = await (prisma as any).incidentRecord.findMany({
-      where: employee ? { employeeId: employee.id } : undefined,
+      where: whereClause,
       include: {
         employee: {
           select: {
@@ -62,6 +103,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (isExecutive(currentEmployee.systemRole) || isEmployee(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "You do not have permission to create corrective action records." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const {
       employeeId,
@@ -89,11 +142,20 @@ export async function POST(request: Request) {
 
     const employee = await prisma.employee.findUnique({
       where: { employeeId },
-      select: { id: true, employeeId: true, name: true, department: true },
+      select: { id: true, employeeId: true, name: true, department: true, manager: true },
     });
 
     if (!employee) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+    }
+
+    if (isManager(currentEmployee.systemRole)) {
+      if (!isSelfOrDirectReport(currentEmployee, employee)) {
+        return NextResponse.json(
+          { error: "Managers can only create corrective action records for themselves or their direct reports." },
+          { status: 403 }
+        );
+      }
     }
 
     await prisma.$transaction(async (tx: any) => {

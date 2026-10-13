@@ -6,6 +6,8 @@ import {
 } from "@/lib/incidentTracking";
 import { parseDateForDatabase } from "@/lib/dateUtils";
 import { NextResponse } from "next/server";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import { isEmployee, isExecutive, isManager, isSelfOrDirectReport } from "@/lib/rbac";
 
 export async function PATCH(
   request: Request,
@@ -42,6 +44,7 @@ export async function PATCH(
             id: true,
             employeeId: true,
             name: true,
+            manager: true,
             department: true,
           },
         },
@@ -53,6 +56,27 @@ export async function PATCH(
         { error: "Incident record not found" },
         { status: 404 }
       );
+    }
+
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (isExecutive(currentEmployee.systemRole) || isEmployee(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "You do not have permission to update corrective action records." },
+        { status: 403 }
+      );
+    }
+
+    if (isManager(currentEmployee.systemRole)) {
+      if (!isSelfOrDirectReport(currentEmployee, existingRecord.employee)) {
+        return NextResponse.json(
+          { error: "Managers can only update corrective action records for themselves or their direct reports." },
+          { status: 403 }
+        );
+      }
     }
 
     await prisma.$transaction(async (tx: any) => {
@@ -170,11 +194,32 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (isExecutive(currentEmployee.systemRole) || isEmployee(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "You do not have permission to delete corrective action records." },
+        { status: 403 }
+      );
+    }
+
     const { id } = await context.params;
 
     const existingRecord = await (prisma as any).incidentRecord.findUnique({
       where: { id },
-      select: { id: true },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            name: true,
+            manager: true,
+          },
+        },
+      },
     });
 
     if (!existingRecord) {
@@ -182,6 +227,15 @@ export async function DELETE(
         { error: "Incident record not found" },
         { status: 404 }
       );
+    }
+
+    if (isManager(currentEmployee.systemRole)) {
+      if (!isSelfOrDirectReport(currentEmployee, existingRecord.employee)) {
+        return NextResponse.json(
+          { error: "Managers can only delete corrective action records for themselves or their direct reports." },
+          { status: 403 }
+        );
+      }
     }
 
     await (prisma as any).incidentRecord.delete({

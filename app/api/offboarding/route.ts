@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import { isHrAdmin, isExecutive } from "@/lib/rbac";
 
 function parseOptionalDate(value?: string | null) {
   return value ? new Date(value) : null;
@@ -41,6 +43,18 @@ function countCompletion(payload: {
 
 export async function GET(request: Request) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (!isHrAdmin(currentEmployee.systemRole) && !isExecutive(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "Access denied to offboarding records." },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get("employeeId");
 
@@ -69,6 +83,18 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (!isHrAdmin(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "Only HR Admin can manage offboarding records." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const {
       employeeId,

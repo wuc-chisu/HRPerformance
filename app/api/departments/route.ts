@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import { isHrAdmin } from "@/lib/rbac";
 
 // GET all departments
 export async function GET() {
@@ -22,6 +24,18 @@ export async function GET() {
 // POST - Create a new department
 export async function POST(request: Request) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (!isHrAdmin(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "Only HR Admin can create departments." },
+        { status: 403 }
+      );
+    }
+
     const { name } = await request.json();
 
     if (!name || typeof name !== "string" || name.trim() === "") {

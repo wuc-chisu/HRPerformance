@@ -11,6 +11,8 @@ import {
   REQUIRED_ONBOARDING_FORMS,
   REQUIRED_TRAINING_ITEMS,
 } from "@/lib/employees";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import { canCreateEmployee, filterEmployeesForViewer } from "@/lib/rbac";
 
 function normalizeProfessionalDevelopmentRecords(records: unknown) {
   if (!Array.isArray(records)) return [];
@@ -284,6 +286,11 @@ function formatOnboarding(emp: any) {
 // GET all employees with their weekly records
 export async function GET() {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
     const employees = await (prisma as any).employee.findMany({
       include: {
         weeklyRecords: {
@@ -297,6 +304,7 @@ export async function GET() {
     // Transform data to match the frontend format
     const formattedEmployees = employees.map((emp: any) => ({
       id: emp.employeeId,
+      employeeId: emp.employeeId,
       name: emp.name,
       email: emp.email,
       personalEmail: emp.personalEmail || "",
@@ -342,7 +350,17 @@ export async function GET() {
       })),
     }));
 
-    return NextResponse.json(formattedEmployees);
+    const filteredEmployees = filterEmployeesForViewer(
+      {
+        id: currentEmployee.id,
+        employeeId: currentEmployee.employeeId,
+        name: currentEmployee.name,
+        systemRole: currentEmployee.systemRole,
+      },
+      formattedEmployees
+    );
+
+    return NextResponse.json(filteredEmployees);
   } catch (error) {
     console.error("Error fetching employees:", error);
     return NextResponse.json(
@@ -355,6 +373,18 @@ export async function GET() {
 // POST new employee
 export async function POST(request: Request) {
   try {
+    const currentEmployee = await getAuthenticatedEmployee();
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
+    }
+
+    if (!canCreateEmployee(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "Only HR Admin can add new employees." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const {
       employeeId,

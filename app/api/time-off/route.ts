@@ -4,8 +4,9 @@ import {
   formatDateTimeForResponse,
   parseDateForDatabase,
 } from "@/lib/dateUtils";
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import { isDirectReportOf, isEmployee, isExecutive, isHrAdmin, isManager } from "@/lib/rbac";
 
 type EmployeeSummary = {
   employeeId: string;
@@ -31,7 +32,7 @@ type TimeOffRequestRecord = {
 type TimeOffRequestModel = {
   findMany: (args: {
     where?: {
-      employeeId?: string;
+      employeeId?: string | { in: string[] };
       status?: { in: string[] };
       startDate?: { lte: Date };
       endDate?: { gte: Date };
@@ -87,53 +88,13 @@ type ResolvedCurrentEmployee = {
 };
 
 async function resolveCurrentEmployee(): Promise<ResolvedCurrentEmployee | null> {
-  const clerkUser = await currentUser();
-  const email = clerkUser?.primaryEmailAddress?.emailAddress || clerkUser?.emailAddresses[0]?.emailAddress || "";
-  const normalizedEmail = email.trim().toLowerCase();
-
-  if (!normalizedEmail) {
-    return null;
-  }
-
-  const [employees, offboardingRecords] = await Promise.all([
-    prisma.employee.findMany({
-      select: {
-        employeeId: true,
-        name: true,
-        email: true,
-        systemRole: true,
-      },
-    }),
-    prisma.offboardingRecord.findMany({
-      select: {
-        employeeId: true,
-        step8: true,
-      },
-    }),
-  ]);
-
-  const offboardedEmployeeIds = new Set(
-    offboardingRecords
-      .filter((record) => Boolean((record.step8 as { confirmedOffboard?: boolean } | null)?.confirmedOffboard))
-      .map((record) => record.employeeId)
-  );
-
-  const activeEmployees = employees.filter(
-    (entry) => !offboardedEmployeeIds.has(entry.employeeId)
-  );
-
-  const matchedEmployee = activeEmployees.find(
-    (entry) => entry.email.trim().toLowerCase() === normalizedEmail
-  );
-
-  if (!matchedEmployee) {
-    return null;
-  }
+  const employee = await getAuthenticatedEmployee();
+  if (!employee) return null;
 
   return {
-    employeeId: matchedEmployee.employeeId,
-    name: matchedEmployee.name,
-    systemRole: matchedEmployee.systemRole || "Employee",
+    employeeId: employee.employeeId,
+    name: employee.name,
+    systemRole: employee.systemRole || "Employee",
   };
 }
 
@@ -217,8 +178,26 @@ export async function GET() {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
+    let whereClause: { employeeId?: { in: string[] } | string } | undefined = undefined;
+
+    if (isEmployee(currentEmployee.systemRole)) {
+      whereClause = { employeeId: currentEmployee.employeeId };
+    } else if (isManager(currentEmployee.systemRole)) {
+      const reports = await prisma.employee.findMany({
+        where: {
+          OR: [
+            { manager: { equals: currentEmployee.name, mode: "insensitive" } },
+            { manager: { equals: currentEmployee.employeeId, mode: "insensitive" } },
+          ],
+        },
+        select: { employeeId: true },
+      });
+      const allowedIds = [currentEmployee.employeeId, ...reports.map((r) => r.employeeId)];
+      whereClause = { employeeId: { in: allowedIds } };
+    }
+
     const requests = await timeOffRequestModel.findMany({
-      where: currentEmployee.systemRole === "Employee" ? { employeeId: currentEmployee.employeeId } : undefined,
+      where: whereClause,
       include: {
         employee: {
           select: {
@@ -277,9 +256,29 @@ export async function POST(request: Request) {
       reason,
     } = body;
 
-    const targetEmployeeId = currentEmployee.systemRole === "Employee"
-      ? currentEmployee.employeeId
-      : String(employeeId || "").trim();
+    let targetEmployeeId = String(employeeId || "").trim();
+
+    if (isEmployee(currentEmployee.systemRole)) {
+      targetEmployeeId = currentEmployee.employeeId;
+    } else if (isManager(currentEmployee.systemRole)) {
+      if (targetEmployeeId && targetEmployeeId !== currentEmployee.employeeId) {
+        const targetEmp = await prisma.employee.findUnique({
+          where: { employeeId: targetEmployeeId },
+          select: { manager: true },
+        });
+        if (!targetEmp || !isDirectReportOf(currentEmployee, targetEmp)) {
+          return NextResponse.json(
+            { error: "Managers can only submit leave requests for themselves or their direct reports." },
+            { status: 403 }
+          );
+        }
+      } else {
+        targetEmployeeId = currentEmployee.employeeId;
+      }
+    } else if (!targetEmployeeId) {
+      targetEmployeeId = currentEmployee.employeeId;
+    }
+
     const totalHours = Number(hours);
 
     if (!targetEmployeeId || !requestType || !startDate || !endDate || hours == null) {

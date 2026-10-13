@@ -86,6 +86,13 @@ Exports all **employee and weekly record data as JSON** and commits it to the Gi
 
 Follow these steps in order:
 
+### Google Sign-In configuration
+
+Configure a Google OAuth Web application, Auth.js secrets, and the authorized
+redirect URIs listed in [AUTH_GOOGLE_SETUP.md](./AUTH_GOOGLE_SETUP.md). Local
+development uses `http://localhost:3001`; production uses the fixed application
+origin configured in `.env.production.example`.
+
 ### Step 1 — Prerequisites
 
 Make sure the following are installed on the new server:

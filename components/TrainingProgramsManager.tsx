@@ -450,13 +450,15 @@ export default function TrainingProgramsManager({ viewMode }: { viewMode: "admin
               Manage training programs, cycles, assignment eligibility, and compliance status foundations.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-          >
-            + Add Training Program
-          </button>
+          {canManageCourseContent && (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              + Add Training Program
+            </button>
+          )}
         </div>
       </div>
 
@@ -563,26 +565,30 @@ export default function TrainingProgramsManager({ viewMode }: { viewMode: "admin
                     <td className="px-4 py-3 text-sm">
                       <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={() => openView(program)} className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200">View</button>
-                        <button type="button" onClick={() => openEdit(program)} className="rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-200">Edit</button>
-                        <button
-                          type="button"
-                          onClick={() => updateProgramStatus(program, program.status === "ACTIVE" ? "INACTIVE" : "ACTIVE")}
-                          disabled={saving}
-                          className={`rounded px-2 py-1 text-xs font-semibold ${program.status === "ACTIVE" ? "bg-amber-100 text-amber-700 hover:bg-amber-200" : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"}`}
-                        >
-                          {getStatusActionLabel(program.status)}
-                        </button>
-                        {program.status !== "ARCHIVED" && (
-                          <button type="button" onClick={() => archiveProgram(program)} disabled={saving} className="rounded bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-200">Archive</button>
+                        {canManageCourseContent && (
+                          <>
+                            <button type="button" onClick={() => openEdit(program)} className="rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-200">Edit</button>
+                            <button
+                              type="button"
+                              onClick={() => updateProgramStatus(program, program.status === "ACTIVE" ? "INACTIVE" : "ACTIVE")}
+                              disabled={saving}
+                              className={`rounded px-2 py-1 text-xs font-semibold ${program.status === "ACTIVE" ? "bg-amber-100 text-amber-700 hover:bg-amber-200" : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"}`}
+                            >
+                              {getStatusActionLabel(program.status)}
+                            </button>
+                            {program.status !== "ARCHIVED" && (
+                              <button type="button" onClick={() => archiveProgram(program)} disabled={saving} className="rounded bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-200">Archive</button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => deleteProgram(program)}
+                              disabled={!program.canDelete || saving}
+                              className="rounded bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-200 disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          </>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => deleteProgram(program)}
-                          disabled={!program.canDelete || saving}
-                          className="rounded bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-200 disabled:opacity-50"
-                        >
-                          Delete
-                        </button>
                       </div>
                     </td>
                   </tr>

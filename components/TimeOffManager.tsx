@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useCurrentUserContext } from "@/components/CurrentUserContextProvider";
+import { isHrAdmin, isExecutive, isManager } from "@/lib/rbac";
 import type {
   Employee,
   HolidayRecord,
@@ -79,7 +81,12 @@ export default function TimeOffManager({
   onCreateHoliday,
   onDeleteHoliday,
 }: TimeOffManagerProps) {
+  const { employeeContext } = useCurrentUserContext();
   const isAdminMode = mode === "admin";
+  const userRole = employeeContext?.systemRole;
+  const canAddHoliday = isHrAdmin(userRole);
+  const canApproveReject = isHrAdmin(userRole) || isManager(userRole);
+  const canDeleteRequest = isHrAdmin(userRole);
   const currentEmployee = employees[0] || null;
 
   const [requestForm, setRequestForm] = useState({
@@ -336,71 +343,75 @@ export default function TimeOffManager({
         {isAdminMode && (
           <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Holiday Calendar</h2>
-            <p className="text-sm text-gray-600 mb-6">Admin-only holiday maintenance for {selectedYear}.</p>
-            <form onSubmit={submitHoliday} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Holiday Name</label>
-                <input
-                  type="text"
-                  value={holidayForm.name}
-                  onChange={(e) => setHolidayForm((prev) => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
-                <input
-                  type="date"
-                  value={holidayForm.date}
-                  onChange={(e) => setHolidayForm((prev) => ({ ...prev, date: e.target.value }))}
-                  className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Holiday Location</label>
-                <select
-                  value={holidayForm.workLocation}
-                  onChange={(e) => setHolidayForm((prev) => ({ ...prev, workLocation: e.target.value as "USA" | "Taiwan" }))}
-                  className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
-                >
-                  <option value="USA">USA</option>
-                  <option value="Taiwan">Taiwan</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  id="isPaidHoliday"
-                  type="checkbox"
-                  checked={holidayForm.isPaid}
-                  onChange={(e) => setHolidayForm((prev) => ({ ...prev, isPaid: e.target.checked }))}
-                  className="h-4 w-4 rounded border-amber-300"
-                />
-                <label htmlFor="isPaidHoliday" className="text-sm font-medium text-gray-700">
-                  Paid holiday
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Notes</label>
-                <textarea
-                  value={holidayForm.notes}
-                  onChange={(e) => setHolidayForm((prev) => ({ ...prev, notes: e.target.value }))}
-                  rows={2}
-                  className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
-                />
-              </div>
-              {holidayNotice && (
-                <div className={`px-4 py-3 rounded-lg text-sm font-medium ${holidayNotice.type === "success" ? "bg-emerald-50 border border-emerald-200 text-emerald-800" : "bg-rose-50 border border-rose-200 text-rose-800"}`}>
-                  {holidayNotice.message}
+            <p className="text-sm text-gray-600 mb-6">
+              {canAddHoliday ? `Admin-only holiday maintenance for ${selectedYear}.` : `Holiday calendar for ${selectedYear}.`}
+            </p>
+            {canAddHoliday && (
+              <form onSubmit={submitHoliday} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Holiday Name</label>
+                  <input
+                    type="text"
+                    value={holidayForm.name}
+                    onChange={(e) => setHolidayForm((prev) => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
+                  />
                 </div>
-              )}
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-5 py-2.5 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 disabled:opacity-50"
-              >
-                {saving ? "Adding..." : "Add Holiday"}
-              </button>
-            </form>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+                  <input
+                    type="date"
+                    value={holidayForm.date}
+                    onChange={(e) => setHolidayForm((prev) => ({ ...prev, date: e.target.value }))}
+                    className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Holiday Location</label>
+                  <select
+                    value={holidayForm.workLocation}
+                    onChange={(e) => setHolidayForm((prev) => ({ ...prev, workLocation: e.target.value as "USA" | "Taiwan" }))}
+                    className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
+                  >
+                    <option value="USA">USA</option>
+                    <option value="Taiwan">Taiwan</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="isPaidHoliday"
+                    type="checkbox"
+                    checked={holidayForm.isPaid}
+                    onChange={(e) => setHolidayForm((prev) => ({ ...prev, isPaid: e.target.checked }))}
+                    className="h-4 w-4 rounded border-amber-300"
+                  />
+                  <label htmlFor="isPaidHoliday" className="text-sm font-medium text-gray-700">
+                    Paid holiday
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Notes</label>
+                  <textarea
+                    value={holidayForm.notes}
+                    onChange={(e) => setHolidayForm((prev) => ({ ...prev, notes: e.target.value }))}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-amber-200 rounded-lg bg-white text-gray-900"
+                  />
+                </div>
+                {holidayNotice && (
+                  <div className={`px-4 py-3 rounded-lg text-sm font-medium ${holidayNotice.type === "success" ? "bg-emerald-50 border border-emerald-200 text-emerald-800" : "bg-rose-50 border border-rose-200 text-rose-800"}`}>
+                    {holidayNotice.message}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2.5 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 disabled:opacity-50"
+                >
+                  {saving ? "Adding..." : "Add Holiday"}
+                </button>
+              </form>
+            )}
 
             <div className="mt-6 space-y-3">
               <button
@@ -440,13 +451,15 @@ export default function TimeOffManager({
                             <p className="font-semibold text-slate-900">{holiday.name}</p>
                             <p className="text-sm text-slate-600">{holiday.date} {holiday.isPaid ? "• Paid" : "• Unpaid"}</p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => onDeleteHoliday(holiday.id)}
-                            className="text-sm font-semibold text-rose-600 hover:text-rose-700"
-                          >
-                            Delete
-                          </button>
+                          {canAddHoliday && (
+                            <button
+                              type="button"
+                              onClick={() => onDeleteHoliday(holiday.id)}
+                              className="text-sm font-semibold text-rose-600 hover:text-rose-700"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       ))
                     )}
@@ -553,7 +566,7 @@ export default function TimeOffManager({
                   </div>
 
                   <div className="flex gap-2 flex-wrap">
-                    {isAdminMode ? (
+                    {isAdminMode && canApproveReject ? (
                       <>
                         <button type="button" onClick={() => onUpdateRequest(request.id, { status: "APPROVED", managerNote: managerNotes[request.id] ?? request.managerNote ?? "" })} disabled={request.status === "APPROVED"} className="px-3 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50">
                           Approve
@@ -561,9 +574,11 @@ export default function TimeOffManager({
                         <button type="button" onClick={() => onUpdateRequest(request.id, { status: "REJECTED", managerNote: managerNotes[request.id] ?? request.managerNote ?? "" })} disabled={request.status === "APPROVED"} className="px-3 py-2 rounded-lg bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 disabled:opacity-50">
                           Reject
                         </button>
-                        <button type="button" onClick={() => onDeleteRequest(request.id)} className="px-3 py-2 rounded-lg bg-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-300">
-                          Delete
-                        </button>
+                        {canDeleteRequest && (
+                          <button type="button" onClick={() => onDeleteRequest(request.id)} className="px-3 py-2 rounded-lg bg-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-300">
+                            Delete
+                          </button>
+                        )}
                         <button type="button" onClick={() => setEditingManagerNoteId(request.id)} className="px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700 text-sm font-semibold hover:bg-indigo-200">
                           Note
                         </button>

@@ -1,8 +1,10 @@
 import prisma from "@/lib/prisma";
 import { formatDateForResponse, formatDateTimeForResponse } from "@/lib/dateUtils";
 import { allocateHoursAcrossOverlaps, getFullyCoveredOverlaps, WeeklyRecordWindow } from "@/lib/timeOffAdjustments";
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+
+import { getAuthenticatedEmployee } from "@/lib/current-employee";
+import { isDirectReportOf, isEmployee, isExecutive, isManager } from "@/lib/rbac";
 
 class TimeOffRequestError extends Error {
   status: number;
@@ -16,9 +18,11 @@ class TimeOffRequestError extends Error {
 type TimeOffStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 
 type EmployeeWithWeeklyRecords = {
+  id?: string;
   employeeId: string;
   name: string;
   department: string;
+  manager?: string | null;
   weeklyRecords: WeeklyRecordWindow[];
 };
 
@@ -107,57 +111,19 @@ const timeOffRequestModel = (prisma as unknown as { timeOffRequest: TimeOffReque
 type ResolvedCurrentEmployee = {
   id: string;
   employeeId: string;
+  name: string;
   systemRole: string;
 };
 
 async function resolveCurrentEmployee(): Promise<ResolvedCurrentEmployee | null> {
-  const clerkUser = await currentUser();
-  const email = clerkUser?.primaryEmailAddress?.emailAddress || clerkUser?.emailAddresses[0]?.emailAddress || "";
-  const normalizedEmail = email.trim().toLowerCase();
-
-  if (!normalizedEmail) {
-    return null;
-  }
-
-  const [employees, offboardingRecords] = await Promise.all([
-    prisma.employee.findMany({
-      select: {
-        id: true,
-        employeeId: true,
-        email: true,
-        systemRole: true,
-      },
-    }),
-    prisma.offboardingRecord.findMany({
-      select: {
-        employeeId: true,
-        step8: true,
-      },
-    }),
-  ]);
-
-  const offboardedEmployeeIds = new Set(
-    offboardingRecords
-      .filter((record) => Boolean((record.step8 as { confirmedOffboard?: boolean } | null)?.confirmedOffboard))
-      .map((record) => record.employeeId)
-  );
-
-  const activeEmployees = employees.filter(
-    (entry) => !offboardedEmployeeIds.has(entry.employeeId)
-  );
-
-  const matchedEmployee = activeEmployees.find(
-    (entry) => entry.email.trim().toLowerCase() === normalizedEmail
-  );
-
-  if (!matchedEmployee) {
-    return null;
-  }
+  const employee = await getAuthenticatedEmployee();
+  if (!employee) return null;
 
   return {
-    id: matchedEmployee.id,
-    employeeId: matchedEmployee.employeeId,
-    systemRole: matchedEmployee.systemRole || "Employee",
+    id: employee.id,
+    employeeId: employee.employeeId,
+    name: employee.name,
+    systemRole: employee.systemRole || "Employee",
   };
 }
 
@@ -179,7 +145,14 @@ export async function PATCH(
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    if (currentEmployee.systemRole === "Employee") {
+    if (isExecutive(currentEmployee.systemRole)) {
+      return NextResponse.json(
+        { error: "Executive access is view-only." },
+        { status: 403 }
+      );
+    }
+
+    if (isEmployee(currentEmployee.systemRole)) {
       return NextResponse.json(
         { error: "Employee accounts cannot update leave request status or notes." },
         { status: 403 }
@@ -208,6 +181,16 @@ export async function PATCH(
 
       if (!existing) {
         throw new TimeOffRequestError("Time-off request not found", 404);
+      }
+
+      if (isManager(currentEmployee.systemRole)) {
+        const isReport = isDirectReportOf(currentEmployee, existing.employee);
+        if (!isReport) {
+          throw new TimeOffRequestError(
+            "Managers can only review leave requests for their direct reports.",
+            403
+          );
+        }
       }
 
       const nextStatus = status || existing.status;
