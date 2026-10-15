@@ -131,6 +131,7 @@ function mapProgram(program: any) {
     passingScore: program.passingScore,
     certificateRequired: program.certificateRequired,
     status: program.status,
+    reminderEmailSentAt: program.reminderEmailSentAt,
     canDelete: (program._count?.assignments || 0) === 0 && (program._count?.completionRecords || 0) === 0,
     alerts: {
       dueSoon: 0,

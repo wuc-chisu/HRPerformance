@@ -491,6 +491,7 @@ model TrainingProgram {
   passingScore            Float?
   certificateRequired     Boolean                    @default(true)
   status                  TrainingProgramStatus      @default(DRAFT)
+  reminderEmailSentAt     DateTime?
   modules                 TrainingProgramModule[]
   cycles                  TrainingCycle[]
   assignments             EmployeeTrainingAssignment[]
@@ -537,6 +538,7 @@ model EmployeeTrainingAssignment {
   assignedDate       DateTime
   dueDate            DateTime
   status             TrainingAssignmentStatus @default(ASSIGNED)
+  reminderEmailSentAt DateTime?
   completionDate     DateTime?
   examScore          Float?
   certificateReference String?

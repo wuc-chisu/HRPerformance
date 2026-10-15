@@ -50,6 +50,7 @@ type TrainingProgramListItem = {
   passingScore?: number | null;
   certificateRequired: boolean;
   status: TrainingProgramStatus;
+  reminderEmailSentAt?: string | null;
   canDelete: boolean;
   configuredModuleCount: number;
   alerts: {
@@ -78,6 +79,55 @@ type FormState = {
   certificateRequired: boolean;
   status: TrainingProgramStatus;
 };
+
+type ReminderEmployee = {
+  name: string;
+  email: string;
+};
+
+type ReminderDialogState = {
+  program: TrainingProgramListItem;
+  loading: boolean;
+  sending: boolean;
+  courseTitle: string;
+  dueDate: string;
+  score: string;
+  to: string;
+  cc: string;
+  subject: string;
+  body: string;
+  error: string | null;
+  sent: boolean;
+};
+
+const REMINDER_SUBJECT = "Reminder: Complete {{course title}} by {{due date}}";
+const REMINDER_BODY = `Dear Employee,
+
+This is a reminder to complete the required {{course title}} by {{due date}}.
+
+To complete the training requirement, please:
+
+- Complete all required training modules
+- Pass the final quiz with a score of {{score}} (if applicable)
+- Confirm your training shows as **Completed** in the system
+
+**Training System:**
+https://accounts.wuc-hr-system-hr-gnhan7-e41e68-3-20-225-73.sslip.io/
+
+HR can track completion directly in the system, so you do not need to email your certificate.
+
+If you have already completed the training, please disregard this reminder.
+
+Thank you,
+**Human Resources**
+Whitewater University of California`;
+
+function fillReminderTemplate(courseTitle: string, dueDate: string, score: string) {
+  return REMINDER_BODY
+    .replace(/\{\{\s*course\s+title\s*\}\}/gi, courseTitle)
+    .replace(/\{\{\s*due\s+date\s*\}\}/gi, dueDate)
+    .replace(/\{\{\s*score\s*\}\}/gi, score);
+}
 
 const DEFAULT_FORM: FormState = {
   programCode: "",
@@ -173,6 +223,8 @@ export default function TrainingProgramsManager({ viewMode }: { viewMode: "admin
   const [programs, setPrograms] = useState<TrainingProgramListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
+  const [reminderDialog, setReminderDialog] = useState<ReminderDialogState | null>(null);
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -440,6 +492,128 @@ export default function TrainingProgramsManager({ viewMode }: { viewMode: "admin
     }
   };
 
+  const openTrainingReminder = async (program: TrainingProgramListItem) => {
+    const courseTitle = program.trainingName;
+    const dueDate = formatDate(program.dueDate);
+    const score = `${program.passingScore ?? 80}% or higher`;
+    setNotice(null);
+    setReminderDialog({
+      program,
+      loading: true,
+      sending: false,
+      courseTitle,
+      dueDate,
+      score,
+      to: "",
+      cc: "hr@wuc.edu",
+      subject: REMINDER_SUBJECT
+        .replace(/\{\{\s*course\s+title\s*\}\}/gi, courseTitle)
+        .replace(/\{\{\s*due\s+date\s*\}\}/gi, dueDate),
+      body: fillReminderTemplate(courseTitle, dueDate, score),
+      error: null,
+      sent: false,
+    });
+    try {
+      const response = await fetch(`/api/training-programs/${program.id}/reminder`, {
+        headers: { "X-View-Mode": viewMode },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "Failed to load training reminder recipients.");
+      }
+
+      const employees = payload.employees as ReminderEmployee[];
+      const resolvedCourseTitle =
+        typeof payload.courseTitle === "string" ? payload.courseTitle : courseTitle;
+      const resolvedDueDate = typeof payload.dueDate === "string" ? payload.dueDate : dueDate;
+      const resolvedScore = typeof payload.score === "string" ? payload.score : score;
+      setReminderDialog((current) =>
+        current?.program.id === program.id
+          ? {
+              ...current,
+              loading: false,
+              courseTitle: resolvedCourseTitle,
+              dueDate: resolvedDueDate,
+              score: resolvedScore,
+              to: [...new Set(employees.map((employee) => employee.email.trim()).filter(Boolean))].join(", "),
+              subject: REMINDER_SUBJECT
+                .replace(/\{\{\s*course\s+title\s*\}\}/gi, resolvedCourseTitle)
+                .replace(/\{\{\s*due\s+date\s*\}\}/gi, resolvedDueDate),
+              body: fillReminderTemplate(resolvedCourseTitle, resolvedDueDate, resolvedScore),
+            }
+          : current
+      );
+    } catch (error) {
+      setReminderDialog((current) =>
+        current?.program.id === program.id
+          ? {
+              ...current,
+              loading: false,
+              error: error instanceof Error ? error.message : "Failed to load training reminder recipients.",
+            }
+          : current
+      );
+    }
+  };
+
+  const sendTrainingReminder = async () => {
+    if (!reminderDialog) return;
+    setReminderDialog((current) => current ? { ...current, sending: true, error: null } : current);
+    setSendingReminderId(reminderDialog.program.id);
+    try {
+      const response = await fetch(`/api/training-programs/${reminderDialog.program.id}/reminder`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-View-Mode": viewMode,
+        },
+        body: JSON.stringify({
+          to: reminderDialog.to,
+          cc: reminderDialog.cc,
+          subject: reminderDialog.subject,
+          body: reminderDialog.body,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (payload.reminderEmailSentAt) {
+          setPrograms((currentPrograms) =>
+            currentPrograms.map((program) =>
+              program.id === reminderDialog.program.id
+                ? { ...program, reminderEmailSentAt: payload.reminderEmailSentAt }
+                : program
+            )
+          );
+        }
+        throw new Error(payload.error || "Failed to send training reminder.");
+      }
+
+      setPrograms((currentPrograms) =>
+        currentPrograms.map((program) =>
+          program.id === reminderDialog.program.id
+            ? { ...program, reminderEmailSentAt: payload.reminderEmailSentAt }
+            : program
+        )
+      );
+      setReminderDialog((current) => current ? { ...current, sending: false, sent: true } : current);
+      window.setTimeout(() => {
+        setReminderDialog((current) =>
+          current?.program.id === reminderDialog.program.id && current.sent ? null : current
+        );
+      }, 1200);
+    } catch (error) {
+      setReminderDialog((current) =>
+        current ? {
+          ...current,
+          sending: false,
+          error: error instanceof Error ? error.message : "Failed to send training reminder.",
+        } : current
+      );
+    } finally {
+      setSendingReminderId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
@@ -567,6 +741,24 @@ export default function TrainingProgramsManager({ viewMode }: { viewMode: "admin
                         <button type="button" onClick={() => openView(program)} className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200">View</button>
                         {canManageCourseContent && (
                           <>
+                            {program.status === "ACTIVE" && (
+                              <button
+                                type="button"
+                                onClick={() => void openTrainingReminder(program)}
+                                disabled={sendingReminderId !== null}
+                                className={`rounded px-2 py-1 text-xs font-semibold ${
+                                  program.reminderEmailSentAt
+                                    ? "bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:cursor-wait disabled:opacity-50"
+                                    : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 disabled:cursor-wait disabled:opacity-50"
+                                }`}
+                              >
+                                {program.reminderEmailSentAt
+                                  ? "Email sent"
+                                  : sendingReminderId === program.id
+                                    ? "Sending..."
+                                    : "Send email"}
+                              </button>
+                            )}
                             <button type="button" onClick={() => openEdit(program)} className="rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-200">Edit</button>
                             <button
                               type="button"
@@ -602,6 +794,124 @@ export default function TrainingProgramsManager({ viewMode }: { viewMode: "admin
       {notice && (
         <div className={`rounded-lg border px-4 py-3 text-sm ${notice.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
           {notice.message}
+        </div>
+      )}
+
+      {reminderDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="training-reminder-title"
+            className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl"
+          >
+            <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white p-5">
+              <div>
+                <h3 id="training-reminder-title" className="text-xl font-bold text-slate-900">Send training reminder</h3>
+                <p className="mt-1 text-sm text-slate-600">{reminderDialog.program.trainingName}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReminderDialog(null)}
+                disabled={reminderDialog.sending}
+                className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-4 p-5">
+              {reminderDialog.loading ? (
+                <p className="text-sm text-slate-500">Loading email recipients...</p>
+              ) : (
+                <>
+                  <div>
+                    <label htmlFor="training-reminder-to" className="block text-sm font-semibold text-slate-700">
+                      To <span className="font-normal text-slate-500">(separate email addresses with commas)</span>
+                    </label>
+                    <textarea
+                      id="training-reminder-to"
+                      rows={3}
+                      value={reminderDialog.to}
+                      onChange={(event) => setReminderDialog({ ...reminderDialog, to: event.target.value })}
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="training-reminder-cc" className="block text-sm font-semibold text-slate-700">
+                      CC <span className="font-normal text-slate-500">(separate email addresses with commas)</span>
+                    </label>
+                    <input
+                      id="training-reminder-cc"
+                      value={reminderDialog.cc}
+                      onChange={(event) => setReminderDialog({ ...reminderDialog, cc: event.target.value })}
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="training-reminder-subject" className="block text-sm font-semibold text-slate-700">
+                      Email title
+                    </label>
+                    <input
+                      id="training-reminder-subject"
+                      value={reminderDialog.subject}
+                      onChange={(event) => setReminderDialog({ ...reminderDialog, subject: event.target.value })}
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="training-reminder-body" className="block text-sm font-semibold text-slate-700">
+                      Email body
+                    </label>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Course title, due date, and minimum passing score are filled from the training program.
+                    </p>
+                    <textarea
+                      id="training-reminder-body"
+                      rows={18}
+                      value={reminderDialog.body}
+                      onChange={(event) => setReminderDialog({ ...reminderDialog, body: event.target.value })}
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
+                    />
+                  </div>
+                </>
+              )}
+
+              {reminderDialog.error && (
+                <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  {reminderDialog.error}
+                </p>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-200 bg-white p-5">
+              <button
+                type="button"
+                onClick={() => setReminderDialog(null)}
+                disabled={reminderDialog.sending}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              {reminderDialog.sent ? (
+                <span role="status" className="rounded-lg bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                  Email sent
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void sendTrainingReminder()}
+                  disabled={reminderDialog.loading || reminderDialog.sending || !reminderDialog.to.trim()}
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {reminderDialog.sending ? "Sending..." : "Send email"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
